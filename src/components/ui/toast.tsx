@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckIcon } from '@/components/log/icons';
@@ -10,16 +10,6 @@ import type { Notify, NotifyKind } from '@/hooks/use-food-log';
 export type ToastState = { id: number; kind: NotifyKind; message: string } | null;
 
 const TOAST_DURATION_MS = 2500;
-
-const toastEnter = new Keyframe({
-  0: { opacity: 0, transform: [{ translateY: 14 }, { scale: 0.96 }] },
-  100: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }], easing: Easing.out(Easing.cubic) },
-}).duration(LogMotion.base);
-
-const toastExit = new Keyframe({
-  0: { opacity: 1 },
-  100: { opacity: 0, easing: Easing.in(Easing.cubic) },
-}).duration(LogMotion.fast);
 
 /** Owns toast queue state; pair with <ToastOverlay toast={toast} /> rendered at the screen root. */
 export function useToastHost() {
@@ -38,10 +28,27 @@ export function useToastHost() {
 
 export function ToastOverlay({ toast }: { toast: ToastState }) {
   const insets = useSafeAreaInsets();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(14);
+
+  useEffect(() => {
+    if (toast) {
+      opacity.value = 0;
+      translateY.value = 14;
+      opacity.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+      translateY.value = withTiming(0, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+    }
+  }, [toast, opacity, translateY]);
+
+  const toastStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
   if (!toast) return null;
   return (
     <View pointerEvents="none" style={[styles.host, { bottom: insets.bottom + LogSpace.xxl }]}>
-      <Animated.View key={toast.id} entering={toastEnter} exiting={toastExit} style={styles.toast}>
+      <Animated.View key={toast.id} style={[styles.toast, toastStyle]}>
         <View style={[styles.iconChip, toast.kind === 'success' ? styles.iconChipSuccess : styles.iconChipInfo]}>
           <CheckIcon size={15} color={LogColor.white} />
         </View>

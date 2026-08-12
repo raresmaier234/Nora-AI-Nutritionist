@@ -1,7 +1,8 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradient, LogMotion, LogRadius, LogSpace } from '@/constants/log-theme';
+import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, LogSpace } from '@/constants/log-theme';
 
 type PillProps = {
   label: string;
@@ -31,6 +32,14 @@ export function Pill({ label, selected, onPress, flex, fontSize = LogFontSize.mi
         scale.value = withTiming(1, { duration: LogMotion.fast });
       }}
       style={[styles.base, selected ? styles.selected : styles.unselected, flex && styles.flex, pressStyle, style]}>
+      {selected && (
+        <LinearGradient
+          colors={LogGradientColors.primary}
+          start={LogGradientAngle.start}
+          end={LogGradientAngle.end}
+          style={styles.gradientFill}
+        />
+      )}
       <Text
         numberOfLines={1}
         style={[styles.label, { fontSize }, selected ? styles.selectedLabel : styles.unselectedLabel]}>
@@ -47,15 +56,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: LogSpace.xs,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   flex: { flex: 1 },
-  selected: {
-    experimental_backgroundImage: LogGradient.primary,
-  },
+  selected: {},
   unselected: {
     backgroundColor: LogColor.bgApp,
     borderWidth: 1,
     borderColor: LogColor.borderSubtle,
+  },
+  gradientFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: LogRadius.pill,
   },
   label: {
     fontFamily: LogFontFamily.bold,

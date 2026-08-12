@@ -1,7 +1,8 @@
-import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradient, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
+import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost';
 
@@ -41,6 +42,14 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
         pressStyle,
         style,
       ]}>
+      {variant === 'primary' && (
+        <LinearGradient
+          colors={LogGradientColors.primary}
+          start={LogGradientAngle.start}
+          end={LogGradientAngle.end}
+          style={styles.gradientFill}
+        />
+      )}
       <Text style={[styles.label, variantLabel[variant]]}>{label}</Text>
     </AnimatedPressable>
   );
@@ -52,6 +61,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   flex: { flex: 1 },
   disabled: { opacity: 0.5 },
@@ -59,11 +69,14 @@ const styles = StyleSheet.create({
     fontFamily: LogFontFamily.bold,
     fontSize: LogFontSize.small,
   },
+  gradientFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: LogRadius.pill,
+  },
 });
 
 const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet.create({
   primary: {
-    experimental_backgroundImage: LogGradient.primary,
     boxShadow: LogShadow.glowPrimary,
     paddingHorizontal: LogSpace.lg,
   },
@@ -87,7 +100,7 @@ const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet
   },
 });
 
-const variantLabel: Record<ButtonVariant, StyleProp<ViewStyle>> = {
+const variantLabel: Record<ButtonVariant, StyleProp<TextStyle>> = {
   primary: { color: LogColor.textOnBrand },
   secondary: { color: LogColor.textPrimary },
   destructive: { color: LogColor.red500 },

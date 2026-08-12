@@ -1,16 +1,17 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradient, LogMotion, LogRadius, trackWide } from '@/constants/log-theme';
+import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, trackWide } from '@/constants/log-theme';
 
 export type MacroTone = 'protein' | 'carbs' | 'fat';
 
 // Canonical macro→color mapping (DESIGN_SYSTEM.md §2.4): protein=indigo, carbs=amber, fat=green.
-const TONE_GRADIENT: Record<MacroTone, string> = {
-  protein: LogGradient.primary,
-  carbs: LogGradient.accent,
-  fat: LogGradient.success,
+const TONE_GRADIENT: Record<MacroTone, [string, string]> = {
+  protein: LogGradientColors.primary,
+  carbs: LogGradientColors.accent,
+  fat: LogGradientColors.success,
 };
 
 type MacroBarProps = {
@@ -42,7 +43,14 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
         </Text>
       </View>
       <View style={styles.track}>
-        <Animated.View style={[styles.fill, { experimental_backgroundImage: TONE_GRADIENT[tone] }, fillStyle]} />
+        <Animated.View style={[styles.fill, fillStyle]}>
+          <LinearGradient
+            colors={TONE_GRADIENT[tone]}
+            start={LogGradientAngle.start}
+            end={LogGradientAngle.end}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </Animated.View>
       </View>
     </View>
   );
@@ -82,5 +90,6 @@ const styles = StyleSheet.create({
   fill: {
     height: '100%',
     borderRadius: LogRadius.pill,
+    overflow: 'hidden',
   },
 });

@@ -55,12 +55,19 @@ export const LogColor = {
   viewfinderBg: '#111827',
 } as const;
 
-// RN's Fabric renderer accepts a CSS background-image string via `experimental_backgroundImage`.
-export const LogGradient = {
-  primary: 'linear-gradient(135deg, #818CF8 0%, #4F46E5 100%)', // buttons, active pills, water fill, protein bar
-  success: 'linear-gradient(135deg, #4ADE80 0%, #22C55E 100%)', // calorie progress, fat bar
-  accent: 'linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)', // carbs bar
+/**
+ * Gradient color stops for expo-linear-gradient's <LinearGradient colors={...} />.
+ * RN's `experimental_backgroundImage` CSS-string style (used elsewhere in this scaffold, e.g.
+ * animated-icon.tsx) does not render on react-native-web, so gradients here go through an actual
+ * <LinearGradient> component instead for correct cross-platform (iOS/Android/web) rendering.
+ */
+export const LogGradientColors = {
+  primary: ['#818CF8', '#4F46E5'] as [string, string], // buttons, active pills, water fill, protein bar
+  success: ['#4ADE80', '#22C55E'] as [string, string], // calorie progress, fat bar
+  accent: ['#FBBF24', '#F59E0B'] as [string, string], // carbs bar
 } as const;
+
+export const LogGradientAngle = { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } } as const;
 
 // RN's Fabric renderer accepts a CSS box-shadow string (including multiple layers) via `boxShadow`.
 export const LogShadow = {

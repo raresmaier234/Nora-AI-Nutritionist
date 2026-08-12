@@ -1,4 +1,5 @@
 import * as Device from 'expo-device';
+import { Link } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -52,6 +53,14 @@ export default function HomeScreen() {
           <HintRow
             title="Fresh start"
             hint={<ThemedText type="code">npm run reset-project</ThemedText>}
+          />
+          <HintRow
+            title="Log Food screen"
+            hint={
+              <Link href="/log">
+                <ThemedText type="code">Open</ThemedText>
+              </Link>
+            }
           />
         </ThemedView>
 

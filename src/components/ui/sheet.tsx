@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { LogColor, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
 
@@ -10,42 +10,47 @@ type SheetProps = {
   children: ReactNode;
 };
 
-const backdropEnter = new Keyframe({
-  0: { opacity: 0 },
-  100: { opacity: 1, easing: Easing.out(Easing.cubic) },
-}).duration(LogMotion.base);
-
-const backdropExit = new Keyframe({
-  0: { opacity: 1 },
-  100: { opacity: 0, easing: Easing.in(Easing.cubic) },
-}).duration(LogMotion.fast);
-
-const cardEnter = new Keyframe({
-  0: { opacity: 0, transform: [{ scale: 0.96 }] },
-  100: { opacity: 1, transform: [{ scale: 1 }], easing: Easing.out(Easing.cubic) },
-}).duration(LogMotion.base);
-
-const cardExit = new Keyframe({
-  0: { opacity: 1, transform: [{ scale: 1 }] },
-  100: { opacity: 0, transform: [{ scale: 0.96 }], easing: Easing.in(Easing.cubic) },
-}).duration(LogMotion.fast);
-
 /**
  * The single sheet shell every flow (add-food, edit, photo, scan, recipes, custom, unit picker)
  * renders inside of. Per product direction this is a centered dialog, not a bottom sheet —
  * a deliberate deviation from LogPageV3.jsx's bottom-anchored `Sheet`.
+ *
+ * The backdrop fade is handled by Modal's native `animationType="fade"` rather than a Reanimated
+ * `entering`/`exiting` Keyframe: those layout animations rely on a web DOM-measurement path that's
+ * unreliable once a Modal is nested inside another Modal (the unit picker opens from inside the
+ * edit/custom-food sheets) — it silently leaves the second sheet stuck at opacity 0. The card's
+ * scale-in "pop" instead uses a plain mount-driven shared value, which doesn't hit that path.
  */
 export function Sheet({ visible, onClose, children }: SheetProps) {
+  const scale = useSharedValue(0.96);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      opacity.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+      scale.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+    } else {
+      opacity.value = 0;
+      scale.value = 0.96;
+    }
+  }, [visible, opacity, scale]);
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
   if (!visible) return null;
+
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Animated.View entering={backdropEnter} exiting={backdropExit} style={styles.backdrop}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.centerWrap}
           pointerEvents="box-none">
-          <Animated.View entering={cardEnter} exiting={cardExit} style={styles.card}>
+          <Animated.View style={[styles.card, cardStyle]}>
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
@@ -54,7 +59,7 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
-      </Animated.View>
+      </View>
     </Modal>
   );
 }

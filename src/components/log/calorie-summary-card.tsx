@@ -1,10 +1,11 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { MacroBar } from '@/components/log/macro-bar';
 import { GlassCard } from '@/components/ui/card';
-import { LogColor, LogFontFamily, LogFontSize, LogGradient, LogMotion, LogRadius, LogSpace, trackTight } from '@/constants/log-theme';
+import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, LogSpace, trackTight } from '@/constants/log-theme';
 import { Macro, TARGETS } from '@/data/log-mock-data';
 
 type CalorieSummaryCardProps = {
@@ -40,13 +41,16 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onCopyYesterd
       </View>
 
       <View style={styles.track}>
-        <Animated.View
-          style={[
-            styles.fill,
-            over ? { backgroundColor: LogColor.red500 } : { experimental_backgroundImage: LogGradient.success },
-            fillStyle,
-          ]}
-        />
+        <Animated.View style={[styles.fill, over && { backgroundColor: LogColor.red500 }, fillStyle]}>
+          {!over && (
+            <LinearGradient
+              colors={LogGradientColors.success}
+              start={LogGradientAngle.start}
+              end={LogGradientAngle.end}
+              style={StyleSheet.absoluteFillObject}
+            />
+          )}
+        </Animated.View>
       </View>
 
       <View style={styles.macroRow}>
@@ -108,6 +112,7 @@ const styles = StyleSheet.create({
   fill: {
     height: '100%',
     borderRadius: LogRadius.pill,
+    overflow: 'hidden',
   },
   macroRow: {
     flexDirection: 'row',
