@@ -1,16 +1,30 @@
-# Local PostgreSQL only — for running the app against a real database without installing
-# PostgreSQL directly. The app itself is not containerized here; run it with uvicorn.
+# Local PostgreSQL + pgAdmin — for running the app against a real database without installing
+# PostgreSQL directly, and browsing it via a web UI. The app itself is not containerized here;
+# run it with uvicorn.
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: nora
-      POSTGRES_PASSWORD: nora
-      POSTGRES_DB: nora
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     ports:
       - "5432:5432"
     volumes:
       - nora_postgres_data:/var/lib/postgresql/data
 
+  pgadmin:
+    image: dpage/pgadmin4:8
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in .env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
   nora_postgres_data:
+  pgadmin_data:

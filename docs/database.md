@@ -65,3 +65,17 @@ install PostgreSQL directly, `docker-compose.yml` in the repo root starts a loca
 ```bash
 docker compose up -d
 ```
+
+Compose reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` from your `.env` file (see
+`.env.example`) — there is no hardcoded fallback, so `.env` must be set up first.
+
+### pgAdmin
+
+`docker compose up -d` also starts [pgAdmin](https://www.pgadmin.org/), a web UI for browsing the
+local Postgres database, at http://localhost:5050. Log in with the `PGADMIN_DEFAULT_EMAIL` /
+`PGADMIN_DEFAULT_PASSWORD` values from your `.env` file.
+
+pgAdmin doesn't come pre-connected to the `db` container. As a one-time manual step, register it
+yourself: in the pgAdmin UI, right-click **Servers** > **Register** > **Server**, give it any name,
+then on the **Connection** tab set host `db`, port `5432`, and the `POSTGRES_USER` /
+`POSTGRES_PASSWORD` / `POSTGRES_DB` values from your `.env` file.

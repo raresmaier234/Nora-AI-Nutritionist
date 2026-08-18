@@ -80,7 +80,11 @@ pip install -e .
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `DATABASE_URL` to point at your local PostgreSQL instance.
+Edit `.env` and set at least `DATABASE_URL` to point at your local PostgreSQL instance. There is
+no insecure hardcoded fallback: `DATABASE_URL`, `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`,
+and `SECRET_KEY` are all required — the app and `docker compose` will fail to start without them.
+If you're using the local pgAdmin container, `PGADMIN_DEFAULT_EMAIL`/`PGADMIN_DEFAULT_PASSWORD`
+are required too.
 See [docs/database.md](docs/database.md) for setup notes.
 
 ## Running the server
@@ -100,6 +104,17 @@ FastAPI). `python -m app.main` is there for running the API without remembering 
 invocation — host/port/reload for that path come from `APP_HOST` / `APP_PORT` / `DEBUG` in
 `.env`. Note it must be run as a module (`python -m app.main`, not `python app/main.py`), since
 the latter breaks the `app.*` imports.
+
+Both forms above bind to `127.0.0.1` by default (uvicorn's own default — `APP_HOST` only
+applies to the `python -m app.main` path). That's fine for the Mac itself and for the iOS
+Simulator, but unreachable from a physical device on the same network. For that, bind to all
+interfaces explicitly:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0
+```
+
+(Trusted/local networks only — this exposes the dev server to your whole LAN.)
 
 Swagger:
 http://127.0.0.1:8000/docs

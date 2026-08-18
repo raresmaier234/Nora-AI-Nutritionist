@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
 
-    database_url: str = "postgresql+psycopg://nora:nora@localhost:5432/nora"
-    secret_key: str = "change-me"
+    database_url: str
+    secret_key: str
 
     # Comma-separated list of allowed origins, e.g. "http://localhost:8081,https://app.example.com"
     cors_origins: str = "http://localhost:8081"

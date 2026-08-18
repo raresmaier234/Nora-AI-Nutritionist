@@ -1,3 +1,4 @@
-# Future SQLAlchemy models are registered here so Alembic's autogenerate can see them.
-# Example (once a model exists):
-#     from app.db.models.user import User  # noqa: F401
+# SQLAlchemy models are registered here so Alembic's autogenerate can see them.
+from app.db.models.food import Food  # noqa: F401
+from app.db.models.recipe import Recipe  # noqa: F401
+from app.db.models.recipe_ingredient import RecipeIngredient  # noqa: F401
