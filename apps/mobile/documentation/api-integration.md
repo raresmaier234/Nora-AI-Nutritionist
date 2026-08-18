@@ -1,6 +1,6 @@
 # API integration
 
-How the Expo app talks to the FastAPI backend (`nora-ai-nutrition-api`, a separate repo).
+How the Expo app talks to the FastAPI backend (`apps/api/` in this repo).
 
 ## Architecture
 
@@ -59,7 +59,7 @@ EXPO_PUBLIC_API_URL=http://127.0.0.1:8000
 ### Backend
 
 ```bash
-cd nora-ai-nutrition-api
+cd apps/api   # relative to the monorepo root
 source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
@@ -158,7 +158,7 @@ src/services/api/
    done yet — see `documentation/ARCHITECTURE.md`'s note on `mock-data.ts`'s swap points.
 
 Do not build a wrapper for an endpoint that doesn't exist on the backend yet — check
-`nora-ai-nutrition-api/app/api/routes/` first (the backend's own `CLAUDE.md` prohibits
+`apps/api/app/api/routes/` first (the backend's own `CLAUDE.md` prohibits
 documenting/faking endpoints that aren't real, and this repo should mirror that discipline).
 
 ## Handling errors
@@ -220,4 +220,4 @@ CORS is a browser-enforced mechanism — it does not apply to `fetch` calls from
 dev-client Expo app running on iOS/Android. No backend CORS configuration is required for the
 app itself to reach the API. The backend's `CORS_ORIGINS` setting only matters if you test the
 API through a browser-based tool (e.g. Expo's web output, or a browser-based API client) — see
-`nora-ai-nutrition-api/app/core/config.py` if that's ever needed.
+`apps/api/app/core/config.py` if that's ever needed.

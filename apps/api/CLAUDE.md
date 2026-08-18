@@ -25,7 +25,7 @@ FastAPI backend for the Nora AI Nutritionist mobile application.
 - Put actual business logic in services when it becomes complex enough to justify them.
 - Keep database models separate from API schemas.
 - Do not put secrets in source code.
-- Do not modify the Expo mobile repository.
+- Do not modify the Expo mobile app (`apps/mobile/` in this repo) from here.
 - Do not add dependencies without a reason.
 
 # API & Swagger rules

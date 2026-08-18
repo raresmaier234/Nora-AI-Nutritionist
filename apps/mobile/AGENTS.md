@@ -8,4 +8,4 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 - Do not hardcode API URLs — the only place the base URL is read is `src/services/api/config.ts`, via `EXPO_PUBLIC_API_URL`.
 - Do not store secrets in Expo. `EXPO_PUBLIC_*` variables are inlined into the JS bundle and readable by anyone with the compiled app — only the public API base URL belongs there.
 - Keep API request/response types in `src/services/api/types.ts` (or a file next to it), separate from UI component prop types.
-- Do not modify the backend (`nora-ai-nutrition-api`) architecture from this repo. See `documentation/api-integration.md` for the full integration architecture.
+- Do not modify the backend's architecture from `apps/mobile/`. The FastAPI backend lives alongside this app at `apps/api/` in this same repo — its own `apps/api/CLAUDE.md` governs changes there. See `documentation/api-integration.md` for the full integration architecture.

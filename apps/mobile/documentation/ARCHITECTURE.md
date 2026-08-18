@@ -94,7 +94,7 @@ services/api/
 └── index.ts      barrel export
 ```
 
-The reusable client for the FastAPI backend (`nora-ai-nutrition-api`, a separate repo). All API
+The reusable client for the FastAPI backend (`apps/api/` in this repo). All API
 calls go through `apiRequest`/the endpoint-specific wrapper functions (e.g. `getHealth`) —
 never call `fetch` directly from a component. See
 [`documentation/api-integration.md`](./api-integration.md) for the full architecture, local-dev
