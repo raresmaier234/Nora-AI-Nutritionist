@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CloseIcon, SearchIcon } from '@/components/log/icons';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
 
 type SearchFieldProps = {
   value: string;
@@ -13,18 +13,18 @@ type SearchFieldProps = {
 export function SearchField({ value, onChange, placeholder = 'Search food...', autoFocus }: SearchFieldProps) {
   return (
     <View style={styles.wrap}>
-      <SearchIcon size={18} color={LogColor.textTertiary} strokeWidth={2.2} />
+      <SearchIcon size={18} color={colors.textTertiary} strokeWidth={2.2} />
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={LogColor.textTertiary}
+        placeholderTextColor={colors.textTertiary}
         autoFocus={autoFocus}
         style={styles.input}
       />
       {value ? (
         <Pressable onPress={() => onChange('')} accessibilityRole="button" accessibilityLabel="Clear search" style={styles.clearButton}>
-          <CloseIcon size={11} color={LogColor.textSecondary} strokeWidth={2.6} />
+          <CloseIcon size={11} color={colors.textSecondary} strokeWidth={2.6} />
         </Pressable>
       ) : null}
     </View>
@@ -35,26 +35,26 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: LogSpace.sm + 2,
-    backgroundColor: LogColor.bgApp,
+    gap: spacing.sm + 2,
+    backgroundColor: colors.bgApp,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.pill,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.pill,
     paddingVertical: 13,
-    paddingHorizontal: LogSpace.lg,
+    paddingHorizontal: spacing.lg,
   },
   input: {
     flex: 1,
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
     padding: 0,
   },
   clearButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: LogColor.trackEmpty,
+    backgroundColor: colors.trackEmpty,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

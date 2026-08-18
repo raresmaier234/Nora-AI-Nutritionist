@@ -4,8 +4,8 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckIcon } from '@/components/log/icons';
-import { LogColor, LogFontFamily, LogFontSize, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
-import type { Notify, NotifyKind } from '@/hooks/use-food-log';
+import { colors, fontFamily, fontSize, motion, radius, shadows, spacing } from '@/theme';
+import type { Notify, NotifyKind } from '@/features/food/hooks/use-food-log';
 
 export type ToastState = { id: number; kind: NotifyKind; message: string } | null;
 
@@ -35,8 +35,8 @@ export function ToastOverlay({ toast }: { toast: ToastState }) {
     if (toast) {
       opacity.value = 0;
       translateY.value = 14;
-      opacity.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
-      translateY.value = withTiming(0, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+      opacity.value = withTiming(1, { duration: motion.base, easing: Easing.out(Easing.cubic) });
+      translateY.value = withTiming(0, { duration: motion.base, easing: Easing.out(Easing.cubic) });
     }
   }, [toast, opacity, translateY]);
 
@@ -47,10 +47,10 @@ export function ToastOverlay({ toast }: { toast: ToastState }) {
 
   if (!toast) return null;
   return (
-    <View pointerEvents="none" style={[styles.host, { bottom: insets.bottom + LogSpace.xxl }]}>
+    <View pointerEvents="none" style={[styles.host, { bottom: insets.bottom + spacing.xxl }]}>
       <Animated.View key={toast.id} style={[styles.toast, toastStyle]}>
         <View style={[styles.iconChip, toast.kind === 'success' ? styles.iconChipSuccess : styles.iconChipInfo]}>
-          <CheckIcon size={15} color={LogColor.white} />
+          <CheckIcon size={15} color={colors.white} />
         </View>
         <Text style={styles.message} numberOfLines={2}>
           {toast.message}
@@ -71,28 +71,28 @@ const styles = StyleSheet.create({
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: LogSpace.sm + 2,
+    gap: spacing.sm + 2,
     maxWidth: 330,
-    backgroundColor: LogColor.bgSurface,
-    borderRadius: LogRadius.pill,
-    boxShadow: LogShadow.lg,
+    backgroundColor: colors.bgSurface,
+    borderRadius: radius.pill,
+    boxShadow: shadows.lg,
     paddingVertical: 9,
-    paddingRight: LogSpace.xl,
+    paddingRight: spacing.xl,
     paddingLeft: 9,
   },
   iconChip: {
     width: 33,
     height: 33,
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconChipSuccess: { backgroundColor: LogColor.green500 },
-  iconChipInfo: { backgroundColor: LogColor.slate600 },
+  iconChipSuccess: { backgroundColor: colors.green500 },
+  iconChipInfo: { backgroundColor: colors.slate600 },
   message: {
     flexShrink: 1,
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.small,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.small,
+    color: colors.textPrimary,
   },
 });

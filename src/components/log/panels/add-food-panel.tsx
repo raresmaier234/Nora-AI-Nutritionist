@@ -5,8 +5,8 @@ import { QuickEntryAction } from '@/components/log/quick-entry-row';
 import { SearchField } from '@/components/log/search-field';
 import { Pill } from '@/components/ui/pill';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace } from '@/constants/log-theme';
-import { Food } from '@/data/log-mock-data';
+import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Food } from '@/features/food/data/mock-data';
 
 type AddFoodPanelProps = {
   meal: string;
@@ -70,33 +70,33 @@ export function AddFoodPanel({ meal, query, onQueryChange, results, onPickFood, 
 }
 
 const styles = StyleSheet.create({
-  searchWrap: { marginBottom: LogSpace.lg },
+  searchWrap: { marginBottom: spacing.lg },
   routeRow: {
     flexDirection: 'row',
-    gap: LogSpace.sm,
-    marginBottom: LogSpace.xl - 2,
+    gap: spacing.sm,
+    marginBottom: spacing.xl - 2,
   },
   list: {
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.lg,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.lg,
     overflow: 'hidden',
   },
   emptyState: {
     paddingVertical: 22,
-    paddingHorizontal: LogSpace.sm + 2,
+    paddingHorizontal: spacing.sm + 2,
     alignItems: 'center',
   },
   emptyTitle: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   emptyHint: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.small,
-    color: LogColor.textSecondary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.small,
+    color: colors.textSecondary,
     marginTop: 6,
     textAlign: 'center',
   },

@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, shadows, spacing } from '@/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost';
 
@@ -29,10 +29,10 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
       disabled={disabled}
       onPress={onPress}
       onPressIn={() => {
-        scale.value = withTiming(0.965, { duration: LogMotion.fast });
+        scale.value = withTiming(0.965, { duration: motion.fast });
       }}
       onPressOut={() => {
-        scale.value = withTiming(1, { duration: LogMotion.fast });
+        scale.value = withTiming(1, { duration: motion.fast });
       }}
       style={[
         styles.base,
@@ -44,9 +44,9 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
       ]}>
       {variant === 'primary' && (
         <LinearGradient
-          colors={LogGradientColors.primary}
-          start={LogGradientAngle.start}
-          end={LogGradientAngle.end}
+          colors={gradients.primary}
+          start={gradientAngle.start}
+          end={gradientAngle.end}
           style={styles.gradientFill}
         />
       )}
@@ -57,7 +57,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -66,43 +66,43 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   disabled: { opacity: 0.5 },
   label: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.small,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.small,
   },
   gradientFill: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
   },
 });
 
 const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet.create({
   primary: {
-    boxShadow: LogShadow.glowPrimary,
-    paddingHorizontal: LogSpace.lg,
+    boxShadow: shadows.glowPrimary,
+    paddingHorizontal: spacing.lg,
   },
   secondary: {
-    backgroundColor: LogColor.bgSurfaceSolid,
+    backgroundColor: colors.bgSurfaceSolid,
     borderWidth: 1,
-    borderColor: LogColor.borderStrong,
-    paddingHorizontal: LogSpace.xl,
+    borderColor: colors.borderStrong,
+    paddingHorizontal: spacing.xl,
   },
   destructive: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: LogColor.red500,
+    borderColor: colors.red500,
     paddingVertical: 13,
-    paddingHorizontal: LogSpace.xl,
+    paddingHorizontal: spacing.xl,
   },
   ghost: {
     backgroundColor: 'transparent',
-    paddingVertical: LogSpace.md,
-    paddingHorizontal: LogSpace.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
 });
 
 const variantLabel: Record<ButtonVariant, StyleProp<TextStyle>> = {
-  primary: { color: LogColor.textOnBrand },
-  secondary: { color: LogColor.textPrimary },
-  destructive: { color: LogColor.red500 },
-  ghost: { color: LogColor.brandPrimary },
+  primary: { color: colors.textOnBrand },
+  secondary: { color: colors.textPrimary },
+  destructive: { color: colors.red500 },
+  ghost: { color: colors.brandPrimary },
 };

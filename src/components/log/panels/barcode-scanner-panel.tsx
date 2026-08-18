@@ -1,35 +1,37 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CameraIcon } from '@/components/log/icons';
 import { FoodIcon } from '@/components/log/food-icon';
 import { MealPicker } from '@/components/log/meal-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace } from '@/constants/log-theme';
-import { BARCODES, Barcode, MealName } from '@/data/log-mock-data';
+import { BARCODES, Barcode, MealName } from '@/features/food/data/mock-data';
+import { viewfinderBg } from '@/features/food/theme';
+import type { BarcodeScanResult } from '@/features/camera';
+import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
 
-type Phase = 'scanning' | 'found' | 'notfound' | 'manual';
+type Phase = 'ready' | 'found' | 'notfound' | 'manual';
 
 type BarcodeScannerPanelProps = {
   meal: MealName;
   onMeal: (meal: MealName) => void;
   onAdd: (product: Barcode) => void;
+  /** Opens the full-screen camera route (src/app/camera/barcode.tsx). */
+  onOpenCamera: () => void;
+  /** Populated once the camera round-trip returns a scanned code; null before then. */
+  scanResult: BarcodeScanResult | null;
 };
 
-export function BarcodeScannerPanel({ meal, onMeal, onAdd }: BarcodeScannerPanelProps) {
-  const [phase, setPhase] = useState<Phase>('scanning');
+export function BarcodeScannerPanel({ meal, onMeal, onAdd, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
+  const initialHit = scanResult ? (BARCODES.find((b) => b.code === scanResult.data) ?? null) : null;
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (!scanResult) return 'ready';
+    return initialHit ? 'found' : 'notfound';
+  });
   const [code, setCode] = useState('');
-  const [product, setProduct] = useState<Barcode | null>(null);
-
-  useEffect(() => {
-    if (phase !== 'scanning') return;
-    const t = setTimeout(() => {
-      setProduct(BARCODES[0]);
-      setPhase('found');
-    }, 1600);
-    return () => clearTimeout(t);
-  }, [phase]);
+  const [product, setProduct] = useState<Barcode | null>(initialHit);
 
   const lookup = () => {
     const hit = BARCODES.find((b) => b.code === code.trim());
@@ -47,10 +49,23 @@ export function BarcodeScannerPanel({ meal, onMeal, onAdd }: BarcodeScannerPanel
       <SheetTitle>Scan barcode</SheetTitle>
       <SheetSubtitle>Point your camera at the product barcode</SheetSubtitle>
 
-      <View style={styles.viewfinder}>
-        <View style={styles.reticle}>{phase === 'scanning' && <View style={styles.scanLine} />}</View>
-        <Text style={styles.statusCaption}>{phase === 'scanning' ? 'Scanning…' : phase === 'found' ? 'Product found' : 'No match'}</Text>
-      </View>
+      {phase === 'ready' ? (
+        <Pressable
+          onPress={onOpenCamera}
+          accessibilityRole="button"
+          accessibilityLabel="Open camera to scan barcode"
+          style={styles.viewfinder}>
+          <View style={styles.centerCol}>
+            <CameraIcon size={30} color="rgba(255,255,255,0.85)" strokeWidth={1.7} />
+            <Text style={styles.hintText}>Tap to scan with camera</Text>
+          </View>
+        </Pressable>
+      ) : (
+        <View style={styles.viewfinder}>
+          <View style={styles.reticle} />
+          <Text style={styles.statusCaption}>{phase === 'found' ? 'Product found' : 'No match'}</Text>
+        </View>
+      )}
 
       {phase === 'found' && product ? (
         <>
@@ -86,12 +101,18 @@ export function BarcodeScannerPanel({ meal, onMeal, onAdd }: BarcodeScannerPanel
 const styles = StyleSheet.create({
   viewfinder: {
     height: 168,
-    borderRadius: LogRadius.lg,
-    backgroundColor: LogColor.viewfinderBg,
+    borderRadius: radius.lg,
+    backgroundColor: viewfinderBg,
     overflow: 'hidden',
-    marginBottom: LogSpace.lg,
+    marginBottom: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerCol: { alignItems: 'center', gap: spacing.md },
+  hintText: {
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
+    color: 'rgba(255,255,255,0.85)',
   },
   reticle: {
     width: 200,
@@ -101,51 +122,46 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
   },
-  scanLine: {
-    height: 2,
-    backgroundColor: LogColor.indigo400,
-    boxShadow: '0px 0px 12px 2px rgba(129,140,248,0.9)',
-  },
   statusCaption: {
     position: 'absolute',
     bottom: 12,
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.micro,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
     color: 'rgba(255,255,255,0.8)',
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: LogSpace.md,
-    padding: LogSpace.md + 2,
+    gap: spacing.md,
+    padding: spacing.md + 2,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.md,
-    marginBottom: LogSpace.lg,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg,
   },
   productText: { flex: 1, minWidth: 0 },
   productName: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   productMeta: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     marginTop: 3,
   },
   fallbackCopy: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.small,
-    color: LogColor.textSecondary,
-    lineHeight: LogFontSize.small * 1.4,
-    marginBottom: LogSpace.md,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.small,
+    color: colors.textSecondary,
+    lineHeight: fontSize.small * 1.4,
+    marginBottom: spacing.md,
   },
   manualRow: {
     flexDirection: 'row',
-    gap: LogSpace.sm,
-    marginTop: LogSpace.md,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   manualInput: { flex: 1 },
 });

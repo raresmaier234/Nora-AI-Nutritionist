@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GlassCard } from '@/components/ui/card';
-import { LogColor, LogFontFamily, LogFontSize, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, spacing } from '@/theme';
 
 type WaterTrackerProps = { water: number; onChange: (water: number) => void; total?: number };
 
@@ -37,17 +37,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: LogSpace.md,
+    marginBottom: spacing.md,
   },
   title: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   count: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.small,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.small,
+    color: colors.textTertiary,
   },
   segmentRow: {
     flexDirection: 'row',
@@ -63,8 +63,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(99,102,241,0.85)',
   },
   segmentEmpty: {
-    backgroundColor: LogColor.bgApp,
+    backgroundColor: colors.bgApp,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
+    borderColor: colors.borderSubtle,
   },
 });

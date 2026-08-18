@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FoodIcon } from '@/components/log/food-icon';
-import { LogColor, LogFontFamily, LogFontSize, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, spacing } from '@/theme';
 
 type FoodRowProps = {
   name: string;
@@ -42,42 +42,42 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: LogSpace.md,
-    paddingVertical: LogSpace.md,
-    paddingHorizontal: LogSpace.lg - 2,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg - 2,
   },
   divider: {
     borderBottomWidth: 1,
-    borderBottomColor: LogColor.borderSubtle,
+    borderBottomColor: colors.borderSubtle,
   },
   pressed: {
-    backgroundColor: LogColor.overlayPress,
+    backgroundColor: colors.overlayPress,
   },
   textCol: {
     flex: 1,
     minWidth: 0,
   },
   name: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   meta: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     marginTop: 3,
   },
   trailingBold: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
     flexShrink: 0,
   },
   trailingMeta: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     flexShrink: 0,
   },
 });

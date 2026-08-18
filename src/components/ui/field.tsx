@@ -1,24 +1,24 @@
 import { StyleProp, StyleSheet, TextInput, TextInputProps, TextStyle } from 'react-native';
 
-import { LogColor, LogFontFamily, LogFontSize, LogRadius } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, radius } from '@/theme';
 
 type FieldProps = TextInputProps & { style?: StyleProp<TextStyle> };
 
 /** Bordered text/number input, matching the inputs used throughout LogPageV3.jsx's sheets. */
 export function Field({ style, ...rest }: FieldProps) {
-  return <TextInput placeholderTextColor={LogColor.textTertiary} style={[styles.field, style]} {...rest} />;
+  return <TextInput placeholderTextColor={colors.textTertiary} style={[styles.field, style]} {...rest} />;
 }
 
 const styles = StyleSheet.create({
   field: {
-    borderRadius: LogRadius.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    backgroundColor: LogColor.bgApp,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.bgApp,
     paddingVertical: 13,
     paddingHorizontal: 15,
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
 });

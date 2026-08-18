@@ -2,7 +2,7 @@ import { ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BarcodeIcon, CameraIcon, PlusIcon, RecipeIcon, SearchIcon } from '@/components/log/icons';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, radius, shadows, spacing } from '@/theme';
 
 export type QuickEntryAction = 'search' | 'photo' | 'scan' | 'recipes' | 'custom';
 
@@ -32,7 +32,7 @@ export function QuickEntryRow({ onSelect }: QuickEntryRowProps) {
         return (
           <Pressable key={action} onPress={() => onSelect(action)} accessibilityRole="button" style={styles.tile}>
             <View style={styles.iconChip}>
-              <Icon size={15} color={LogColor.brandPrimary} />
+              <Icon size={15} color={colors.brandPrimary} />
             </View>
             <Text style={styles.label}>{label}</Text>
           </Pressable>
@@ -45,31 +45,31 @@ export function QuickEntryRow({ onSelect }: QuickEntryRowProps) {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: LogSpace.sm,
+    gap: spacing.sm,
   },
   tile: {
     flex: 1,
     alignItems: 'center',
     gap: 7,
-    paddingVertical: LogSpace.md,
+    paddingVertical: spacing.md,
     paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    backgroundColor: LogColor.bgSurfaceSolid,
-    borderRadius: LogRadius.md,
-    boxShadow: LogShadow.sm,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.bgSurfaceSolid,
+    borderRadius: radius.md,
+    boxShadow: shadows.sm,
   },
   iconChip: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: LogColor.chipIndigoTint,
+    backgroundColor: colors.chipIndigoTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.nano,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.nano,
+    color: colors.textPrimary,
   },
 });

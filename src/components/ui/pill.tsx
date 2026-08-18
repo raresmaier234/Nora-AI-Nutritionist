@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, LogSpace } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, spacing } from '@/theme';
 
 type PillProps = {
   label: string;
@@ -16,7 +16,8 @@ type PillProps = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /** Selectable pill/chip — used by MealPicker, segmented tabs, and ingredient chips. */
-export function Pill({ label, selected, onPress, flex, fontSize = LogFontSize.micro, style }: PillProps) {
+export function Pill({ label, selected, onPress, flex, fontSize: fontSizeProp, style }: PillProps) {
+  const resolvedFontSize = fontSizeProp ?? fontSize.micro;
   const scale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -26,23 +27,23 @@ export function Pill({ label, selected, onPress, flex, fontSize = LogFontSize.mi
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
       onPressIn={() => {
-        scale.value = withTiming(0.965, { duration: LogMotion.fast });
+        scale.value = withTiming(0.965, { duration: motion.fast });
       }}
       onPressOut={() => {
-        scale.value = withTiming(1, { duration: LogMotion.fast });
+        scale.value = withTiming(1, { duration: motion.fast });
       }}
       style={[styles.base, selected ? styles.selected : styles.unselected, flex && styles.flex, pressStyle, style]}>
       {selected && (
         <LinearGradient
-          colors={LogGradientColors.primary}
-          start={LogGradientAngle.start}
-          end={LogGradientAngle.end}
+          colors={gradients.primary}
+          start={gradientAngle.start}
+          end={gradientAngle.end}
           style={styles.gradientFill}
         />
       )}
       <Text
         numberOfLines={1}
-        style={[styles.label, { fontSize }, selected ? styles.selectedLabel : styles.unselectedLabel]}>
+        style={[styles.label, { fontSize: resolvedFontSize }, selected ? styles.selectedLabel : styles.unselectedLabel]}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -51,9 +52,9 @@ export function Pill({ label, selected, onPress, flex, fontSize = LogFontSize.mi
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
     paddingVertical: 9,
-    paddingHorizontal: LogSpace.xs,
+    paddingHorizontal: spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -61,17 +62,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   selected: {},
   unselected: {
-    backgroundColor: LogColor.bgApp,
+    backgroundColor: colors.bgApp,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
+    borderColor: colors.borderSubtle,
   },
   gradientFill: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
   },
   label: {
-    fontFamily: LogFontFamily.bold,
+    fontFamily: fontFamily.bold,
   },
-  selectedLabel: { color: LogColor.textOnBrand },
-  unselectedLabel: { color: LogColor.textSecondary },
+  selectedLabel: { color: colors.textOnBrand },
+  unselectedLabel: { color: colors.textSecondary },
 });

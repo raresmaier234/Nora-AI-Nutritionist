@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AmountField } from '@/components/log/amount-field';
 import { FoodIcon } from '@/components/log/food-icon';
 import { Button } from '@/components/ui/button';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace, trackWide } from '@/constants/log-theme';
-import { Entry, entryMacros } from '@/data/log-mock-data';
+import { colors, fontFamily, fontSize, radius, spacing, trackWide } from '@/theme';
+import { Entry, entryMacros } from '@/features/food/data/mock-data';
 
 type FoodDetailPanelProps = {
   meal: string;
@@ -18,10 +18,10 @@ type FoodDetailPanelProps = {
 export function FoodDetailPanel({ meal, entry, onChange, onSave, onDelete }: FoodDetailPanelProps) {
   const m = entryMacros(entry);
   const cells: Array<[string, string | number, string]> = [
-    ['Calories', m.kcal, LogColor.textPrimary],
-    ['Protein', `${m.protein}g`, LogColor.brandPrimary],
-    ['Carbs', `${m.carbs}g`, LogColor.amberText],
-    ['Fat', `${m.fat}g`, LogColor.greenText],
+    ['Calories', m.kcal, colors.textPrimary],
+    ['Protein', `${m.protein}g`, colors.brandPrimary],
+    ['Carbs', `${m.carbs}g`, colors.amberText],
+    ['Fat', `${m.fat}g`, colors.greenText],
   ];
 
   return (
@@ -57,58 +57,58 @@ export function FoodDetailPanel({ meal, entry, onChange, onSave, onDelete }: Foo
 const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
-    gap: LogSpace.md,
-    marginBottom: LogSpace.xl,
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   name: {
-    fontFamily: LogFontFamily.extrabold,
-    fontSize: LogFontSize.h1,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.extrabold,
+    fontSize: fontSize.h1,
+    color: colors.textPrimary,
     textAlign: 'center',
   },
   meta: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
   },
   sectionLabel: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: trackWide(LogFontSize.micro),
-    marginBottom: LogSpace.sm,
+    letterSpacing: trackWide(fontSize.micro),
+    marginBottom: spacing.sm,
   },
   macroGrid: {
     flexDirection: 'row',
-    gap: LogSpace.sm + 2,
-    marginTop: LogSpace.xl,
-    marginBottom: LogSpace.xl + 4,
+    gap: spacing.sm + 2,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl + 4,
   },
   macroCell: {
     flex: 1,
-    backgroundColor: LogColor.bgApp,
+    backgroundColor: colors.bgApp,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.md,
-    paddingVertical: LogSpace.md,
-    paddingHorizontal: LogSpace.sm,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
   },
   macroValue: {
-    fontFamily: LogFontFamily.extrabold,
-    fontSize: LogFontSize.h2,
+    fontFamily: fontFamily.extrabold,
+    fontSize: fontSize.h2,
   },
   macroLabel: {
-    fontFamily: LogFontFamily.semibold,
+    fontFamily: fontFamily.semibold,
     fontSize: 9,
-    color: LogColor.textTertiary,
+    color: colors.textTertiary,
     marginTop: 5,
     letterSpacing: trackWide(9),
     textTransform: 'uppercase',
   },
   actions: {
     flexDirection: 'row',
-    gap: LogSpace.sm + 2,
+    gap: spacing.sm + 2,
   },
 });

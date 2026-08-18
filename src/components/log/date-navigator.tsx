@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/log/icons';
-import { LogColor, LogFontFamily, LogFontSize } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize } from '@/theme';
 
 type DateNavigatorProps = {
   dayOffset: number;
@@ -48,22 +48,22 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    backgroundColor: LogColor.bgSurfaceSolid,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.bgSurfaceSolid,
     alignItems: 'center',
     justifyContent: 'center',
   },
   center: { alignItems: 'center' },
   dayLabel: {
-    fontFamily: LogFontFamily.extrabold,
-    fontSize: LogFontSize.h1,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.extrabold,
+    fontSize: fontSize.h1,
+    color: colors.textPrimary,
     letterSpacing: -0.66,
   },
   dateLabel: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     marginTop: 5,
   },
 });

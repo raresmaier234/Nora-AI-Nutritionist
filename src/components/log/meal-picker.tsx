@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Pill } from '@/components/ui/pill';
-import { LogColor, LogFontFamily, LogFontSize, LogSpace, trackWide } from '@/constants/log-theme';
-import { MEALS, MealName } from '@/data/log-mock-data';
+import { colors, fontFamily, fontSize, spacing, trackWide } from '@/theme';
+import { MEALS, MealName } from '@/features/food/data/mock-data';
 
 type MealPickerProps = {
   value: MealName;
@@ -24,16 +24,16 @@ export function MealPicker({ value, onChange }: MealPickerProps) {
 
 const styles = StyleSheet.create({
   label: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: trackWide(LogFontSize.micro),
-    marginBottom: LogSpace.sm,
+    letterSpacing: trackWide(fontSize.micro),
+    marginBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: LogSpace.lg,
+    marginBottom: spacing.lg,
   },
 });

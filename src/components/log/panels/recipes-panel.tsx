@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Pill } from '@/components/ui/pill';
 import { SectionLabel, SheetTitle } from '@/components/ui/typography';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace } from '@/constants/log-theme';
-import { FOOD_DB, Macro, MealName, RECIPES, entryMacros } from '@/data/log-mock-data';
+import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { FOOD_DB, Macro, MealName, RECIPES, entryMacros } from '@/features/food/data/mock-data';
 
 type RecipesPanelProps = {
   meal: MealName;
@@ -37,8 +37,8 @@ export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
     <View>
       <SheetTitle>Recipes</SheetTitle>
       <View style={styles.tabRow}>
-        <Pill label="Saved" selected={tab === 'saved'} onPress={() => setTab('saved')} fontSize={LogFontSize.small} flex />
-        <Pill label="Build new" selected={tab === 'new'} onPress={() => setTab('new')} fontSize={LogFontSize.small} flex />
+        <Pill label="Saved" selected={tab === 'saved'} onPress={() => setTab('saved')} fontSize={fontSize.small} flex />
+        <Pill label="Build new" selected={tab === 'new'} onPress={() => setTab('new')} fontSize={fontSize.small} flex />
       </View>
       <MealPicker value={meal} onChange={onMeal} />
 
@@ -56,7 +56,7 @@ export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
                   pressed && styles.rowPressed,
                 ]}>
                 <View style={styles.starChip}>
-                  <RecipeIcon size={18} color={LogColor.brandPrimary} strokeWidth={2} />
+                  <RecipeIcon size={18} color={colors.brandPrimary} strokeWidth={2} />
                 </View>
                 <View style={styles.recipeText}>
                   <Text style={styles.recipeName}>{r.name}</Text>
@@ -82,7 +82,7 @@ export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
                   label={`${on ? '✓ ' : '+ '}${f.name}`}
                   selected={on}
                   onPress={() => setPicked((p) => (on ? p.filter(([id]) => id !== f.id) : [...p, [f.id, 100, 'g']]))}
-                  fontSize={LogFontSize.micro}
+                  fontSize={fontSize.micro}
                 />
               );
             })}
@@ -109,73 +109,73 @@ export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
 const styles = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
-    gap: LogSpace.sm,
-    marginBottom: LogSpace.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   list: {
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.lg,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.lg,
     overflow: 'hidden',
   },
   recipeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: LogSpace.md,
-    paddingVertical: LogSpace.md,
-    paddingHorizontal: LogSpace.lg - 2,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg - 2,
   },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: LogColor.borderSubtle },
-  rowPressed: { backgroundColor: LogColor.overlayPress },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
+  rowPressed: { backgroundColor: colors.overlayPress },
   starChip: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: LogColor.chipIndigoTint,
+    backgroundColor: colors.chipIndigoTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   recipeText: { flex: 1, minWidth: 0 },
   recipeName: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   recipeMeta: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     marginTop: 3,
   },
   recipeKcal: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.small,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.small,
+    color: colors.textPrimary,
   },
-  nameInput: { marginBottom: LogSpace.md },
+  nameInput: { marginBottom: spacing.md },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: LogSpace.md,
+    marginBottom: spacing.md,
   },
   totalsStrip: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: LogSpace.md + 2,
-    backgroundColor: LogColor.successTint,
-    borderRadius: LogRadius.md,
-    marginBottom: LogSpace.lg - 2,
+    padding: spacing.md + 2,
+    backgroundColor: colors.successTint,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg - 2,
   },
   totalsKcal: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   totalsMeta: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textSecondary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
+    color: colors.textSecondary,
   },
 });

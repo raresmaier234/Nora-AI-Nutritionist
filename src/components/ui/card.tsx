@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { LogColor, LogRadius, LogShadow } from '@/constants/log-theme';
+import { colors, radius, shadows } from '@/theme';
 
 type CardProps = { children: ReactNode; padding?: number; style?: StyleProp<ViewStyle> };
 
@@ -22,17 +22,17 @@ export function GlassCard({ children, padding = 18, style }: CardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: LogColor.bgSurfaceSolid,
-    borderRadius: LogRadius.lg,
+    backgroundColor: colors.bgSurfaceSolid,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    boxShadow: LogShadow.sm,
+    borderColor: colors.borderSubtle,
+    boxShadow: shadows.sm,
   },
   glass: {
-    backgroundColor: LogColor.bgSurface,
-    borderRadius: LogRadius.lg,
+    backgroundColor: colors.bgSurface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    boxShadow: LogShadow.md,
+    borderColor: colors.borderSubtle,
+    boxShadow: shadows.md,
   },
 });

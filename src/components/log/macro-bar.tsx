@@ -3,15 +3,15 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogFontFamily, LogFontSize, LogGradientAngle, LogGradientColors, LogMotion, LogRadius, trackWide } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, trackWide } from '@/theme';
 
 export type MacroTone = 'protein' | 'carbs' | 'fat';
 
 // Canonical macro→color mapping (DESIGN_SYSTEM.md §2.4): protein=indigo, carbs=amber, fat=green.
 const TONE_GRADIENT: Record<MacroTone, [string, string]> = {
-  protein: LogGradientColors.primary,
-  carbs: LogGradientColors.accent,
-  fat: LogGradientColors.success,
+  protein: gradients.primary,
+  carbs: gradients.accent,
+  fat: gradients.success,
 };
 
 type MacroBarProps = {
@@ -27,7 +27,7 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
   const pct = Math.min(100, target > 0 ? (current / target) * 100 : 0);
 
   useEffect(() => {
-    width.value = withTiming(pct, { duration: LogMotion.slow });
+    width.value = withTiming(pct, { duration: motion.slow });
   }, [pct, width]);
 
   const fillStyle = useAnimatedStyle(() => ({ width: `${width.value}%` }));
@@ -46,8 +46,8 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
         <Animated.View style={[styles.fill, fillStyle]}>
           <LinearGradient
             colors={TONE_GRADIENT[tone]}
-            start={LogGradientAngle.start}
-            end={LogGradientAngle.end}
+            start={gradientAngle.start}
+            end={gradientAngle.end}
             style={StyleSheet.absoluteFillObject}
           />
         </Animated.View>
@@ -59,11 +59,11 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   label: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: trackWide(LogFontSize.micro),
+    letterSpacing: trackWide(fontSize.micro),
     marginBottom: 6,
   },
   valueRow: {
@@ -72,24 +72,24 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   value: {
-    fontFamily: LogFontFamily.extrabold,
-    fontSize: LogFontSize.stat,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.extrabold,
+    fontSize: fontSize.stat,
+    color: colors.textPrimary,
   },
   target: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
   },
   track: {
     height: 5,
-    borderRadius: LogRadius.pill,
-    backgroundColor: LogColor.trackEmpty,
+    borderRadius: radius.pill,
+    backgroundColor: colors.trackEmpty,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: LogRadius.pill,
+    borderRadius: radius.pill,
     overflow: 'hidden',
   },
 });

@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { SvgUri } from 'react-native-svg';
 
-import { LogColor } from '@/constants/log-theme';
+import { colors } from '@/theme';
 
 /**
  * Food → colorful illustrated icon (Noto Emoji CDN) inside a softly tinted rounded container.
@@ -33,10 +33,10 @@ const KEYWORD_MAP: Array<[RegExp, string, Tint]> = [
 ];
 
 const TINT_BG: Record<Tint, string> = {
-  indigo: LogColor.chipIndigoTint,
-  green: LogColor.chipGreenTint,
-  amber: LogColor.chipAmberTint,
-  neutral: LogColor.slate100,
+  indigo: colors.chipIndigoTint,
+  green: colors.chipGreenTint,
+  amber: colors.chipAmberTint,
+  neutral: colors.slate100,
 };
 
 export function foodIllustration(name: string): { uri: string; tint: Tint } {

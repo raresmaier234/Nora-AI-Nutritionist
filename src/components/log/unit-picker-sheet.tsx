@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Sheet } from '@/components/ui/sheet';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius, LogSpace, trackWide } from '@/constants/log-theme';
-import { UNITS } from '@/data/log-mock-data';
+import { colors, fontFamily, fontSize, radius, spacing, trackWide } from '@/theme';
+import { UNITS } from '@/features/food/data/mock-data';
 
 type UnitPickerSheetProps = {
   visible: boolean;
@@ -41,46 +41,46 @@ export function UnitPickerSheet({ visible, value, onSelect, onClose }: UnitPicke
 
 const styles = StyleSheet.create({
   title: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: trackWide(LogFontSize.micro),
-    marginBottom: LogSpace.sm,
+    letterSpacing: trackWide(fontSize.micro),
+    marginBottom: spacing.sm,
   },
   list: {
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    borderRadius: LogRadius.lg,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.lg,
     overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: LogSpace.md,
-    paddingHorizontal: LogSpace.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   rowDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: LogColor.borderSubtle,
+    borderBottomColor: colors.borderSubtle,
   },
   rowSelected: {
-    backgroundColor: LogColor.chipIndigoTint,
+    backgroundColor: colors.chipIndigoTint,
   },
   rowLabel: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
   rowLabelSelected: {
-    fontFamily: LogFontFamily.bold,
-    color: LogColor.brandPrimaryStrong,
+    fontFamily: fontFamily.bold,
+    color: colors.brandPrimaryStrong,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: LogColor.brandPrimary,
+    backgroundColor: colors.brandPrimary,
   },
 });

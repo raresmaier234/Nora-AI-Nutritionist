@@ -6,9 +6,9 @@ import { MealPicker } from '@/components/log/meal-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { LogColor, LogFontFamily, LogSpace, trackWide } from '@/constants/log-theme';
-import { MealName } from '@/data/log-mock-data';
-import { CustomFoodForm } from '@/hooks/use-food-log';
+import { colors, fontFamily, spacing, trackWide } from '@/theme';
+import { MealName } from '@/features/food/data/mock-data';
+import { CustomFoodForm } from '@/features/food/hooks/use-food-log';
 
 type CustomFoodPanelProps = {
   meal: MealName;
@@ -62,22 +62,22 @@ export function CustomFoodPanel({ meal, onMeal, onSave }: CustomFoodPanelProps) 
 }
 
 const styles = StyleSheet.create({
-  nameInput: { marginBottom: LogSpace.md + 2 },
-  servingWrap: { marginBottom: LogSpace.md + 2 },
+  nameInput: { marginBottom: spacing.md + 2 },
+  servingWrap: { marginBottom: spacing.md + 2 },
   fieldGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: LogSpace.sm,
-    marginBottom: LogSpace.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   fieldCol: {
     flexBasis: '47%',
     flexGrow: 1,
   },
   fieldLabel: {
-    fontFamily: LogFontFamily.semibold,
+    fontFamily: fontFamily.semibold,
     fontSize: 10,
-    color: LogColor.textTertiary,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
     letterSpacing: trackWide(10),
     marginBottom: 6,

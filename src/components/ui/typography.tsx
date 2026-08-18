@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
 
-import { LogColor, LogFontFamily, LogFontSize, LogSpace, trackWide } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, spacing, trackWide } from '@/theme';
 
 type TextBlockProps = { children: ReactNode; style?: StyleProp<TextStyle> };
 
@@ -19,23 +19,23 @@ export function SectionLabel({ children, style }: TextBlockProps) {
 
 const styles = StyleSheet.create({
   title: {
-    fontFamily: LogFontFamily.extrabold,
-    fontSize: LogFontSize.h1,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.extrabold,
+    fontSize: fontSize.h1,
+    color: colors.textPrimary,
     marginBottom: 4,
   },
   subtitle: {
-    fontFamily: LogFontFamily.medium,
-    fontSize: LogFontSize.small,
-    color: LogColor.textTertiary,
-    marginBottom: LogSpace.lg,
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.small,
+    color: colors.textTertiary,
+    marginBottom: spacing.lg,
   },
   section: {
-    fontFamily: LogFontFamily.bold,
-    fontSize: LogFontSize.micro,
-    color: LogColor.textTertiary,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.micro,
+    color: colors.textTertiary,
     textTransform: 'uppercase',
-    letterSpacing: trackWide(LogFontSize.micro),
-    marginBottom: LogSpace.sm + 2,
+    letterSpacing: trackWide(fontSize.micro),
+    marginBottom: spacing.sm + 2,
   },
 });

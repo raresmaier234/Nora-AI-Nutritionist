@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UnitPickerSheet } from '@/components/log/unit-picker-sheet';
 import { Field } from '@/components/ui/field';
-import { LogColor, LogFontFamily, LogFontSize, LogRadius } from '@/constants/log-theme';
+import { colors, fontFamily, fontSize, radius } from '@/theme';
 
 type AmountFieldProps = {
   amount: number | string;
@@ -50,17 +50,17 @@ const styles = StyleSheet.create({
   },
   unitButton: {
     flex: 1,
-    borderRadius: LogRadius.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: LogColor.borderSubtle,
-    backgroundColor: LogColor.bgApp,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.bgApp,
     paddingVertical: 13,
     paddingHorizontal: 15,
     justifyContent: 'center',
   },
   unitLabel: {
-    fontFamily: LogFontFamily.semibold,
-    fontSize: LogFontSize.body,
-    color: LogColor.textPrimary,
+    fontFamily: fontFamily.semibold,
+    fontSize: fontSize.body,
+    color: colors.textPrimary,
   },
 });

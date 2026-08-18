@@ -11,7 +11,7 @@ import {
   seed,
   sumMacros,
   toGrams,
-} from '@/data/log-mock-data';
+} from '@/features/food/data/mock-data';
 
 export type NotifyKind = 'success' | 'info';
 export type Notify = (kind: NotifyKind, message: string) => void;

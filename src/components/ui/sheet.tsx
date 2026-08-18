@@ -2,7 +2,7 @@ import { ReactNode, useEffect } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { LogColor, LogMotion, LogRadius, LogShadow, LogSpace } from '@/constants/log-theme';
+import { colors, motion, radius, shadows, spacing } from '@/theme';
 
 type SheetProps = {
   visible: boolean;
@@ -27,8 +27,8 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
 
   useEffect(() => {
     if (visible) {
-      opacity.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
-      scale.value = withTiming(1, { duration: LogMotion.base, easing: Easing.out(Easing.cubic) });
+      opacity.value = withTiming(1, { duration: motion.base, easing: Easing.out(Easing.cubic) });
+      scale.value = withTiming(1, { duration: motion.base, easing: Easing.out(Easing.cubic) });
     } else {
       opacity.value = 0;
       scale.value = 0.96;
@@ -67,24 +67,24 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: LogColor.overlayBackdrop,
+    backgroundColor: colors.overlayBackdrop,
   },
   centerWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: LogSpace.xl,
+    padding: spacing.xl,
   },
   card: {
     width: '100%',
     maxWidth: 420,
     maxHeight: '84%',
-    backgroundColor: LogColor.bgSurfaceSolid,
-    borderRadius: LogRadius.lg,
-    boxShadow: LogShadow.lg,
+    backgroundColor: colors.bgSurfaceSolid,
+    borderRadius: radius.lg,
+    boxShadow: shadows.lg,
   },
   scrollContent: {
-    padding: LogSpace.xl,
-    paddingBottom: LogSpace.xxl,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
 });
