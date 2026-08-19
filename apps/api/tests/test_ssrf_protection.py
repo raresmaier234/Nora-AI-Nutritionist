@@ -12,8 +12,7 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
-from app.core.ssrf_protection import UnsafeURLError, resolve_safe_target
-from app.services.scrapper import foods_placeholder
+from app.services.scraping import FetchError, UnsafeURLError, fetch_html, resolve_safe_target
 
 
 # --- resolve_safe_target: scheme & basic validation -------------------------------
@@ -110,72 +109,96 @@ def test_pins_request_to_validated_ip_instead_of_hostname(monkeypatch: pytest.Mo
     assert target.sni_hostname == "example.com"
 
 
-# --- foods_placeholder (route handler): SSRF is enforced before any network call --
+# --- fetch_html: the guard holds for the real request path, including redirects ----
 
 
-def test_scrape_endpoint_rejects_loopback_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail_if_called(*args: object, **kwargs: object) -> None:
-        raise AssertionError("httpx.Client.get should never be called for a blocked URL")
-
-    monkeypatch.setattr(httpx.Client, "get", fail_if_called)
-
-    with pytest.raises(HTTPException) as exc_info:
-        foods_placeholder(url="http://127.0.0.1/admin")
-
-    assert exc_info.value.status_code == 400
+_PUBLIC_IP = "93.184.216.34"
+_HOSTS = {"example.com": _PUBLIC_IP, "rebound.example": "127.0.0.1"}
 
 
-def test_scrape_endpoint_rejects_metadata_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail_if_called(*args: object, **kwargs: object) -> None:
-        raise AssertionError("httpx.Client.get should never be called for a blocked URL")
-
-    monkeypatch.setattr(httpx.Client, "get", fail_if_called)
-
-    with pytest.raises(HTTPException) as exc_info:
-        foods_placeholder(url="http://169.254.169.254/latest/meta-data/iam/security-credentials/")
-
-    assert exc_info.value.status_code == 400
-
-
-def test_scrape_endpoint_does_not_leak_raw_exception_details(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get(self: httpx.Client, *args: object, **kwargs: object) -> None:
-        raise httpx.ConnectError("connection refused by db-primary.internal:5432")
-
-    monkeypatch.setattr(httpx.Client, "get", fake_get)
-
-    with pytest.raises(HTTPException) as exc_info:
-        foods_placeholder(url="http://93.184.216.34/recipe")
-
-    detail = exc_info.value.detail
-    assert detail == "Could not fetch URL"
-    assert "db-primary" not in str(detail)
-    assert "5432" not in str(detail)
-
-
-def test_scrape_endpoint_uses_pinned_target_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[dict] = []
-
-    def fake_get(self: httpx.Client, url: str, **kwargs: object) -> httpx.Response:
-        calls.append({"url": url, **kwargs})
-        html = (
-            '<html><script type="application/ld+json">'
-            '{"@graph": [{"@type": "Recipe", "name": "Soup", '
-            '"recipeIngredient": ["water"]}]}'
-            "</script></html>"
-        )
-        return httpx.Response(200, text=html)
-
+def _fake_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_getaddrinfo(host: str, *args: object, **kwargs: object) -> list:
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (_HOSTS[host], 0))]
 
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
-    monkeypatch.setattr(httpx.Client, "get", fake_get)
 
-    recipe = foods_placeholder(url="http://example.com/recipe")
 
-    assert recipe is not None
-    assert recipe.name == "Soup"
-    assert len(calls) == 1
-    assert calls[0]["url"] == "http://93.184.216.34/recipe"
-    assert calls[0]["headers"] == {"Host": "example.com"}
-    assert calls[0]["extensions"] == {"sni_hostname": "example.com"}
+def _client(handler) -> httpx.Client:
+    return httpx.Client(transport=httpx.MockTransport(handler))
+
+
+def test_fetch_html_rejects_loopback_before_connecting() -> None:
+    def fail_if_called(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be issued for a blocked URL")
+
+    with _client(fail_if_called) as client, pytest.raises(UnsafeURLError):
+        fetch_html("http://127.0.0.1/admin", client=client)
+
+
+def test_fetch_html_rejects_metadata_endpoint_before_connecting() -> None:
+    def fail_if_called(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be issued for a blocked URL")
+
+    with _client(fail_if_called) as client, pytest.raises(UnsafeURLError):
+        fetch_html("http://169.254.169.254/latest/meta-data/", client=client)
+
+
+def test_fetch_html_revalidates_redirect_targets(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A public page must not be able to bounce the request to a private address."""
+    _fake_dns(monkeypatch)
+
+    def redirect_to_loopback(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"location": "http://rebound.example/admin"})
+
+    with _client(redirect_to_loopback) as client, pytest.raises(UnsafeURLError):
+        fetch_html("http://example.com/recipe", client=client)
+
+
+def test_fetch_html_does_not_leak_raw_exception_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_dns(monkeypatch)
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused by db-primary.internal:5432")
+
+    with _client(refuse) as client, pytest.raises(FetchError) as exc_info:
+        fetch_html("http://example.com/recipe", client=client)
+
+    message = str(exc_info.value)
+    assert "db-primary" not in message
+    assert "5432" not in message
+
+
+def test_fetch_html_requests_the_pinned_ip_with_original_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_dns(monkeypatch)
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["host"] = request.headers["host"]
+        return httpx.Response(200, headers={"content-type": "text/html"}, text="<html></html>")
+
+    with _client(handler) as client:
+        fetch_html("http://example.com/recipe", client=client)
+
+    assert seen["url"] == f"http://{_PUBLIC_IP}/recipe"
+    assert seen["host"] == "example.com"
+
+
+def test_fetch_html_rejects_oversized_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_dns(monkeypatch)
+
+    def huge(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "text/html"}, text="x" * 5000)
+
+    with _client(huge) as client, pytest.raises(FetchError, match="exceeded"):
+        fetch_html("http://example.com/recipe", client=client, max_bytes=1000)
+
+
+def test_fetch_html_rejects_non_html_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_dns(monkeypatch)
+
+    def pdf(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "application/pdf"}, text="%PDF-")
+
+    with _client(pdf) as client, pytest.raises(FetchError, match="Expected HTML"):
+        fetch_html("http://example.com/recipe", client=client)

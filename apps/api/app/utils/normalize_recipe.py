@@ -1,28 +1,31 @@
-from app.schemas.food import Recipe, Nutrition
+from pydantic import ValidationError
+
+from app.schemas.food import Nutrition, Recipe
+from app.services.scraping.errors import ParseError
+
+_NUTRITION_FIELDS = tuple(Nutrition.model_fields)
 
 
-def normalize_recipe(data) -> Recipe:
-    nutrition_data = data.get("nutrition")
+def normalize_recipe(node: dict) -> Recipe:
+    """Convert one Schema.org Recipe object into a Recipe.
 
+    Raises ParseError when the object is missing what a recipe needs (a name, mainly) or
+    carries values of an unusable shape — the object is technically JSON-LD, but not a
+    recipe we can present.
+    """
+    nutrition_data = node.get("nutrition")
     nutrition = None
 
-    if nutrition_data:
+    if isinstance(nutrition_data, dict):
         nutrition = Nutrition(
-            calories=nutrition_data.get("calories"),
-            carbohydrateContent=nutrition_data.get("carbohydrateContent"),
-            proteinContent=nutrition_data.get("proteinContent"),
-            fatContent=nutrition_data.get("fatContent"),
-            saturatedFatContent=nutrition_data.get("saturatedFatContent"),
-            cholesterolContent=nutrition_data.get("cholesterolContent"),
-            sodiumContent=nutrition_data.get("sodiumContent"),
-            fiberContent=nutrition_data.get("fiberContent"),
-            sugarContent=nutrition_data.get("sugarContent"),
-            unsaturatedFatContent=nutrition_data.get("unsaturatedFatContent"),
-            servingSize=nutrition_data.get("servingSize"),
+            **{field: nutrition_data.get(field) for field in _NUTRITION_FIELDS}
         )
 
-    return Recipe(
-        name=data.get("name"),
-        ingredients=data.get("recipeIngredient", []),
-        nutrition=nutrition,
-    )
+    try:
+        return Recipe(
+            name=node.get("name"),
+            ingredients=node.get("recipeIngredient", []),
+            nutrition=nutrition,
+        )
+    except ValidationError as exc:
+        raise ParseError("Recipe data is missing required fields") from exc

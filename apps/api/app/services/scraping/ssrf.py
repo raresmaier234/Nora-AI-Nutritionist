@@ -5,11 +5,9 @@ import socket
 from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 
+from app.services.scraping.errors import UnsafeURLError
+
 ALLOWED_SCHEMES = {"http", "https"}
-
-
-class UnsafeURLError(ValueError):
-    """Raised when a URL is not safe to fetch (blocked scheme, host, or resolved address)."""
 
 
 @dataclass(frozen=True)
