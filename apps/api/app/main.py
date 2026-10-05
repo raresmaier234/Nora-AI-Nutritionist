@@ -18,7 +18,7 @@ tags_metadata = [
     },
     {
         "name": "Foods",
-        "description": "Recipe scraping from external webpages. Food database search/lookup not implemented yet.",
+        "description": "Food database search and lookup. Not implemented yet.",
     },
     {
         "name": "Barcodes",

@@ -4,10 +4,11 @@ Knows nothing about what it fetches — it returns text and raises FetchError.
 """
 
 import logging
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from app.services.scraping.errors import FetchError
+from app.services.scraping.errors import FetchError, UnsafeURLError
 from app.services.scraping.ssrf import resolve_safe_target
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ def fetch_document(
     max_bytes: int = DEFAULT_MAX_BYTES,
     max_redirects: int = DEFAULT_MAX_REDIRECTS,
     user_agent: str = DEFAULT_USER_AGENT,
+    allowed_hosts: frozenset[str] | None = None,
 ) -> str:
     """Fetch `url` and return its body as text, accepting `content_types`.
 
@@ -80,12 +82,24 @@ def fetch_document(
     `content_types` validates the *response*; `accept` sets the request header. They are
     separate because servers routinely answer `text/xml` when asked for `application/xml`.
     An empty `content_types` disables response validation.
+
+    `allowed_hosts`, when given, restricts every hop — the first request and each redirect
+    — to those hostnames, raising UnsafeURLError otherwise. Without it a listed site can
+    redirect the request to any public host.
     """
     accept_header = accept if accept is not None else ", ".join(content_types) or "*/*"
 
     if client is not None:
         return _fetch(
-            client, url, content_types, accept_header, timeout, max_bytes, max_redirects, user_agent
+            client,
+            url,
+            content_types,
+            accept_header,
+            timeout,
+            max_bytes,
+            max_redirects,
+            user_agent,
+            allowed_hosts,
         )
 
     with httpx.Client() as owned_client:
@@ -98,6 +112,7 @@ def fetch_document(
             max_bytes,
             max_redirects,
             user_agent,
+            allowed_hosts,
         )
 
 
@@ -110,10 +125,18 @@ def _fetch(
     max_bytes: int,
     max_redirects: int,
     user_agent: str,
+    allowed_hosts: frozenset[str] | None,
 ) -> str:
     current_url = url
 
     for _ in range(max_redirects + 1):
+        if allowed_hosts is not None:
+            # urlsplit, not httpx.URL: it is what resolve_safe_target uses for DNS and the
+            # Host header, so the host checked here is the host actually contacted.
+            host = (urlsplit(current_url).hostname or "").lower()
+            if host not in allowed_hosts:
+                raise UnsafeURLError(f"{host or current_url!r} is not an allowed site")
+
         # Re-validated on every hop: a redirect is a fresh URL, and skipping this check
         # would let a public page bounce the request to a private address.
         target = resolve_safe_target(current_url)
@@ -137,7 +160,7 @@ def _fetch(
                     location = response.headers.get("location")
                     if not location:
                         raise FetchError("Redirect response without a Location header")
-                    current_url = str(httpx.URL(current_url).join(location))
+                    current_url = urljoin(current_url, location)
                     continue
 
                 if response.status_code != 200:
@@ -154,6 +177,10 @@ def _fetch(
 
                 return _read_capped(response, max_bytes)
 
+        except httpx.InvalidURL:
+            # A URL urlsplit tolerates but httpx refuses (a tab in a sitemap <loc>, say).
+            # Raised as a ScrapeError so one bad entry skips that URL, not the whole run.
+            raise UnsafeURLError("Malformed URL") from None
         except httpx.RequestError:
             # Logged with the traceback, but the message is not propagated — it can
             # contain internal hostnames and ports.
@@ -174,5 +201,9 @@ def _read_capped(response: httpx.Response, max_bytes: int) -> str:
             raise FetchError(f"Response exceeded {max_bytes} bytes")
         chunks.append(chunk)
 
-    encoding = response.charset_encoding or "utf-8"
-    return b"".join(chunks).decode(encoding, errors="replace")
+    body = b"".join(chunks)
+    try:
+        return body.decode(response.charset_encoding or "utf-8", errors="replace")
+    except LookupError:
+        # The server named an encoding Python doesn't know (e.g. "utf8mb4").
+        return body.decode("utf-8", errors="replace")

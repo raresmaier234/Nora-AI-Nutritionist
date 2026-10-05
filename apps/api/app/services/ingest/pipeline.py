@@ -10,12 +10,11 @@ label that fails the plausibility check all mark that job and move on.
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from urllib.parse import urldefrag
 
-import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -27,15 +26,13 @@ from app.db.models.ingest_job import (
 )
 from app.services.ingest.extractor import ExtractionError, OllamaExtractor
 from app.services.ingest.normalizer import NormalizationError, normalize_food
-from app.services.ingest.sources import Discovered, FoodSource, HtmlSource, get_source
+from app.services.ingest.sites import SiteList
+from app.services.ingest.sources import Discovered, FoodSource, HtmlSource
 from app.services.ingest.store import upsert_food
 from app.services.scraping import ScrapeError
 from app.services.scraping.robots import RobotsCache
 
 logger = logging.getLogger(__name__)
-
-# Politeness delay between fetches, used only when robots pacing is not in play.
-DEFAULT_DELAY_SECONDS = 1.0
 
 # 5 columns x 1000 rows stays well under libpq's 65,535 bind-parameter ceiling.
 DEFAULT_BATCH_SIZE = 1000
@@ -49,6 +46,8 @@ class RunStats:
     foods_created: int = 0
     foods_enriched: int = 0
     foods_rejected: int = 0
+    # Same name as a food already stored from another page; left unmerged.
+    foods_name_taken: int = 0
     flagged_for_review: int = 0
     rejection_reasons: list[str] = field(default_factory=list)
 
@@ -56,7 +55,8 @@ class RunStats:
         return (
             f"{self.processed} urls processed ({self.succeeded} ok, {self.failed} failed) — "
             f"{self.foods_created} foods created, {self.foods_enriched} enriched, "
-            f"{self.foods_rejected} rejected, {self.flagged_for_review} flagged for review"
+            f"{self.foods_rejected} rejected, {self.foods_name_taken} name already taken, "
+            f"{self.flagged_for_review} flagged for review"
         )
 
 
@@ -122,17 +122,61 @@ def seed_discovered(
     return added
 
 
-def seed_urls(db: Session, urls: list[str]) -> int:
-    """Add manually supplied URLs to the frontier. Returns the number added."""
-    return seed_discovered(
-        db, (Discovered(url=url) for url in urls), source=HtmlSource.name
+@dataclass
+class SeedResult:
+    added: int
+    # URLs refused because no listed site owns them.
+    rejected: list[str]
+
+
+def seed_urls(db: Session, urls: Iterable[str], *, sites: SiteList) -> SeedResult:
+    """Queue manually supplied URLs, refusing any that no listed site owns.
+
+    Each job is tagged with its site's host, so `status` and `run --site` can tell sites
+    apart. The fragment is dropped: it is never sent to the server, and keeping it would
+    let `page#a` and `page#b` queue the same page twice.
+    """
+    by_host: dict[str, list[Discovered]] = {}
+    rejected: list[str] = []
+
+    for raw in urls:
+        url = urldefrag(raw.strip()).url
+        site = sites.site_for(url)
+        if site is None:
+            rejected.append(raw.strip())
+            continue
+        by_host.setdefault(site.host, []).append(Discovered(url=url))
+
+    added = sum(
+        seed_discovered(db, items, source=host) for host, items in by_host.items()
     )
+    return SeedResult(added=added, rejected=rejected)
 
 
-def pending_count(db: Session) -> int:
-    return db.execute(
-        select(func.count()).select_from(IngestJob).where(IngestJob.status == STATUS_PENDING)
-    ).scalar_one()
+def requeue(db: Session, *, site: str | None = None, include_done: bool = False) -> int:
+    """Put failed jobs (and, with `include_done`, finished ones) back in the queue.
+
+    A job that failed because Ollama was not running, or a site was briefly down, is never
+    retried on its own: `run` only takes pending jobs. Returns how many were requeued.
+    """
+    statuses = [STATUS_FAILED, STATUS_DONE] if include_done else [STATUS_FAILED]
+    query = (
+        update(IngestJob)
+        .where(IngestJob.status.in_(statuses))
+        .values(status=STATUS_PENDING, last_error=None)
+    )
+    if site is not None:
+        query = query.where(IngestJob.source == site)
+    count = db.execute(query).rowcount
+    db.commit()
+    return count
+
+
+def pending_count(db: Session, *, site: str | None = None) -> int:
+    query = select(func.count()).select_from(IngestJob).where(IngestJob.status == STATUS_PENDING)
+    if site is not None:
+        query = query.where(IngestJob.source == site)
+    return db.execute(query).scalar_one()
 
 
 def process_job(
@@ -173,6 +217,8 @@ def process_job(
         if outcome.created:
             created += 1
             stats.foods_created += 1
+        elif outcome.name_taken:
+            stats.foods_name_taken += 1
         else:
             stats.foods_enriched += 1
         if outcome.similar:
@@ -187,35 +233,41 @@ def process_job(
     db.commit()
 
 
+def _fail_unexpectedly(db: Session, job_id: int, exc: Exception) -> None:
+    logger.exception("job %s crashed", job_id)
+    db.rollback()
+    job = db.get(IngestJob, job_id)
+    if job is None:
+        return
+    job.attempts += 1
+    job.status = STATUS_FAILED
+    job.last_error = f"unexpected {type(exc).__name__}: {exc}"[:1000]
+    job.processed_at = func.now()
+    db.commit()
+
+
 def run(
     db: Session,
     *,
-    limit: int | None = None,
-    source_name: str | None = None,
+    sites: SiteList,
+    robots: RobotsCache,
     extractor: OllamaExtractor | None = None,
-    robots: RobotsCache | None = None,
-    client: httpx.Client | None = None,
-    delay_seconds: float = DEFAULT_DELAY_SECONDS,
+    limit: int | None = None,
+    site: str | None = None,
     should_stop: Callable[[], bool] | None = None,
 ) -> RunStats:
     """Process pending jobs until the frontier empties, `limit` is hit, or asked to stop.
 
-    Each job is routed to the adapter named in `ingest_jobs.source`, so a frontier holding
-    both manually seeded URLs and discovered ones works without special handling.
+    Only URLs owned by a site in `sites` are fetched; a pending job for any other site is
+    marked failed without a request being made. `robots` paces every request and should be
+    built with `allowed_hosts=sites.hosts` so redirects cannot leave the list either.
 
-    `should_stop` is polled between jobs, which is what lets Ctrl-C finish the page in
-    flight and exit cleanly rather than abandoning it mid-write.
+    `site` restricts the run to one host's jobs. `should_stop` is polled between jobs,
+    which is what lets Ctrl-C finish the page in flight and exit cleanly rather than
+    abandoning it mid-write.
     """
-    extractor = extractor or OllamaExtractor()
+    source = HtmlSource(sites=sites, robots=robots, extractor=extractor)
     stats = RunStats()
-    sources: dict[str, FoodSource] = {}
-
-    def source_for(name: str) -> FoodSource:
-        if name not in sources:
-            sources[name] = get_source(
-                name, extractor=extractor, robots=robots, client=client
-            )
-        return sources[name]
 
     while limit is None or stats.processed < limit:
         if should_stop is not None and should_stop():
@@ -223,8 +275,8 @@ def run(
             break
 
         query = select(IngestJob).where(IngestJob.status == STATUS_PENDING)
-        if source_name is not None:
-            query = query.where(IngestJob.source == source_name)
+        if site is not None:
+            query = query.where(IngestJob.source == site)
         # Ordered so ingestion follows discovery order. Without this, `--limit N` over a
         # frontier of ~863k rows takes an arbitrary physical slice.
         job = db.execute(query.order_by(IngestJob.id).limit(1)).scalar_one_or_none()
@@ -232,12 +284,16 @@ def run(
         if job is None:
             break
 
-        process_job(db, job, source=source_for(job.source or HtmlSource.name), stats=stats)
+        before = replace(stats, rejection_reasons=list(stats.rejection_reasons))
+        try:
+            process_job(db, job, source=source, stats=stats)
+        except Exception as exc:
+            # Anything unexpected is recorded on the job rather than ending the run. Left
+            # pending, the same job would be picked first again next run and crash it too.
+            _fail_unexpectedly(db, job.id, exc)
+            # The job's writes were rolled back, so its counts must be too.
+            stats.__dict__.update(before.__dict__)
+            stats.failed += 1
         stats.processed += 1
-
-        # When robots is in play it already paced the request start-to-start; sleeping
-        # again here would double the delay for no benefit to the site.
-        if robots is None and delay_seconds:
-            time.sleep(delay_seconds)
 
     return stats

@@ -20,13 +20,14 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from urllib.parse import urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
 import httpx
 
-from app.services.scraping.errors import FetchError, RobotsDisallowedError
+from app.services.scraping.errors import FetchError, RobotsDisallowedError, UnsafeURLError
 from app.services.scraping.fetcher import TEXT_CONTENT_TYPES, fetch_document
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,11 @@ class RobotsPolicy:
 
 
 class RobotsCache:
-    """Fetches robots.txt once per origin and paces requests to each host."""
+    """Fetches robots.txt once per origin and paces requests to each host.
+
+    With `allowed_hosts`, it is also the allowlist: a URL on any other host is refused
+    before its robots.txt is even requested, and redirects may not leave the list either.
+    """
 
     def __init__(
         self,
@@ -81,14 +86,25 @@ class RobotsCache:
         default_delay: float = DEFAULT_CRAWL_DELAY_SECONDS,
         client: httpx.Client | None = None,
         timeout: float = 10.0,
+        allowed_hosts: Iterable[str] | None = None,
     ) -> None:
         self._user_agent = user_agent
         self._agent_token = agent_token
         self._default_delay = default_delay
         self._client = client
         self._timeout = timeout
+        self._allowed_hosts = (
+            frozenset(host.lower() for host in allowed_hosts)
+            if allowed_hosts is not None
+            else None
+        )
         self._policies: dict[str, RobotsPolicy] = {}
         self._last_request_start: dict[str, float] = {}
+
+    @property
+    def allowed_hosts(self) -> frozenset[str] | None:
+        """The hosts this cache may contact, or None if it is unrestricted."""
+        return self._allowed_hosts
 
     def policy_for(self, url: str) -> RobotsPolicy:
         """Return the cached policy for this URL's origin, fetching robots.txt if needed."""
@@ -112,6 +128,7 @@ class RobotsCache:
                 timeout=self._timeout,
                 max_bytes=ROBOTS_MAX_BYTES,
                 user_agent=self._user_agent,
+                allowed_hosts=self._allowed_hosts,
             )
         except FetchError as exc:
             return self._policy_for_failure(origin, exc)
@@ -196,12 +213,19 @@ class RobotsCache:
         """Fetch `url` through the robots gate and the delay clock.
 
         Raises RobotsDisallowedError rather than skipping quietly, so a disallowed URL is
-        visible as a failure instead of looking like a page with no food on it.
+        visible as a failure instead of looking like a page with no food on it, and
+        UnsafeURLError for a host outside `allowed_hosts`.
         """
+        if self._allowed_hosts is not None:
+            host = (urlsplit(url).hostname or "").lower()
+            if host not in self._allowed_hosts:
+                raise UnsafeURLError(f"{host or url!r} is not an allowed site")
+
         if not self.can_fetch(url):
             raise RobotsDisallowedError(f"robots.txt disallows {url}")
 
         self.wait(url)
         kwargs.setdefault("user_agent", self._user_agent)
         kwargs.setdefault("client", self._client)
+        kwargs.setdefault("allowed_hosts", self._allowed_hosts)
         return fetch_document(url, **kwargs)

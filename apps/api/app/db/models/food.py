@@ -40,6 +40,90 @@ class Food(Base):
     saturated_fat_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     sodium_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
 
+    # The full profile, per 100g, in the unit each name states (no unit = grams). Mostly
+    # empty for sites that publish only the label; see app/services/ingest/nutrients.py.
+    # Carbohydrate breakdown.
+    starch_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    sucrose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    glucose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    fructose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    lactose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    maltose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    galactose_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    # Fat breakdown.
+    monounsaturated_fat_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    polyunsaturated_fat_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    trans_fat_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    omega_3_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    omega_6_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    ala_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    epa_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    dha_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    dpa_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    cholesterol_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    # Protein breakdown: amino acids.
+    tryptophan_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    threonine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    isoleucine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    leucine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    lysine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    methionine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    cystine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    phenylalanine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    tyrosine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    valine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    arginine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    histidine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    alanine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    aspartic_acid_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    glutamic_acid_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    glycine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    proline_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    serine_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    hydroxyproline_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    # Vitamins.
+    vitamin_a_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    retinol_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    beta_carotene_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    alpha_carotene_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    lycopene_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_d_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_d2_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_d3_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_k_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    folate_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_b12_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_c_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_e_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    thiamin_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    riboflavin_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    niacin_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    pantothenic_acid_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    vitamin_b6_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    choline_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    betaine_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    # Minerals.
+    calcium_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    iron_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    magnesium_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    phosphorus_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    potassium_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    zinc_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    copper_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    manganese_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    selenium_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    fluoride_ug_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    # Water, alcohol and stimulants.
+    water_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    alcohol_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    caffeine_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    theobromine_mg_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # The extractor's verbatim output. Kept so a normalization bug can be corrected later

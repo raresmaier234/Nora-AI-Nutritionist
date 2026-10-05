@@ -1,16 +1,23 @@
 #!/usr/bin/env python
 """Command line entry point for the food ingestion pipeline.
 
-    # find food URLs automatically from a site's sitemaps
-    python scripts/ingest_foods.py discover --dry-run        # walk and count, write nothing
-    python scripts/ingest_foods.py discover                  # queue what it finds
+The crawler only touches the websites listed in `sites.toml` (next to this folder; pass
+`--sites` to use another file). Edit that file to add or remove sites.
 
-    # or add URLs by hand (idempotent — re-seeding an overlapping list is safe)
+    # find food URLs from the listed sites' sitemaps
+    python scripts/ingest_foods.py discover --dry-run          # walk and count, write nothing
+    python scripts/ingest_foods.py discover                    # every listed site
+    python scripts/ingest_foods.py discover --site www.kaufland.ro
+
+    # or add URLs by hand; any URL not on a listed site is refused
     python scripts/ingest_foods.py seed urls.txt
 
     # work the frontier until it empties or you press Ctrl-C
     python scripts/ingest_foods.py run
-    python scripts/ingest_foods.py run --limit 100
+    python scripts/ingest_foods.py run --limit 100 --site www.eatthismuch.com
+
+    # retry failed jobs (Ollama was down, a site timed out)
+    python scripts/ingest_foods.py requeue --site www.kaufland.ro
 
     # where things stand
     python scripts/ingest_foods.py status
@@ -33,19 +40,22 @@ from sqlalchemy import func, select
 # Allow running as a plain script from the repo root, without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.db.database import SessionLocal  # noqa: E402
+from app.db.database import SessionLocal, engine  # noqa: E402
 from app.db.models.food import Food  # noqa: E402
 from app.db.models.ingest_job import IngestJob  # noqa: E402
 from app.services.ingest.extractor import OllamaExtractor  # noqa: E402
 from app.services.ingest.pipeline import (  # noqa: E402
-    DEFAULT_DELAY_SECONDS,
     pending_count,
+    requeue,
     run,
     seed_discovered,
     seed_urls,
 )
-from app.services.ingest.sources import EatThisMuchSource, get_source  # noqa: E402
-from app.services.scraping.robots import RobotsCache  # noqa: E402
+from app.services.ingest.sites import SiteList, SitesFileError, load_sites  # noqa: E402
+from app.services.ingest.sources import discover_site  # noqa: E402
+from app.services.scraping.robots import DEFAULT_CRAWL_DELAY_SECONDS, RobotsCache  # noqa: E402
+
+DEFAULT_SITES_FILE = Path(__file__).resolve().parent.parent / "sites.toml"
 
 
 class StopRequested:
@@ -72,78 +82,110 @@ class StopRequested:
         signal.signal(signal.SIGINT, handler)
 
 
+def load_site_list(path: str) -> SiteList:
+    try:
+        return load_sites(path)
+    except SitesFileError as exc:
+        raise SystemExit(f"error: {exc}") from None
+
+
+def selected_sites(sites: SiteList, hosts: list[str] | None) -> list:
+    if not hosts:
+        return list(sites.sites)
+    try:
+        return [sites.get(host.lower()) for host in hosts]
+    except KeyError as exc:
+        raise SystemExit(f"error: {exc.args[0]}") from None
+
+
 def cmd_seed(args: argparse.Namespace) -> int:
-    urls = [
-        line.strip()
-        for line in Path(args.file).read_text().splitlines()
-        if line.strip() and not line.startswith("#")
-    ]
+    sites = load_site_list(args.sites)
+    lines = (line.strip() for line in Path(args.file).read_text().splitlines())
+    urls = [line for line in lines if line and not line.startswith("#")]
     if not urls:
         print(f"No URLs found in {args.file}")
         return 1
 
     with SessionLocal() as db:
-        added = seed_urls(db, urls)
+        result = seed_urls(db, urls, sites=sites)
 
-    print(f"Seeded {added} new URLs ({len(urls) - added} already queued)")
+    accepted = len(urls) - len(result.rejected)
+    print(f"Seeded {result.added} new URLs ({accepted - result.added} were already in the queue)")
+
+    if result.rejected:
+        print(f"\nRefused {len(result.rejected)} URLs not on a site listed in {args.sites}:")
+        for url in result.rejected[:20]:
+            print(f"  {url}")
+        if len(result.rejected) > 20:
+            print(f"  … and {len(result.rejected) - 20} more")
     return 0
 
 
 def cmd_discover(args: argparse.Namespace) -> int:
+    sites = load_site_list(args.sites)
+    targets = selected_sites(sites, args.site)
     stop = StopRequested()
     stop.install()
 
+    total_added = 0
     with httpx.Client() as client:
-        robots = RobotsCache(client=client, default_delay=args.delay)
-        source = get_source(args.source, robots=robots, client=client, extractor=None)
+        robots = RobotsCache(client=client, default_delay=args.delay, allowed_hosts=sites.hosts)
 
-        families = args.family or list(EatThisMuchSource.DEFAULT_FAMILIES)
-        print(f"Discovering from {args.source}, families: {', '.join(families)}")
-        print("Ctrl-C to stop.\n")
+        for site in targets:
+            if stop():
+                break
+            print(f"\n{site.host} (paths: {', '.join(site.paths)}) — Ctrl-C to stop")
 
-        found = source.discover(families=families, limit=args.limit)
+            found = discover_site(site, robots=robots, limit=args.limit)
 
-        if args.dry_run:
-            kept = 0
-            for _ in found:
-                kept += 1
-                if kept % 5000 == 0:
-                    print(f"  {kept} URLs so far…")
-                if stop():
-                    break
-            print(f"\nDry run: {kept} URLs would be queued. Nothing written.")
-            return 0
+            if args.dry_run:
+                kept = 0
+                for _ in found:
+                    kept += 1
+                    if kept % 5000 == 0:
+                        print(f"  {kept} URLs so far…")
+                    if stop():
+                        break
+                print(f"  dry run: {kept} URLs would be queued")
+                continue
 
-        def progress(seen: int, added: int) -> None:
-            print(f"  {seen} discovered, {added} new")
+            def progress(seen: int, added: int) -> None:
+                print(f"  {seen} discovered, {added} new")
 
-        def until_stopped(items):
-            for item in items:
-                yield item
-                if stop():
-                    return
+            def until_stopped(items):
+                for item in items:
+                    yield item
+                    if stop():
+                        return
 
-        with SessionLocal() as db:
-            added = seed_discovered(
-                db, until_stopped(found), source=args.source, on_batch=progress
-            )
+            with SessionLocal() as db:
+                total_added += seed_discovered(
+                    db, until_stopped(found), source=site.host, on_batch=progress
+                )
 
-    print(f"\nQueued {added} new URLs. Run `ingest_foods.py run` to ingest them.")
+    if args.dry_run:
+        print("\nDry run: nothing written.")
+    else:
+        print(f"\nQueued {total_added} new URLs. Run `ingest_foods.py run` to ingest them.")
     return 0
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    sites = load_site_list(args.sites)
+    if args.site:
+        selected_sites(sites, [args.site])  # fail fast on a host that isn't listed
     extractor = OllamaExtractor(model=args.model) if args.model else OllamaExtractor()
     stop = StopRequested()
     stop.install()
 
     with httpx.Client() as client:
-        # Robots pacing replaces the flat delay: it measures start-to-start, so extraction
-        # time counts toward the politeness gap instead of being added on top of it.
-        robots = RobotsCache(client=client, default_delay=args.delay)
+        # Paces start-to-start, so extraction time counts toward the politeness gap
+        # instead of being added on top of it.
+        robots = RobotsCache(client=client, default_delay=args.delay, allowed_hosts=sites.hosts)
 
         with SessionLocal() as db:
-            remaining = pending_count(db)
+            site = args.site.lower() if args.site else None
+            remaining = pending_count(db, site=site)
             if not remaining:
                 print("Nothing pending.")
                 return 0
@@ -151,11 +193,11 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"{remaining} pending. Ctrl-C to stop (the page in flight finishes first).")
             stats = run(
                 db,
-                limit=args.limit,
-                source_name=args.source,
-                extractor=extractor,
+                sites=sites,
                 robots=robots,
-                client=client,
+                extractor=extractor,
+                limit=args.limit,
+                site=site,
                 should_stop=stop,
             )
 
@@ -173,6 +215,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_requeue(args: argparse.Namespace) -> int:
+    with SessionLocal() as db:
+        count = requeue(
+            db, site=args.site.lower() if args.site else None, include_done=args.include_done
+        )
+    kind = "failed and finished" if args.include_done else "failed"
+    print(f"Requeued {count} {kind} jobs. Run `ingest_foods.py run` to process them.")
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     with SessionLocal() as db:
         rows = db.execute(
@@ -186,9 +238,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         ).scalar_one()
 
     if rows:
-        print(f"{'source':16} {'status':12} count")
+        print(f"{'site':28} {'status':12} count")
         for source, status, count in rows:
-            print(f"{source:16} {status:12} {count}")
+            print(f"{source:28} {status:12} {count}")
     else:
         print("Frontier is empty.")
 
@@ -198,41 +250,63 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    # DEBUG=true in .env makes the engine echo every SQL statement, which buries the
+    # crawl's own progress; the API server keeps that behaviour, this script does not.
+    engine.echo = False
+    # Every fetch would otherwise log a line of its own.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    discover = sub.add_parser("discover", help="find food URLs from a site's sitemaps")
+    def add_sites_option(command: argparse.ArgumentParser) -> None:
+        command.add_argument(
+            "--sites",
+            default=str(DEFAULT_SITES_FILE),
+            help="TOML file listing the websites the crawler may touch (default: %(default)s)",
+        )
+
+    def add_delay_option(command: argparse.ArgumentParser) -> None:
+        command.add_argument(
+            "--delay",
+            type=float,
+            default=DEFAULT_CRAWL_DELAY_SECONDS,
+            help="politeness floor, seconds between requests to one site (default: %(default)s)",
+        )
+
+    discover = sub.add_parser("discover", help="find food URLs from the listed sites' sitemaps")
+    add_sites_option(discover)
     discover.add_argument(
-        "--source", default="eatthismuch", help="which site adapter to use"
+        "--site", action="append", help="only this host (repeatable; default: every listed site)"
     )
-    discover.add_argument(
-        "--family",
-        action="append",
-        choices=sorted(EatThisMuchSource.FAMILY_GROUPS),
-        help="which food families to walk (repeatable; default: basic + restaurant)",
-    )
-    discover.add_argument("--limit", type=int, default=None, help="stop after N URLs")
+    discover.add_argument("--limit", type=int, default=None, help="stop after N URLs per site")
     discover.add_argument(
         "--dry-run", action="store_true", help="walk and count without writing anything"
     )
-    discover.add_argument(
-        "--delay", type=float, default=2.0, help="politeness floor, seconds between fetches"
-    )
+    add_delay_option(discover)
     discover.set_defaults(func=cmd_discover)
 
     seed = sub.add_parser("seed", help="add URLs from a file to the frontier")
+    add_sites_option(seed)
     seed.add_argument("file", help="text file with one URL per line")
     seed.set_defaults(func=cmd_seed)
 
     run_cmd = sub.add_parser("run", help="process pending URLs")
+    add_sites_option(run_cmd)
     run_cmd.add_argument("--limit", type=int, default=None, help="stop after N URLs")
-    run_cmd.add_argument("--source", default=None, help="only work this source's URLs")
+    run_cmd.add_argument("--site", default=None, help="only work this host's URLs")
     run_cmd.add_argument("--model", default=None, help="override the Ollama model")
-    run_cmd.add_argument(
-        "--delay", type=float, default=DEFAULT_DELAY_SECONDS, help="politeness floor, seconds"
-    )
+    add_delay_option(run_cmd)
     run_cmd.set_defaults(func=cmd_run)
+
+    requeue_cmd = sub.add_parser("requeue", help="put failed jobs back in the queue")
+    requeue_cmd.add_argument("--site", default=None, help="only this host's jobs")
+    requeue_cmd.add_argument(
+        "--include-done",
+        action="store_true",
+        help="also re-process finished jobs (after an extraction fix, say)",
+    )
+    requeue_cmd.set_defaults(func=cmd_requeue)
 
     status = sub.add_parser("status", help="show frontier and food counts")
     status.set_defaults(func=cmd_status)

@@ -47,9 +47,19 @@ _UNIT_ALIASES = {
     "micrograms": MICROGRAM,
 }
 
+# A number with digit grouping: "2,000", "1.050", "1 530", "1,182.07". A separator counts
+# as grouping only when exactly three digits follow it and the number does not start with
+# 0, so "1,53" and "0.333" still read as decimals. The same separator must repeat between
+# groups; a different one after the last group is the decimal point.
+_GROUPED = (
+    r"(?P<int>[1-9]\d{0,2}(?P<sep>[,.   ])\d{3}(?!\d)(?:(?P=sep)\d{3}(?!\d))*)"
+    r"(?P<frac>[.,]\d+)?"
+)
+_PLAIN = r"(?P<plain>\d+(?:[.,]\d+)?)"
+
 # A number, then optionally a unit word. The unit may be glued to the number ("334kcal"),
 # separated ("334 kcal"), or absent entirely ("272.8").
-_MEASUREMENT_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([a-zA-Zµ]+)?")
+_MEASUREMENT_RE = re.compile(rf"(?:{_GROUPED}|{_PLAIN})\s*(?P<unit>[a-zA-Zµ]+)?")
 
 _KJ_PER_KCAL = Decimal("4.184")
 
@@ -85,13 +95,66 @@ def parse_measurement(raw: object) -> Measurement | None:
     if match is None:
         return None
 
+    unit = _UNIT_ALIASES.get((match.group("unit") or "").lower())
+
+    if match.group("int") and not _is_ambiguous_decimal(match, unit):
+        # Grouping separators carry no value; reading them as a decimal point stores
+        # "2,000 mg" of sodium as 2 mg.
+        digits = match.group("int").replace(match.group("sep"), "")
+        digits += (match.group("frac") or "").replace(",", ".")
+    else:
+        digits = (match.group("int") or match.group("plain")).replace(",", ".")
+
     try:
-        value = Decimal(match.group(1).replace(",", "."))
+        value = Decimal(digits)
     except InvalidOperation:
         return None
 
-    unit_word = (match.group(2) or "").lower()
-    return Measurement(value=value, unit=_UNIT_ALIASES.get(unit_word))
+    return Measurement(value=value, unit=unit)
+
+
+# Units whose values labels print as whole numbers. For these, "1,050 kJ" can only mean
+# a thousand and fifty; for grams it could as well be 1.05 written with three decimals.
+_WHOLE_NUMBER_UNITS = frozenset({KCAL, KJ, MILLIGRAM, MICROGRAM})
+
+
+def _is_ambiguous_decimal(match: re.Match, unit: str | None) -> bool:
+    """Whether a single ",ddd" / ".ddd" group should be read as a decimal after all.
+
+    "1,125 g" is a thousand grams in the US and 1.125 g in Europe. A gram value over 100
+    per 100g is impossible, so the decimal reading is the only plausible one; the same
+    string in kcal or mg is a grouped whole number. A space, a repeated group ("1,000,000")
+    or a fraction after the group ("1,182.07") is always grouping.
+    """
+    return (
+        match.group("sep") in ",."
+        and match.group("int").count(match.group("sep")) == 1
+        and not match.group("frac")
+        and unit not in _WHOLE_NUMBER_UNITS
+    )
+
+
+_NUMBER_RE = re.compile(rf"{_GROUPED}|{_PLAIN}")
+
+
+def numbers_in(text: str) -> set[Decimal]:
+    """Every number printed in `text`, under each reading it could have.
+
+    "1.050" contributes both 1050 and 1.05, since without a unit either is possible. Used
+    to check that a value the model reports actually appears on the page.
+    """
+    found: set[Decimal] = set()
+    for match in _NUMBER_RE.finditer(text):
+        readings = [(match.group("int") or match.group("plain")).replace(",", ".")]
+        if match.group("int"):
+            grouped = match.group("int").replace(match.group("sep"), "")
+            readings.append(grouped + (match.group("frac") or "").replace(",", "."))
+        for reading in readings:
+            try:
+                found.add(Decimal(reading))
+            except InvalidOperation:
+                continue
+    return found
 
 
 def to_kcal(measurement: Measurement | None, *, assume: str = KCAL) -> Decimal | None:

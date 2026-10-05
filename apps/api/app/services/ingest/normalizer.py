@@ -11,24 +11,31 @@ check below is what catches that class of error.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from decimal import Decimal
+import logging
+from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 
 from app.utils.naming import normalize_name
 from app.services.ingest.measures import (
     GRAM,
     KCAL,
+    MICROGRAM,
+    MILLIGRAM,
     Measurement,
     parse_measurement,
     to_grams,
     to_kcal,
     to_milligrams,
 )
+from app.services.ingest.nutrients import EXTRA_NUTRIENTS
+
+logger = logging.getLogger(__name__)
 
 # Energy per gram of macronutrient. The basis of the cross-check below.
 _KCAL_PER_G_PROTEIN = Decimal(4)
 _KCAL_PER_G_CARB = Decimal(4)
 _KCAL_PER_G_FAT = Decimal(9)
+_KCAL_PER_G_ALCOHOL = Decimal(7)
 
 # How far declared energy may drift from the macros before the row is disbelieved.
 # Wide enough for rounded labels, sugar alcohols, and fibre accounting; narrow enough to
@@ -62,10 +69,15 @@ class NormalizedFood:
     sugar_per_100g: Decimal | None
     saturated_fat_per_100g: Decimal | None
     sodium_mg_per_100g: Decimal | None
+    # The rest of the profile, keyed by `foods` column: {"leucine_per_100g": Decimal(...)}.
+    extra: dict[str, Decimal] = field(default_factory=dict)
 
 
 def atwater_kcal(
-    protein_g: Decimal | None, carbs_g: Decimal | None, fat_g: Decimal | None
+    protein_g: Decimal | None,
+    carbs_g: Decimal | None,
+    fat_g: Decimal | None,
+    alcohol_g: Decimal | None = None,
 ) -> Decimal | None:
     """Energy implied by the macronutrients, or None if none were reported."""
     if protein_g is None and carbs_g is None and fat_g is None:
@@ -75,6 +87,8 @@ def atwater_kcal(
         _KCAL_PER_G_PROTEIN * (protein_g or Decimal(0))
         + _KCAL_PER_G_CARB * (carbs_g or Decimal(0))
         + _KCAL_PER_G_FAT * (fat_g or Decimal(0))
+        # Beer's energy is mostly alcohol. Left out, every alcoholic drink fails the check.
+        + _KCAL_PER_G_ALCOHOL * (alcohol_g or Decimal(0))
     )
 
 
@@ -83,12 +97,13 @@ def check_atwater(
     protein_g: Decimal | None,
     carbs_g: Decimal | None,
     fat_g: Decimal | None,
+    alcohol_g: Decimal | None = None,
 ) -> None:
     """Raise NormalizationError when declared energy contradicts the macronutrients.
 
     Skipped when either side is unknown, or when the food is genuinely near-zero energy.
     """
-    implied = atwater_kcal(protein_g, carbs_g, fat_g)
+    implied = atwater_kcal(protein_g, carbs_g, fat_g, alcohol_g)
     if calories is None or implied is None:
         return
 
@@ -110,6 +125,36 @@ def check_atwater(
         )
 
 
+# Physical ceilings for 100g of anything. Pure fat is ~900 kcal, and 100g of food cannot
+# hold more than 100g of any one nutrient. The Atwater ratio cannot see a row where every
+# value is off by the same factor (a misread serving weight, a thousands separator read as
+# a decimal point), but that error almost always pushes a value past one of these limits.
+_MAX_KCAL_PER_100G = Decimal(950)
+_MAX_GRAMS_PER_100G = Decimal(101)  # 1g of slack for rounded labels
+_MAX_MACROS_PER_100G = Decimal(105)
+# Table salt is ~39g sodium per 100g; nothing edible holds more.
+_MAX_SODIUM_MG_PER_100G = Decimal(40_000)
+
+
+def check_bounds(
+    calories: Decimal | None, grams: dict[str, Decimal | None], sodium_mg: Decimal | None
+) -> None:
+    """Raise NormalizationError when a per-100g value is physically impossible."""
+    if calories is not None and calories > _MAX_KCAL_PER_100G:
+        raise NormalizationError(f"{calories} kcal per 100g is not physically possible")
+
+    for field, value in grams.items():
+        if value is not None and value > _MAX_GRAMS_PER_100G:
+            raise NormalizationError(f"{value}g of {field} per 100g is not physically possible")
+
+    macros = sum(grams.get(key) or Decimal(0) for key in ("protein", "fat", "carbs"))
+    if macros > _MAX_MACROS_PER_100G:
+        raise NormalizationError(f"macronutrients add up to {macros}g per 100g")
+
+    if sodium_mg is not None and sodium_mg > _MAX_SODIUM_MG_PER_100G:
+        raise NormalizationError(f"{sodium_mg}mg of sodium per 100g is not physically possible")
+
+
 # Rebasing divides by a serving weight, which produces repeating decimals: a 43g serving
 # turns 3.6g of protein into 8.37209302325581g. Three places is already finer than any
 # label prints, and keeps the stored value honest about how precise the source was.
@@ -119,7 +164,12 @@ _QUANTUM = Decimal("0.001")
 def _rebase(value: Decimal | None, factor: Decimal | None) -> Decimal | None:
     if value is None or factor is None:
         return None
-    return (value * factor).quantize(_QUANTUM).normalize()
+    try:
+        return (value * factor).quantize(_QUANTUM).normalize()
+    except InvalidOperation:
+        # A value too long to quantize (the model copied a product code, say). Raised as
+        # a NormalizationError so it rejects the food instead of crashing the run.
+        raise NormalizationError(f"value {value} is not a plausible measurement") from None
 
 
 def normalize_food(raw: dict) -> NormalizedFood:
@@ -180,7 +230,36 @@ def normalize_food(raw: dict) -> NormalizedFood:
     if calories is None and protein is None and fat is None and carbs is None:
         raise NormalizationError("extraction carries no usable nutrition values")
 
-    check_atwater(calories, protein, carbs, fat)
+    check_bounds(
+        calories,
+        {
+            "protein": protein,
+            "fat": fat,
+            "carbs": carbs,
+            "fiber": fiber,
+            "sugar": sugar,
+            "saturated_fat": saturated_fat,
+        },
+        sodium_mg,
+    )
+    # A food is only worth storing with its full macro profile: the app computes meals from
+    # these four, and a row missing one silently counts as zero. Fibre, sugar, saturated fat
+    # and sodium stay optional — many sites never print them.
+    missing = [
+        field
+        for field, value in (
+            ("calories", calories),
+            ("protein", protein),
+            ("fat", fat),
+            ("carbs", carbs),
+        )
+        if value is None
+    ]
+    if missing:
+        raise NormalizationError(f"missing required values: {', '.join(missing)}")
+
+    extra = _extra_nutrients(raw, factor)
+    check_atwater(calories, protein, carbs, fat, extra.get("alcohol_per_100g"))
 
     return NormalizedFood(
         name=name,
@@ -193,4 +272,32 @@ def normalize_food(raw: dict) -> NormalizedFood:
         sugar_per_100g=sugar,
         saturated_fat_per_100g=saturated_fat,
         sodium_mg_per_100g=sodium_mg,
+        extra=extra,
     )
+
+
+# Grams in one of each unit, to express a converted value in its column's unit.
+_PER_GRAM = {GRAM: Decimal(1), MILLIGRAM: Decimal(1000), MICROGRAM: Decimal(1_000_000)}
+
+
+def _extra_nutrients(raw: dict, factor: Decimal) -> dict[str, Decimal]:
+    """Convert every full-profile nutrient present in `raw` to its column's unit, per 100g.
+
+    A bare number is read in the column's own unit. An impossible value — more than 100g
+    of anything in 100g of food — is dropped rather than rejecting the whole food: one bad
+    micronutrient should not cost a food whose label is otherwise sound.
+    """
+    extra: dict[str, Decimal] = {}
+    for nutrient in EXTRA_NUTRIENTS:
+        grams = to_grams(parse_measurement(raw.get(nutrient.key)), assume=nutrient.unit)
+        if grams is None:
+            continue
+        try:
+            value = _rebase(grams * _PER_GRAM[nutrient.unit], factor)
+        except NormalizationError:
+            value = None
+        if value is None or value / _PER_GRAM[nutrient.unit] > _MAX_GRAMS_PER_100G:
+            logger.info("dropping implausible %s for %r", nutrient.key, raw.get("name"))
+            continue
+        extra[nutrient.column] = value
+    return extra

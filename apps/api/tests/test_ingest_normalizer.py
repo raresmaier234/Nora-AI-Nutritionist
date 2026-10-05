@@ -62,6 +62,39 @@ def test_returns_none_when_there_is_no_quantity(raw) -> None:
     assert parse_measurement(raw) is None
 
 
+@pytest.mark.parametrize(
+    ("raw", "value"),
+    [
+        # Thousands separators: reading them as a decimal point stores "2,000 mg" of
+        # sodium as 2 mg, and nothing else catches it.
+        ("2,000 mg", Decimal("2000")),
+        ("1,234 kcal", Decimal("1234")),
+        ("1.050 kJ", Decimal("1050")),  # continental grouping
+        ("1 530 kJ", Decimal("1530")),
+        ("1\u00a0530 kJ", Decimal("1530")),  # non-breaking space
+        ("1,182.07 kJ", Decimal("1182.07")),
+        ("1.182,07 kJ", Decimal("1182.07")),
+        # Decimal commas and points must survive.
+        ("1,53 g", Decimal("1.53")),
+        ("11,85 g", Decimal("11.85")),
+        ("0,534 g", Decimal("0.534")),  # a leading zero is never grouped
+        ("0.333", Decimal("0.333")),
+        ("12.5g", Decimal("12.5")),
+        ("1,2345", Decimal("1.2345")),  # four digits after the comma: not a group
+        # One ",ddd" group in grams is a decimal: over 100 g per 100 g is impossible.
+        ("1,125 g", Decimal("1.125")),
+        ("12.345 g", Decimal("12.345")),
+        ("1,125", Decimal("1.125")),
+        # The same shape in kcal, kJ or mg is a whole number.
+        ("1,200 mg", Decimal("1200")),
+        ("1,050 kJ", Decimal("1050")),
+        ("1.050 kcal", Decimal("1050")),
+    ],
+)
+def test_distinguishes_digit_grouping_from_decimals(raw, value) -> None:
+    assert parse_measurement(raw).value == value
+
+
 def test_reads_only_the_first_quantity() -> None:
     # "13g fat (1g saturated fat)" — the parenthesised value belongs to another field.
     parsed = parse_measurement("13g fat (1g saturated fat)")
@@ -275,6 +308,107 @@ def test_rejects_a_row_whose_energy_contradicts_its_macros() -> None:
                 "carbs": "76g",
             }
         )
+
+
+# --- physical limits ----------------------------------------------------------------
+
+
+def test_rejects_more_energy_than_pure_fat_holds() -> None:
+    with pytest.raises(NormalizationError, match="not physically possible"):
+        normalize_food({"name": "Misread", "basis": "per_100g", "calories": "3,700 kcal"})
+
+
+def test_rejects_a_nutrient_heavier_than_the_food() -> None:
+    with pytest.raises(NormalizationError, match="protein"):
+        normalize_food(
+            {"name": "Misread", "basis": "per_100g", "calories": "400", "protein": "150 g"}
+        )
+
+
+def test_rejects_macros_that_add_up_to_more_than_the_food() -> None:
+    with pytest.raises(NormalizationError, match="add up"):
+        normalize_food(
+            {"name": "Misread", "basis": "per_100g", "protein": "40g", "fat": "40g", "carbs": "40g"}
+        )
+
+
+def test_a_scaled_up_serving_that_atwater_cannot_see_is_rejected() -> None:
+    """A serving weight misread as "1" scales every value by 100; the ratio stays 1.00."""
+    with pytest.raises(NormalizationError, match="not physically possible"):
+        normalize_food(
+            {
+                "name": "Cheddar",
+                "basis": "per_serving",
+                "serving_grams": "1",
+                "calories": "114 kcal",
+                "protein": "7g",
+                "fat": "9.4g",
+                "carbs": "0.4g",
+            }
+        )
+
+
+def test_a_value_too_long_to_store_rejects_the_food_instead_of_crashing() -> None:
+    with pytest.raises(NormalizationError, match="plausible"):
+        normalize_food(
+            {
+                "name": "Barcode Soup",
+                "basis": "per_serving",
+                "serving_grams": "3",
+                "calories": "1" + "0" * 40,
+            }
+        )
+
+
+def test_pure_fat_is_within_the_limits() -> None:
+    food = normalize_food(
+        {
+            "name": "Olive Oil",
+            "basis": "per_100g",
+            "calories": "884",
+            "fat": "100g",
+            "protein": "0g",
+            "carbs": "0g",
+        }
+    )
+
+    assert food.fat_per_100g == Decimal("100")
+
+
+# --- required macros ------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("missing", ["calories", "protein", "fat", "carbs"])
+def test_a_food_missing_a_core_macro_is_rejected(missing) -> None:
+    """Regression: quince was stored with protein null although the page printed it."""
+    raw = {
+        "name": "Gutui",
+        "basis": "per_100g",
+        "calories": "38 kcal",
+        "protein": "0,4 g",
+        "fat": "0,5 g",
+        "carbs": "7,3 g",
+    }
+    raw[missing] = None
+
+    with pytest.raises(NormalizationError, match=f"missing required values: {missing}"):
+        normalize_food(raw)
+
+
+def test_fibre_sugar_and_sodium_are_optional() -> None:
+    food = normalize_food(
+        {
+            "name": "Gutui",
+            "basis": "per_100g",
+            "calories": "38 kcal",
+            "protein": "0,4 g",
+            "fat": "0,5 g",
+            "carbs": "7,3 g",
+        }
+    )
+
+    assert food.fiber_per_100g is None
+    assert food.protein_per_100g == Decimal("0.4")
 
 
 # --- dedup key --------------------------------------------------------------------

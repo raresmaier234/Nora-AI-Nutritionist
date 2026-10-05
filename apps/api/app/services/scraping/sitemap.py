@@ -31,6 +31,9 @@ SITEMAP_INDEX = "sitemapindex"
 URL_SET = "urlset"
 
 DEFAULT_MAX_DEPTH = 3
+# The sitemaps.org limit for one uncompressed file (50,000 URLs). Page-sized caps are far
+# too small: freshful.ro's product sitemap alone is over 5 MB.
+SITEMAP_MAX_BYTES = 50 * 1024 * 1024
 DEFAULT_MAX_DOCUMENTS = 500
 
 # Tag names may carry a namespace prefix (`<sm:loc>`), so allow one.

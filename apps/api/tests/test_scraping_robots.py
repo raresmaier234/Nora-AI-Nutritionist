@@ -6,7 +6,7 @@ The EatThisMuch file below is verbatim from the live site.
 import httpx
 import pytest
 
-from app.services.scraping.errors import RobotsDisallowedError
+from app.services.scraping.errors import RobotsDisallowedError, UnsafeURLError
 from app.services.scraping.robots import RobotsCache
 
 EATTHISMUCH_ROBOTS = """User-agent: ClaudeBot
@@ -198,3 +198,23 @@ def test_fetch_returns_the_body_for_an_allowed_url(monkeypatch) -> None:
 
     with robots_server() as client:
         assert cache(client).fetch(FOOD_URL) == "<html/>"
+
+
+# --- the allowlist ------------------------------------------------------------------
+
+
+def test_an_unlisted_host_is_refused_without_asking_for_its_robots() -> None:
+    calls: list = []
+
+    with robots_server(calls=calls) as client:
+        robots = cache(client, allowed_hosts={"www.eatthismuch.com"}, default_delay=0.0)
+        with pytest.raises(UnsafeURLError, match="www.tesco.com"):
+            robots.fetch("https://www.tesco.com/groceries/")
+
+    assert calls == []
+
+
+def test_a_listed_host_is_fetched_normally() -> None:
+    with robots_server() as client:
+        robots = cache(client, allowed_hosts={"WWW.eatthismuch.com"}, default_delay=0.0)
+        assert robots.fetch(FOOD_URL) == "<html/>"

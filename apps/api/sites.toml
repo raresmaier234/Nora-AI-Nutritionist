@@ -1,0 +1,54 @@
+# The websites the food crawler is allowed to touch. Nothing else is ever fetched:
+# `seed` refuses URLs on other hosts, `discover` only walks these sites' sitemaps, and a
+# redirect to an unlisted host is refused.
+#
+# Keys:
+#   host             exact hostname, e.g. "www.example.com" (no scheme, no path). Required.
+#                    "example.com" does not cover "www.example.com"; list the one the site
+#                    actually serves pages from.
+#   paths            only URLs starting with one of these are crawled. Default: ["/"].
+#   skip_sitemaps    sitemaps whose URL contains any of these words are never fetched.
+#   url_pattern      regex the URL path must match in full, e.g. "/Calorii-[^/]+\\.html".
+#   skip_pages_containing  pages whose HTML contains any of these texts are skipped.
+#   reader           read nutrition from the page's own data instead of the model
+#                    (see app/services/ingest/sources/readers.py).
+#   always_per_100g  every page on this site is per 100 g, whatever the model thinks
+#                    (true/false). Only for sites you have checked: nothing can detect it
+#                    being wrong.
+
+[[site]]
+# The full profile — carb, fat and protein breakdowns, vitamins, minerals, water, alcohol,
+# caffeine — read exactly from the food record each page embeds, without the model.
+host = "www.eatthismuch.com"
+paths = ["/calories/"]
+reader = "eatthismuch"
+# recipes: every entry 404s. quantities: the same foods again with a query string.
+# branded: ~700k packaged products; remove it from this list to include them.
+skip_sitemaps = ["recipes", "quantities", "branded"]
+
+[[site]]
+host = "www.kaufland.ro"
+paths = ["/sortiment/enciclopedia-alimentelor/"]
+# Per-100g values under "Valoare nutritivă", read by Python rather than the model.
+reader = "kaufland"
+
+[[site]]
+# Romanian calorie database: calories, protein, fat, carbs and fibre per 100 g.
+host = "calorii.oneden.com"
+paths = ["/Calorii-"]
+# Single foods only. "/Calorii-Oua/" is a category table of dozens of foods.
+url_pattern = "/Calorii-[^/]+\\.html"
+# Each page shows 100 g, 200 g and 300 g columns; the reader takes the 100 g one.
+reader = "oneden"
+# Entries are submitted by users, and many carry "nu a fost inca aprobat" (not yet reviewed
+# by the site). They are included: each still has to pass the macro, bounds and Atwater
+# checks. To keep only reviewed entries, add:
+#   skip_pages_containing = ["nu a fost inca aprobat"]
+
+[[site]]
+# Romanian online grocery, ~46,500 products. Nutrition (incl. fibre) is read straight from
+# the page's data, per 100 g, without the model.
+host = "www.freshful.ro"
+paths = ["/p/"]
+skip_sitemaps = ["pages", "taxons"]
+reader = "freshful"

@@ -12,7 +12,14 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
-from app.services.scraping import FetchError, UnsafeURLError, fetch_html, resolve_safe_target
+from app.services.scraping import (
+    FetchError,
+    ScrapeError,
+    UnsafeURLError,
+    fetch_document,
+    fetch_html,
+    resolve_safe_target,
+)
 
 
 # --- resolve_safe_target: scheme & basic validation -------------------------------
@@ -113,7 +120,11 @@ def test_pins_request_to_validated_ip_instead_of_hostname(monkeypatch: pytest.Mo
 
 
 _PUBLIC_IP = "93.184.216.34"
-_HOSTS = {"example.com": _PUBLIC_IP, "rebound.example": "127.0.0.1"}
+_HOSTS = {
+    "example.com": _PUBLIC_IP,
+    "other.example": _PUBLIC_IP,
+    "rebound.example": "127.0.0.1",
+}
 
 
 def _fake_dns(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -152,6 +163,69 @@ def test_fetch_html_revalidates_redirect_targets(monkeypatch: pytest.MonkeyPatch
 
     with _client(redirect_to_loopback) as client, pytest.raises(UnsafeURLError):
         fetch_html("http://example.com/recipe", client=client)
+
+
+def test_fetch_document_refuses_a_redirect_to_an_unlisted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A listed site must not be able to send the crawler to a public host off the list."""
+    _fake_dns(monkeypatch)
+    requested: list[str] = []
+
+    def redirect_elsewhere(request: httpx.Request) -> httpx.Response:
+        requested.append(request.headers["host"])
+        return httpx.Response(302, headers={"location": "https://other.example/page"})
+
+    with (
+        _client(redirect_elsewhere) as client,
+        pytest.raises(UnsafeURLError, match="other.example"),
+    ):
+        fetch_document(
+            "http://example.com/recipe", client=client, allowed_hosts=frozenset({"example.com"})
+        )
+
+    assert requested == ["example.com"]  # the off-list host was never contacted
+
+
+def test_fetch_document_refuses_an_unlisted_host_before_connecting() -> None:
+    def fail_if_called(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be issued for an unlisted host")
+
+    with _client(fail_if_called) as client, pytest.raises(UnsafeURLError):
+        fetch_document(
+            "http://other.example/", client=client, allowed_hosts=frozenset({"example.com"})
+        )
+
+
+def test_fetch_document_follows_a_redirect_within_the_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_dns(monkeypatch)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/old":
+            return httpx.Response(301, headers={"location": "/new"})
+        return httpx.Response(200, headers={"content-type": "text/html"}, text="<p>ok</p>")
+
+    with _client(handler) as client:
+        body = fetch_document(
+            "http://example.com/old", client=client, allowed_hosts=frozenset({"example.com"})
+        )
+
+    assert body == "<p>ok</p>"
+
+
+def test_a_malformed_redirect_is_a_scrape_error_not_a_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Callers catch ScrapeError per page; anything else would end a whole crawl."""
+    _fake_dns(monkeypatch)
+
+    def bad_location(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"location": "/foods\t1.html"})
+
+    with _client(bad_location) as client, pytest.raises(ScrapeError):
+        fetch_document(
+            "http://example.com/recipe", client=client, allowed_hosts=frozenset({"example.com"})
+        )
 
 
 def test_fetch_html_does_not_leak_raw_exception_details(monkeypatch: pytest.MonkeyPatch) -> None:

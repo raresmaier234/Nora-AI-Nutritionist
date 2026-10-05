@@ -13,7 +13,6 @@ the identical normalize → Atwater → dedup → store path with nothing branch
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -39,14 +38,10 @@ class Discovered:
 
 @runtime_checkable
 class FoodSource(Protocol):
-    """Finds work, and turns one unit of it into raw food records."""
+    """Turns one unit of work into raw food records."""
 
     name: str
     kind: str
-
-    def discover(self, *, limit: int | None = None) -> Iterator[Discovered]:
-        """Yield URLs to ingest. May be empty for sources that are seeded manually."""
-        ...
 
     def load(self, url: str) -> list[dict]:
         """Return raw food records in the shape `normalize_food()` consumes."""

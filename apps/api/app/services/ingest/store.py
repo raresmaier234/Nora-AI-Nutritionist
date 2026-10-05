@@ -56,6 +56,9 @@ class UpsertResult:
     # Near-duplicates found at insert time. Non-empty means a human (or a stronger model)
     # should decide whether these are really the same food.
     similar: list[SimilarFood]
+    # A different page already stored a food under this exact name; this one was not
+    # merged into it.
+    name_taken: bool = False
 
 
 def find_similar(
@@ -111,9 +114,22 @@ def upsert_food(
     ).scalar_one_or_none()
 
     if existing is not None:
+        # Only the same page may fill in a stored food. Sites reuse plain names for
+        # different foods — EatThisMuch has several "Milk" and "Salmon" — and filling one
+        # food's empty columns from another would build a row that matches neither.
+        if existing.source_url and source_url and existing.source_url != source_url:
+            logger.info(
+                "%r from %s: name already stored from %s; not merged",
+                normalized.name,
+                source_url,
+                existing.source_url,
+            )
+            return UpsertResult(food=existing, created=False, similar=[], name_taken=True)
+
         gained = False
-        for column in _NUTRIENT_COLUMNS:
-            candidate = getattr(normalized, column, None)
+        candidates = {column: getattr(normalized, column) for column in _NUTRIENT_COLUMNS}
+        candidates.update(normalized.extra)
+        for column, candidate in candidates.items():
             if _is_richer(candidate, getattr(existing, column)):
                 setattr(existing, column, candidate)
                 gained = True
@@ -141,6 +157,7 @@ def upsert_food(
         sugar_per_100g=normalized.sugar_per_100g,
         saturated_fat_per_100g=normalized.saturated_fat_per_100g,
         sodium_mg_per_100g=normalized.sodium_mg_per_100g,
+        **normalized.extra,
         source_url=source_url,
         raw_extraction=raw_extraction,
         # Flagged rather than dropped: a near-duplicate is usually a real food with a name
