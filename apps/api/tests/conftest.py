@@ -19,3 +19,18 @@ def db_session():
     session.close()
     outer_transaction.rollback()
     connection.close()
+
+
+@pytest.fixture()
+def client(db_session):
+    """An API client whose requests use `db_session`, so route tests roll back too."""
+    from fastapi.testclient import TestClient
+
+    from app.db.session import get_db
+    from app.main import app
+
+    app.dependency_overrides[get_db] = lambda: db_session
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_db, None)

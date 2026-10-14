@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Nutrition(BaseModel):
@@ -71,3 +71,21 @@ class FoodRead(BaseModel):
 
 class FoodResponse(BaseModel):
     food: FoodRead
+
+
+class Per100g(BaseModel):
+    """Energy and macros per 100g. Floats, not Decimal: Pydantic serializes Decimal as a JSON
+    string, and clients do arithmetic with these."""
+
+    kcal: float = Field(ge=0, le=950)
+    protein: float = Field(ge=0, le=101)
+    carbs: float = Field(ge=0, le=101)
+    fat: float = Field(ge=0, le=101)
+
+
+class FoodSearchResult(BaseModel):
+    """A food from the database, as listed by search."""
+
+    id: int
+    name: str
+    per_100g: Per100g

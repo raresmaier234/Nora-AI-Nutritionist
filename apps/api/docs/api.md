@@ -47,9 +47,82 @@ Tag descriptions (shown at the top of each Swagger group) live in `tags_metadata
 
 Used as a liveness check. No auth, no dependencies.
 
+### `GET /api/v1/foods?q=milk&limit=20`
+
+- **Tag:** Foods
+- **Summary:** Search foods
+- **Response model:** `list[FoodSearchResult]` (`app/schemas/food.py`)
+
+Foods whose name contains `q` or closely resembles it (trigram similarity), best match first:
+exact name, then names starting with `q`, then by similarity. Case, accents and punctuation
+are ignored ("creme-fraiche" finds "Crème Fraîche"). Only foods with calories, protein, carbs
+and fat are returned. `q` is required (1–100 characters); `limit` defaults to 20, at most 50.
+Logic lives in `app/services/food_search.py`.
+
+```json
+[
+  {"id": 812, "name": "Whole milk", "per_100g": {"kcal": 61.0, "protein": 3.15, "carbs": 4.8, "fat": 3.25}}
+]
+```
+
+### Food log — `/api/v1/meals/entries`
+
+- **Tag:** Meals
+- **Schemas:** `FoodLogEntryCreate`, `FoodLogEntryUpdate`, `FoodLogEntryRead`, `CopyDayRequest`
+  (`app/schemas/meal.py`); logic in `app/services/food_log.py`.
+
+A **single shared log** for now: there are no user accounts yet, so every caller sees the same
+entries. Once authentication exists, entries gain a `user_id` and every query filters on it.
+
+| Method | Path | Does |
+|---|---|---|
+| `GET` | `/api/v1/meals/entries?date=YYYY-MM-DD` | That day's entries in the order eaten (`logged_at`). `date` defaults to today. |
+| `POST` | `/api/v1/meals/entries` | Log a food. `201` with the new entry. |
+| `PATCH` | `/api/v1/meals/entries/{id}` | Change `amount`, `unit`, `grams`, `logged_at` or `meal`. Omitted fields are kept. `404` if missing. |
+| `DELETE` | `/api/v1/meals/entries/{id}` | Remove an entry. `204`, or `404` if missing. |
+| `POST` | `/api/v1/meals/entries/copy` | `{"from_date", "to_date"}`: copy a whole day, keeping each entry's time of day. `201` with the new entries. |
+
+Logging a food — either a database food:
+
+```json
+{"logged_at": "2026-10-05T08:10:00+03:00", "food_id": 812, "amount": 250, "unit": "g", "grams": 250}
+```
+
+or one that is not in the database (custom, barcode, photo, recipe):
+
+```json
+{"date": "2026-10-05", "meal": "dinner", "source": "custom", "name": "Grandma's pancakes",
+ "per_100g": {"kcal": 227, "protein": 6.4, "carbs": 28.3, "fat": 9.7},
+ "amount": 2, "unit": "piece", "grams": 100}
+```
+
+- `logged_at` is when the food was eaten, with its UTC offset (a time without one is `422`).
+  It defaults to now. The entry's `date` is the day of `logged_at` in that offset; sending a
+  `date` for a different day is `422`. Without `logged_at`, `date` defaults to today.
+- `meal` is one of `breakfast`, `lunch`, `dinner`, `snacks`. It is optional: when omitted it
+  is the meal for the hour eaten, read in `logged_at`'s own offset — 05:00–10:59 breakfast,
+  11:00–14:59 lunch, 17:00–21:59 dinner, any other hour snacks. The app's timeline sends only
+  `logged_at`.
+- On `PATCH`, a new `logged_at` moves the entry to that day and to that hour's meal, unless
+  `meal` is sent too.
+- `grams` is what the macros are computed from (`> 0`, at most 5000); `amount` and `unit` are
+  kept as the user entered them, for display.
+- With `food_id`, the entry's name and values are **copied from the database** at logging time,
+  ignoring any sent in the request. `404` if the food does not exist, `422` if it lacks a
+  macro. Each entry keeps that copy, so correcting or re-farming a food never changes
+  what was logged.
+
+Every entry is returned as:
+
+```json
+{"id": 41, "date": "2026-10-05", "meal": "breakfast", "food_id": 812, "source": "database",
+ "name": "Whole milk", "per_100g": {"kcal": 61.0, "protein": 3.15, "carbs": 4.8, "fat": 3.25},
+ "amount": 250.0, "unit": "g", "grams": 250.0, "logged_at": "2026-10-05T08:10:00+03:00"}
+```
+
 ## Placeholder route groups (planned, not implemented)
 
-`auth`, `users`, `foods`, `barcodes`, `meals`, and `nutrition` each currently expose a single
+`auth`, `users`, `barcodes`, and `nutrition` each currently expose a single
 `GET` on their base path that returns `501 Not Implemented`, documented in Swagger under their
 tag with a summary/description explaining what's planned. This keeps the URL structure and tag
 grouping stable while each feature is built out. There is no real request/response schema for

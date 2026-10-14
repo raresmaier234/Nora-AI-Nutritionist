@@ -18,7 +18,7 @@ tags_metadata = [
     },
     {
         "name": "Foods",
-        "description": "Food database search and lookup. Not implemented yet.",
+        "description": "Food database search. Values are per 100g.",
     },
     {
         "name": "Barcodes",
@@ -26,7 +26,10 @@ tags_metadata = [
     },
     {
         "name": "Meals",
-        "description": "Food logging: meals and their entries. Not implemented yet.",
+        "description": (
+            "Food logging: what was eaten, per meal and day. A single shared log until user "
+            "accounts exist."
+        ),
     },
     {
         "name": "Nutrition",
