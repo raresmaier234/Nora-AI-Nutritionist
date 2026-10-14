@@ -6,8 +6,7 @@
     "orientation": "portrait",
     "scheme": "noraainutrition",
     "userInterfaceStyle": "automatic",
-    "ios": {
-    },
+    "ios": {},
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
@@ -30,7 +29,11 @@
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

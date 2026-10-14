@@ -7,7 +7,7 @@ import { colors, fontFamily, fontSize } from '@/theme';
 type DateNavigatorProps = {
   dayOffset: number;
   onChange: (offset: number) => void;
-  /** Anchor date the mock data is seeded around (LogPageV3.jsx used a fixed date for its demo). */
+  /** The day `dayOffset` counts from — today. */
   anchorDate: Date;
 };
 

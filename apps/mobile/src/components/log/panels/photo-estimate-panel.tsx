@@ -5,11 +5,11 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 
 import { CameraIcon, CheckIcon, SpinnerIcon } from '@/components/log/icons';
 import { FoodIcon } from '@/components/log/food-icon';
-import { MealPicker } from '@/components/log/meal-picker';
+import { WhenPicker } from '@/components/log/when-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SheetTitle } from '@/components/ui/typography';
-import { FOOD_DB, MealName, entryMacros, sumMacros } from '@/features/food/data/mock-data';
+import { FOOD_DB, entryMacros, sumMacros } from '@/features/food/data/mock-data';
 import { DetectedItem } from '@/features/food/hooks/use-food-log';
 import { viewfinderBg } from '@/features/food/theme';
 import type { PhotoCaptureResult } from '@/features/camera';
@@ -18,8 +18,9 @@ import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
 type Phase = 'capture' | 'analyzing' | 'result';
 
 type PhotoEstimatePanelProps = {
-  meal: MealName;
-  onMeal: (meal: MealName) => void;
+  /** "HH:MM" eaten. */
+  time: string;
+  onTime: (time: string) => void;
   onAdd: (items: DetectedItem[]) => void;
   /** Opens the full-screen camera route (src/app/camera/photo.tsx). */
   onOpenCamera: () => void;
@@ -33,7 +34,7 @@ const MOCK_RESULT = () => [
   { id: 'broccoli', name: 'Vegetables', per100: FOOD_DB.find((f) => f.id === 'broccoli')!.per100, amount: 90, unit: 'g', confidence: 0.64, on: true },
 ];
 
-export function PhotoEstimatePanel({ meal, onMeal, onAdd, onOpenCamera, photoResult }: PhotoEstimatePanelProps) {
+export function PhotoEstimatePanel({ time, onTime, onAdd, onOpenCamera, photoResult }: PhotoEstimatePanelProps) {
   const [phase, setPhase] = useState<Phase>(() => (photoResult ? 'analyzing' : 'capture'));
   const [photoUri, setPhotoUri] = useState<string | null>(photoResult?.uri ?? null);
   const [items, setItems] = useState<DetectedItem[]>([]);
@@ -70,7 +71,7 @@ export function PhotoEstimatePanel({ meal, onMeal, onAdd, onOpenCamera, photoRes
       <View style={styles.viewfinder}>
         {photoUri && phase !== 'capture' ? (
           <>
-            <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+            <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
             <View style={styles.photoScrim} pointerEvents="none" />
           </>
         ) : null}
@@ -149,10 +150,10 @@ export function PhotoEstimatePanel({ meal, onMeal, onAdd, onOpenCamera, photoRes
             </Text>
           </View>
 
-          <MealPicker value={meal} onChange={onMeal} />
+          <WhenPicker value={time} onChange={onTime} />
 
           <View style={styles.resultActions}>
-            <Button label={`Confirm & add to ${meal}`} disabled={!chosen.length} onPress={() => onAdd(chosen)} flex />
+            <Button label={`Confirm & log at ${time}`} disabled={!chosen.length} onPress={() => onAdd(chosen)} flex />
             <Button
               label="Retake"
               variant="secondary"
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   photoScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(17,24,39,0.35)',
   },
   centerCol: { alignItems: 'center', gap: spacing.md },

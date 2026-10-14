@@ -1,4 +1,4 @@
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { colors } from '@/theme';
 
@@ -10,8 +10,8 @@ export default function AppTabs() {
   return (
     <NativeTabs tintColor={colors.brandPrimary}>
       <NativeTabs.Trigger name="index">
-        <Label>Home</Label>
-        <Icon sf={{ default: 'house', selected: 'house.fill' }} />
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

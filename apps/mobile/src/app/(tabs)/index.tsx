@@ -6,32 +6,40 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalorieSummaryCard } from '@/components/log/calorie-summary-card';
 import { DateNavigator } from '@/components/log/date-navigator';
-import { FoodRow } from '@/components/log/food-row';
-import { AddFoodPanel } from '@/components/log/panels/add-food-panel';
+import { LogFoodBar } from '@/components/log/log-food-bar';
 import { BarcodeScannerPanel } from '@/components/log/panels/barcode-scanner-panel';
 import { CustomFoodPanel } from '@/components/log/panels/custom-food-panel';
-import { FoodDetailPanel } from '@/components/log/panels/food-detail-panel';
 import { PhotoEstimatePanel } from '@/components/log/panels/photo-estimate-panel';
-import { RecipesPanel } from '@/components/log/panels/recipes-panel';
-import { QuickEntryAction, QuickEntryRow } from '@/components/log/quick-entry-row';
-import { Stat } from '@/components/log/stat';
-import { WaterTracker } from '@/components/log/water-tracker';
+import { RecipesPanel, StudioStart } from '@/components/log/panels/recipes-panel';
+import { FoodDetailsScreen } from '@/components/log/screens/food-details-screen';
+import { FoodSearchScreen, SearchMode } from '@/components/log/screens/food-search-screen';
+import { RecipeStudioScreen } from '@/components/log/screens/recipe-studio-screen';
+import { Timeline } from '@/components/log/timeline';
+import { FullScreen, FullScreenLayer } from '@/components/ui/full-screen';
 import { Sheet } from '@/components/ui/sheet';
 import { ToastOverlay, useToastHost } from '@/components/ui/toast';
-import { colors, fontFamily, fontSize, radius, shadows, spacing } from '@/theme';
-import { Entry, FOOD_DB, MEALS, MealName, entryMacros } from '@/features/food/data/mock-data';
-import { useFoodLog } from '@/features/food/hooks/use-food-log';
+import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Entry, Food, Macro, RECIPES, Recipe, TARGETS, entryMacros, toGrams } from '@/features/food/data/mock-data';
+import { shiftDate, toDateString, useFoodLog } from '@/features/food/hooks/use-food-log';
+import { recipeFood } from '@/features/food/recipes';
+import { nowHHMM } from '@/features/food/time';
 import type { BarcodeScanResult, PhotoCaptureResult } from '@/features/camera';
 
-const ANCHOR_DATE = new Date(2026, 7, 11); // matches the fixed demo date in LogPageV3.jsx
+/** Room under the timeline so its last hour can scroll clear of the Log food bar. */
+const LOG_BAR_CLEARANCE = 96;
 
-type SheetMode = 'photo' | 'scan' | 'recipes' | 'custom' | null;
+const minus = (a: Macro, b: Macro): Macro => ({
+  kcal: a.kcal - b.kcal,
+  protein: a.protein - b.protein,
+  carbs: a.carbs - b.carbs,
+  fat: a.fat - b.fat,
+});
 
 export default function LogScreen() {
   const [fontsLoaded] = useFonts({
@@ -49,21 +57,33 @@ export default function LogScreen() {
     capturedPhotoUri?: string;
   }>();
   const { notify, toast } = useToastHost();
-  const foodLog = useFoodLog(notify);
 
+  // Fixed for the screen's lifetime: "today" is the day the app was opened on.
+  const [today] = useState(() => new Date());
   const [dayOffset, setDayOffset] = useState(0);
-  const [detail, setDetail] = useState<{ meal: MealName; entry: Entry } | null>(null);
-  const [adding, setAdding] = useState<MealName | null>(null);
-  const [mode, setMode] = useState<SheetMode>(null);
-  const [targetMeal, setTargetMeal] = useState<MealName>('Breakfast');
-  const [query, setQuery] = useState('');
+  const date = shiftDate(toDateString(today), dayOffset);
+  const foodLog = useFoodLog(date, notify);
+  /** Entry being edited in Food Details. */
+  const [detail, setDetail] = useState<Entry | null>(null);
+  /** Food opened from search, to add at `time`. */
+  const [foodView, setFoodView] = useState<{ food: Food; time: string } | null>(null);
+  /** "HH:MM" while full-screen search is open, logging at that time. */
+  const [adding, setAdding] = useState<string | null>(null);
+  const [mode, setMode] = useState<SearchMode | null>(null);
+  /** A flow chosen in search, opened once search has finished closing. */
+  const [pendingFlow, setPendingFlow] = useState<SearchMode | null>(null);
+  /** Time for the photo / scan / recipe / custom flows. */
+  const [targetTime, setTargetTime] = useState(nowHHMM);
+  /** Saved recipes — in memory until there is a recipes endpoint. */
+  const [recipes, setRecipes] = useState<Recipe[]>(RECIPES);
+  /** Recipe Studio, open on a saved recipe or a new one. `key` is fixed per opening. */
+  const [studio, setStudio] = useState<{ recipe: Recipe | null; start?: StudioStart; key: number } | null>(null);
+  /** A saved recipe open in Food Details — over the studio, or on its own from the list. */
+  const [recipeView, setRecipeView] = useState<Recipe | null>(null);
+  /** What to open once the Recipes sheet has finished closing. */
+  const [afterRecipes, setAfterRecipes] = useState<(() => void) | null>(null);
   const [scanResult, setScanResult] = useState<BarcodeScanResult | null>(null);
   const [photoResult, setPhotoResult] = useState<PhotoCaptureResult | null>(null);
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? FOOD_DB.filter((f) => f.name.toLowerCase().includes(q)) : FOOD_DB;
-  }, [query]);
 
   // The Sheet is a React Native Modal, which always renders above whatever the navigator pushes
   // next — so it has to close before the full-screen camera route opens, and reopen once the
@@ -85,12 +105,6 @@ export default function LogScreen() {
     }
   }, [params.scannedBarcodeData, params.scannedBarcodeType, params.capturedPhotoUri, router]);
 
-  useEffect(() => {
-      fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1//health`, {
-        method: 'GET'
-      }).then(r =>  r.json());
-    }, []);
-
   if (!fontsLoaded) {
     return (
       <View style={styles.loading}>
@@ -99,25 +113,65 @@ export default function LogScreen() {
     );
   }
 
-  const liveDetailEntry = detail ? foodLog.entries[detail.meal].find((e) => e.uid === detail.entry.uid) ?? detail.entry : null;
-
-  const handleOpenFlowFromAdd = (action: Exclude<QuickEntryAction, 'search'>) => {
-    if (adding) setTargetMeal(adding);
+  // Search's Photo / Barcode / Recipes / Custom tiles: close search, then open that flow at the
+  // time search was logging at. Not straight away: iOS can't present a sheet or push the camera
+  // while the search modal is still sliding out — it waits for search's onDismissed.
+  const openFlow = (next: SearchMode) => {
+    if (adding) setTargetTime(adding);
+    setPendingFlow(next);
+    closeSearch();
+  };
+  const closeSearch = () => {
+    setFoodView(null);
     setAdding(null);
-    setQuery('');
-    if (action === 'scan' || action === 'photo') {
-      openCamera(action);
+  };
+  const onSearchDismissed = () => {
+    if (!pendingFlow) return;
+    const next = pendingFlow;
+    setPendingFlow(null);
+    if (next === 'scan' || next === 'photo') {
+      openCamera(next);
     } else {
-      setMode(action);
+      setMode(next);
     }
   };
+
+  // ---- Recipes ------------------------------------------------------------------------
+  const saveRecipe = (r: Recipe): Recipe => {
+    const rec = { ...r, id: r.id || `r${Date.now()}` };
+    setRecipes((list) => (list.some((x) => x.id === rec.id) ? list.map((x) => (x.id === rec.id ? rec : x)) : [rec, ...list]));
+    return rec;
+  };
+  const closeRecipePages = () => {
+    setStudio(null);
+    setRecipeView(null);
+  };
+  // The Recipes sheet hands over to a full-screen page; iOS can only present it once the
+  // sheet has finished closing.
+  const fromRecipes = (open: () => void) => {
+    setAfterRecipes(() => open);
+    setMode(null);
+  };
+  const onRecipesDismissed = () => {
+    if (!afterRecipes) return;
+    afterRecipes();
+    setAfterRecipes(null);
+  };
+  /** Logs `servingsEaten` servings of the recipe as one entry, at the recipe's density. */
+  const logRecipe = (r: Recipe, servingsEaten: number) => {
+    const rec = saveRecipe(r);
+    const { food, servings } = recipeFood(rec);
+    foodLog.addEntry(targetTime, food, Math.round(servings[0][1] * servingsEaten), 'g');
+    closeRecipePages();
+  };
+  const viewed = recipeView ? recipeFood(recipeView) : null;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + LOG_BAR_CLEARANCE }]}
         showsVerticalScrollIndicator={false}>
-        <DateNavigator dayOffset={dayOffset} onChange={setDayOffset} anchorDate={ANCHOR_DATE} />
+        <DateNavigator dayOffset={dayOffset} onChange={setDayOffset} anchorDate={today} />
 
         <CalorieSummaryCard
           totals={foodLog.totals}
@@ -127,83 +181,84 @@ export default function LogScreen() {
           onCopyYesterday={foodLog.copyYesterday}
         />
 
-        <QuickEntryRow
-          onSelect={(action) => {
-            if (action === 'search') {
-              setAdding(targetMeal);
-            } else if (action === 'scan' || action === 'photo') {
-              openCamera(action);
-            } else {
-              setMode(action);
-            }
-          }}
-        />
+        {foodLog.loadState === 'loading' ? (
+          <ActivityIndicator color={colors.brandPrimary} accessibilityLabel="Loading your log" />
+        ) : null}
+        {foodLog.loadState === 'error' ? (
+          <View style={styles.loadError}>
+            <Text style={styles.loadErrorText}>{foodLog.loadError}</Text>
+            <Text onPress={foodLog.reload} accessibilityRole="button" style={styles.retry}>
+              Retry
+            </Text>
+          </View>
+        ) : null}
 
-        {MEALS.map((meal) => {
-          const items = foodLog.entries[meal];
-          const mealKcal = items.reduce((a, e) => a + entryMacros(e).kcal, 0);
-          return (
-            <View key={meal}>
-              <View style={styles.mealHeader}>
-                <Text style={styles.mealTitle}>{meal}</Text>
-                <Text style={styles.mealKcal}>{mealKcal} kcal</Text>
-              </View>
-              <View style={styles.mealCard}>
-                {items.length === 0 ? (
-                  <View style={styles.emptyMeal}>
-                    <Text style={styles.emptyMealText}>No food added yet</Text>
-                    <Text
-                      onPress={() => setAdding(meal)}
-                      accessibilityRole="button"
-                      style={styles.addFoodLink}>
-                      + Add food
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {items.map((e) => (
-                      <FoodRow
-                        key={e.uid}
-                        name={e.name}
-                        meta={`${e.amount} ${e.unit} · ${e.time}`}
-                        trailing={`${entryMacros(e).kcal} kcal`}
-                        onPress={() => setDetail({ meal, entry: e })}
-                      />
-                    ))}
-                    <Text onPress={() => setAdding(meal)} accessibilityRole="button" style={styles.addFoodRow}>
-                      + Add food
-                    </Text>
-                  </>
-                )}
-              </View>
-            </View>
-          );
-        })}
-
-        <WaterTracker water={foodLog.water} onChange={foodLog.setWater} />
-
-        <View style={styles.statsRow}>
-          <Stat value={foodLog.entryCount} label="entries" />
-          <Stat value={`${foodLog.totals.protein}g`} label="protein" color={colors.brandPrimary} />
-          <Stat value={`${foodLog.water * 250}ml`} label="water" color={colors.greenText} />
-        </View>
+        <Timeline entries={foodLog.entries} isToday={dayOffset === 0} onOpenEntry={setDetail} onAddAt={setAdding} />
       </ScrollView>
 
-      {/* Food detail / edit sheet */}
-      <Sheet visible={!!detail} onClose={() => setDetail(null)}>
-        {detail && liveDetailEntry ? (
-          <FoodDetailPanel
-            meal={detail.meal}
-            entry={liveDetailEntry}
-            onChange={(patch) => foodLog.updateEntry(detail.meal, liveDetailEntry.uid, patch)}
-            onSave={() => setDetail(null)}
+      <LogFoodBar onPress={() => setAdding(nowHHMM())} bottomInset={insets.bottom} />
+
+      {/* Edit a logged entry */}
+      <FullScreen visible={!!detail} onClose={() => setDetail(null)}>
+        {detail ? (
+          <FoodDetailsScreen
+            key={`edit-${detail.uid}`}
+            mode="edit"
+            food={detail}
+            time={detail.time}
+            initialGrams={toGrams(detail.amount, detail.unit)}
+            consumed={minus(foodLog.totals, entryMacros(detail))}
+            onClose={() => setDetail(null)}
+            onSave={(change) => {
+              foodLog.changeEntry(detail.uid, change);
+              setDetail(null);
+            }}
             onDelete={() => {
-              foodLog.removeEntry(detail.meal, liveDetailEntry.uid, liveDetailEntry.name);
+              foodLog.removeEntry(detail.uid, detail.name);
               setDetail(null);
             }}
           />
         ) : null}
-      </Sheet>
+      </FullScreen>
+
+      {/* Add food — full-screen search, with Food Details on top of it. Details is a layer inside
+          the search modal, never a second modal: closing two nested modals at once on iOS can
+          leave a black screen. */}
+      <FullScreen
+        visible={!!adding}
+        onClose={() => (foodView ? setFoodView(null) : closeSearch())}
+        onDismissed={onSearchDismissed}>
+        {adding ? (
+          <FoodSearchScreen
+            time={adding}
+            onTimeChange={setAdding}
+            entries={foodLog.entries}
+            remainingKcal={TARGETS.kcal - foodLog.totals.kcal}
+            onOpenFood={(food) => setFoodView({ food, time: adding })}
+            onQuickAdd={(food, grams) => foodLog.addEntry(adding, food, grams, 'g')}
+            onMode={openFlow}
+            onClose={closeSearch}
+          />
+        ) : null}
+        {foodView ? (
+          <FullScreenLayer>
+            <FoodDetailsScreen
+              key={`add-${foodView.food.id}`}
+              mode="add"
+              food={foodView.food}
+              time={foodView.time}
+              consumed={foodLog.totals}
+              onClose={() => setFoodView(null)}
+              onAdd={({ time, amount, unit }) => {
+                foodLog.addEntry(time, foodView.food, amount, unit);
+                closeSearch();
+              }}
+            />
+          </FullScreenLayer>
+        ) : null}
+        {/* A modal covers the screen's own toast; quick-add confirms here. */}
+        <ToastOverlay toast={toast} />
+      </FullScreen>
 
       {/* Photo estimate / barcode scan / recipes / custom food */}
       <Sheet
@@ -213,12 +268,12 @@ export default function LogScreen() {
           setPhotoResult(null);
         }}>
         <PhotoEstimatePanel
-          meal={targetMeal}
-          onMeal={setTargetMeal}
+          time={targetTime}
+          onTime={setTargetTime}
           onOpenCamera={() => openCamera('photo')}
           photoResult={photoResult}
           onAdd={(items) => {
-            foodLog.addPhotoItems(targetMeal, items);
+            foodLog.addPhotoItems(targetTime, items);
             setMode(null);
             setPhotoResult(null);
           }}
@@ -231,60 +286,82 @@ export default function LogScreen() {
           setScanResult(null);
         }}>
         <BarcodeScannerPanel
-          meal={targetMeal}
-          onMeal={setTargetMeal}
+          time={targetTime}
+          onTime={setTargetTime}
           onOpenCamera={() => openCamera('scan')}
           scanResult={scanResult}
           onAdd={(product) => {
-            foodLog.addScanned(targetMeal, product);
+            foodLog.addScanned(targetTime, product);
             setMode(null);
             setScanResult(null);
           }}
         />
       </Sheet>
-      <Sheet visible={mode === 'recipes'} onClose={() => setMode(null)}>
+      <Sheet visible={mode === 'recipes'} onClose={() => setMode(null)} onDismissed={onRecipesDismissed}>
         <RecipesPanel
-          meal={targetMeal}
-          onMeal={setTargetMeal}
-          onAddRecipe={(recipe, totals) => {
-            foodLog.addRecipe(targetMeal, recipe, totals);
-            setMode(null);
-          }}
+          recipes={recipes}
+          onOpen={(recipe, start) => fromRecipes(() => setStudio({ recipe, start, key: Date.now() }))}
+          onView={(recipe) => fromRecipes(() => setRecipeView(recipe))}
         />
       </Sheet>
       <Sheet visible={mode === 'custom'} onClose={() => setMode(null)}>
         <CustomFoodPanel
-          meal={targetMeal}
-          onMeal={setTargetMeal}
+          time={targetTime}
+          onTime={setTargetTime}
           onSave={(form) => {
-            foodLog.saveCustom(targetMeal, form);
+            foodLog.saveCustom(targetTime, form);
             setMode(null);
           }}
         />
       </Sheet>
 
-      {/* Add food sheet */}
-      <Sheet
-        visible={!!adding}
-        onClose={() => {
-          setAdding(null);
-          setQuery('');
-        }}>
-        {adding ? (
-          <AddFoodPanel
-            meal={adding}
-            query={query}
-            onQueryChange={setQuery}
-            results={results}
-            onPickFood={(food) => {
-              foodLog.addEntry(adding, food);
-              setAdding(null);
-              setQuery('');
+      {/* Recipe Studio, with a saved recipe's Food Details as a layer over it (never a second
+          modal — see FullScreen). Details opened from the recipe list stand alone. */}
+      <FullScreen
+        visible={!!studio || !!recipeView}
+        background={colors.bgApp}
+        onClose={() => (studio && recipeView ? setRecipeView(null) : closeRecipePages())}>
+        {studio ? (
+          <RecipeStudioScreen
+            key={studio.key}
+            initial={studio.recipe}
+            start={studio.start}
+            time={targetTime}
+            onTimeChange={setTargetTime}
+            onClose={closeRecipePages}
+            onSave={(r) => {
+              const rec = saveRecipe(r);
+              closeRecipePages();
+              notify('success', `"${rec.name}" saved to your recipes.`);
             }}
-            onOpenFlow={handleOpenFlowFromAdd}
+            onLog={logRecipe}
+            onDetails={(r) => {
+              const rec = saveRecipe(r);
+              // Further edits in the studio now update this saved recipe.
+              setStudio((s) => (s ? { ...s, recipe: rec } : s));
+              setRecipeView(rec);
+            }}
           />
         ) : null}
-      </Sheet>
+        {recipeView && viewed ? (
+          <FullScreenLayer>
+            <FoodDetailsScreen
+              key={`recipe-${recipeView.id}`}
+              mode="add"
+              food={viewed.food}
+              servings={viewed.servings}
+              time={targetTime}
+              consumed={foodLog.totals}
+              onClose={() => (studio ? setRecipeView(null) : closeRecipePages())}
+              onAdd={({ time, amount, unit }) => {
+                foodLog.addEntry(time, viewed.food, amount, unit);
+                closeRecipePages();
+              }}
+            />
+          </FullScreenLayer>
+        ) : null}
+        <ToastOverlay toast={toast} />
+      </FullScreen>
 
       <ToastOverlay toast={toast} />
     </SafeAreaView>
@@ -307,57 +384,25 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     gap: spacing.xl - 2,
   },
-  mealHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginHorizontal: 2,
-    marginBottom: spacing.sm + 2,
-  },
-  mealTitle: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.h2,
-    color: colors.textPrimary,
-  },
-  mealKcal: {
-    fontFamily: fontFamily.extrabold,
-    fontSize: fontSize.small,
-    color: colors.greenText,
-  },
-  mealCard: {
+  loadError: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.bgSurfaceSolid,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    boxShadow: shadows.sm,
   },
-  emptyMeal: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: 20,
-    paddingHorizontal: spacing.lg,
-  },
-  emptyMealText: {
+  loadErrorText: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.small,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
-  addFoodLink: {
+  retry: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.small,
     color: colors.brandPrimary,
-  },
-  addFoodRow: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg - 2,
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.small,
-    color: colors.brandPrimary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 26,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
   },
 });

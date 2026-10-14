@@ -85,3 +85,81 @@ export function SpinnerIcon({ size = 28, color = '#818CF8', strokeWidth = 2.6 }:
     </Svg>
   );
 }
+
+export function MinusIcon({ size = 15, color = '#6366F1', strokeWidth = 2.6 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
+      <Path d="M5 12h14" />
+    </Svg>
+  );
+}
+
+export function ClockIcon({ size = 15, color = '#6366F1', strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 7v5l3 2" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon({ size = 20, color = '#111827', strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function TrashIcon({ size = 20, color = '#DC2626', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </Svg>
+  );
+}
+
+export function ArrowRightIcon({ size = 14, color = '#64748B', strokeWidth = 2.6 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M5 12h14M13 6l6 6-6 6" />
+    </Svg>
+  );
+}
+
+export function LinkIcon({ size = 16, color = '#64748B', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+      <Path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+    </Svg>
+  );
+}
+
+export function ImageIcon({ size = 20, color = '#111827', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z" />
+      <Circle cx={9} cy={10} r={1.8} />
+      <Path d="M21 16l-5-5-8 9" />
+    </Svg>
+  );
+}
+
+export function PencilIcon({ size = 17, color = '#64748B', strokeWidth = 2.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 20h9" />
+      <Path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </Svg>
+  );
+}
+
+export function AlertIcon({ size = 16, color = '#B45309', strokeWidth = 2.4 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 8v4M12 16h.01" />
+    </Svg>
+  );
+}

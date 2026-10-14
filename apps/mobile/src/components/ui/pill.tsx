@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
   },
   gradientFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: radius.pill,
   },
   label: {

@@ -14,7 +14,7 @@ src/components/
 
 **`ui/`** — a component belongs here if you could drop it into an entirely different app and it would still make sense: `Button`, `Card`, `Field`, `Pill`, `Sheet`, `Toast`, the shared text styles in `typography.tsx`. These take generic props (`label`, `variant`, `children`) and know nothing about food, meals, or macros. They pull their values from `src/constants/log-theme.ts` but don't hardcode feature concepts.
 
-**`log/`** — a component belongs here if it speaks the Log screen's domain vocabulary: `FoodIcon`, `FoodRow`, `MacroBar`, `AmountField`, `MealPicker`, `DateNavigator`, `Stat`, `WaterTracker`, `QuickEntryRow`. `log/panels/` holds one file per bottom-sheet flow (`add-food-panel.tsx`, `photo-estimate-panel.tsx`, `barcode-scanner-panel.tsx`, `recipes-panel.tsx`, `custom-food-panel.tsx`, `food-detail-panel.tsx`) — each panel is the full content of one `Sheet`, composed from `ui/` primitives and other `log/` components.
+**`log/`** — a component belongs here if it speaks the Log screen's domain vocabulary: `FoodIcon`, `MacroBar`, `AmountField`, `WhenPicker`, `DateNavigator`, `Timeline`, `LogFoodBar`. `log/panels/` holds one file per sheet flow (`photo-estimate-panel.tsx`, `barcode-scanner-panel.tsx`, `recipes-panel.tsx`, `custom-food-panel.tsx`) — each panel is the full content of one `Sheet`. `log/screens/` holds the full-screen pages that slide up over the Log inside a `FullScreen` (`food-search-screen.tsx`, `food-details-screen.tsx`, `recipe-studio-screen.tsx`); a second page inside one is a `FullScreenLayer`, never a nested `FullScreen`. Both are composed from `ui/` primitives and other `log/` components.
 
 **`navigation/`** — the tab bar shell (`app-tabs.tsx` for native, `app-tabs.web.tsx` for web — Expo Router picks the right one per platform automatically via the `.web.tsx` suffix). Add new tab triggers here as real features land; don't put screen content in this folder.
 
@@ -32,7 +32,7 @@ Don't guess which one applies before there's a second real consumer — that's p
 ## Naming
 
 - Files: kebab-case (`food-row.tsx`, `macro-bar.tsx`, `unit-picker-sheet.tsx`).
-- Components: PascalCase, named export (`export function FoodRow(...)`), matching the filename.
+- Components: PascalCase, named export (`export function FoodIcon(...)`), matching the filename.
 - One component per file, styles live in the same file via `StyleSheet.create` directly below the component — this codebase doesn't use a separate stylesheet file per component.
 
 ## Composition principles
@@ -45,7 +45,7 @@ Don't guess which one applies before there's a second real consumer — that's p
 ## When to create a new reusable component
 
 Create one when:
-- The same visual pattern appears **3+ times** with only prop differences (this is how `FoodRow` ended up shared between meal entries and search results).
+- The same visual pattern appears **3+ times** with only prop differences (this is how `FoodIcon` ended up shared by timeline rows, search results and Food Details).
 - A design-system primitive (button variant, input style, shadow) is about to be hand-rolled inline for the second time.
 
 Don't create one for a single current usage "just in case" — inline it in the screen/panel until a second consumer actually shows up.

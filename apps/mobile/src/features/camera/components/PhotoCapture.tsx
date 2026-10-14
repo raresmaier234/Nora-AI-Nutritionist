@@ -53,7 +53,7 @@ export function PhotoCapture({ onPhotoCaptured, onClose }: PhotoCaptureProps) {
 
 const styles = StyleSheet.create({
   controls: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: spacing.xxxl,

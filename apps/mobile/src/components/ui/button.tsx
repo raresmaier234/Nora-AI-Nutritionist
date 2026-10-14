@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
   },
   gradientFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: radius.pill,
   },
 });

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.slate900,
   },
   chromeSafeArea: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   permissionSafeArea: {
     flex: 1,

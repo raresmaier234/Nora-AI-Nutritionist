@@ -3,11 +3,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CameraIcon } from '@/components/log/icons';
 import { FoodIcon } from '@/components/log/food-icon';
-import { MealPicker } from '@/components/log/meal-picker';
+import { WhenPicker } from '@/components/log/when-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { BARCODES, Barcode, MealName } from '@/features/food/data/mock-data';
+import { BARCODES, Barcode } from '@/features/food/data/mock-data';
 import { viewfinderBg } from '@/features/food/theme';
 import type { BarcodeScanResult } from '@/features/camera';
 import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
@@ -15,8 +15,9 @@ import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
 type Phase = 'ready' | 'found' | 'notfound' | 'manual';
 
 type BarcodeScannerPanelProps = {
-  meal: MealName;
-  onMeal: (meal: MealName) => void;
+  /** "HH:MM" eaten. */
+  time: string;
+  onTime: (time: string) => void;
   onAdd: (product: Barcode) => void;
   /** Opens the full-screen camera route (src/app/camera/barcode.tsx). */
   onOpenCamera: () => void;
@@ -24,7 +25,7 @@ type BarcodeScannerPanelProps = {
   scanResult: BarcodeScanResult | null;
 };
 
-export function BarcodeScannerPanel({ meal, onMeal, onAdd, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
+export function BarcodeScannerPanel({ time, onTime, onAdd, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
   const initialHit = scanResult ? (BARCODES.find((b) => b.code === scanResult.data) ?? null) : null;
   const [phase, setPhase] = useState<Phase>(() => {
     if (!scanResult) return 'ready';
@@ -78,9 +79,9 @@ export function BarcodeScannerPanel({ meal, onMeal, onAdd, onOpenCamera, scanRes
               </Text>
             </View>
           </View>
-          <MealPicker value={meal} onChange={onMeal} />
+          <WhenPicker value={time} onChange={onTime} />
           <Button
-            label={`Add ${product.amount}${product.unit} to ${meal}`}
+            label={`Add ${product.amount}${product.unit} at ${time}`}
             onPress={() => onAdd(product)}
           />
         </>

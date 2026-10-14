@@ -47,7 +47,7 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onCopyYesterd
               colors={gradients.success}
               start={gradientAngle.start}
               end={gradientAngle.end}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
           )}
         </Animated.View>

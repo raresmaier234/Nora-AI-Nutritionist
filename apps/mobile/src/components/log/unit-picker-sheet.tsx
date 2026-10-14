@@ -9,28 +9,34 @@ type UnitPickerSheetProps = {
   value: string;
   onSelect: (unit: string) => void;
   onClose: () => void;
+  /** [label, grams] to offer instead of the generic UNITS — e.g. a food's own servings. */
+  units?: Array<[string, number]>;
 };
 
-/** Mini centered sheet used by AmountField to pick a serving unit — replaces the web <select>. */
-export function UnitPickerSheet({ visible, value, onSelect, onClose }: UnitPickerSheetProps) {
+/** Mini centered sheet used by AmountField and Recipe Studio to pick a unit — replaces the web <select>. */
+export function UnitPickerSheet({ visible, value, onSelect, onClose, units }: UnitPickerSheetProps) {
+  const options = units ?? UNITS.map((u): [string, number] => [u.label, u.grams]);
   return (
     <Sheet visible={visible} onClose={onClose}>
       <Text style={styles.title}>Unit</Text>
       <View style={styles.list}>
-        {UNITS.map((u, i) => {
-          const selected = u.label === value;
+        {options.map(([label, grams], i) => {
+          const selected = label === value;
           return (
             <Pressable
-              key={u.label}
+              key={label}
               onPress={() => {
-                onSelect(u.label);
+                onSelect(label);
                 onClose();
               }}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              style={[styles.row, i < UNITS.length - 1 && styles.rowDivider, selected && styles.rowSelected]}>
-              <Text style={[styles.rowLabel, selected && styles.rowLabelSelected]}>{u.label}</Text>
-              {selected && <View style={styles.dot} />}
+              style={[styles.row, i < options.length - 1 && styles.rowDivider, selected && styles.rowSelected]}>
+              <Text style={[styles.rowLabel, selected && styles.rowLabelSelected]}>{label}</Text>
+              <View style={styles.rowEnd}>
+                {label !== 'g' ? <Text style={styles.rowGrams}>{Math.round(grams * 10) / 10} g</Text> : null}
+                {selected && <View style={styles.dot} />}
+              </View>
             </Pressable>
           );
         })}
@@ -76,6 +82,16 @@ const styles = StyleSheet.create({
   rowLabelSelected: {
     fontFamily: fontFamily.bold,
     color: colors.brandPrimaryStrong,
+  },
+  rowEnd: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  rowGrams: {
+    fontFamily: fontFamily.medium,
+    fontSize: fontSize.small,
+    color: colors.textTertiary,
   },
   dot: {
     width: 8,

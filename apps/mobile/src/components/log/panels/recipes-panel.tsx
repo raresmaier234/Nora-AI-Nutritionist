@@ -1,105 +1,88 @@
-import { useState } from 'react';
+import { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { RecipeIcon } from '@/components/log/icons';
-import { MealPicker } from '@/components/log/meal-picker';
-import { Button } from '@/components/ui/button';
-import { Field } from '@/components/ui/field';
-import { Pill } from '@/components/ui/pill';
-import { SectionLabel, SheetTitle } from '@/components/ui/typography';
+import { FoodIcon } from '@/components/log/food-icon';
+import { CameraIcon, ChevronRightIcon, LinkIcon, PencilIcon, PlusIcon } from '@/components/log/icons';
+import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
 import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
-import { FOOD_DB, Macro, MealName, RECIPES, entryMacros } from '@/features/food/data/mock-data';
+import { Recipe } from '@/features/food/data/mock-data';
+import { recipeFood, recipeTotals } from '@/features/food/recipes';
+
+export type StudioStart = 'scratch' | 'photo' | 'link';
 
 type RecipesPanelProps = {
-  meal: MealName;
-  onMeal: (meal: MealName) => void;
-  onAddRecipe: (recipe: { id?: string; name: string }, totals: Macro) => void;
+  recipes: Recipe[];
+  /** Open Recipe Studio: a saved recipe to edit, or null to start a new one from `start`. */
+  onOpen: (recipe: Recipe | null, start?: StudioStart) => void;
+  /** Open a saved recipe in Food Details, to log it. */
+  onView: (recipe: Recipe) => void;
 };
 
-const ZERO: Macro = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-
-function recipeTotals(items: Array<[string, number, string]>): Macro {
-  return items.reduce((a, [id, amount, unit]) => {
-    const f = FOOD_DB.find((x) => x.id === id);
-    if (!f) return a;
-    const m = entryMacros({ per100: f.per100, amount, unit });
-    return { kcal: a.kcal + m.kcal, protein: a.protein + m.protein, carbs: a.carbs + m.carbs, fat: a.fat + m.fat };
-  }, ZERO);
-}
-
-export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
-  const [tab, setTab] = useState<'saved' | 'new'>('saved');
-  const [name, setName] = useState('');
-  const [picked, setPicked] = useState<Array<[string, number, string]>>([]);
-  const draftTotals = recipeTotals(picked);
+/** Recipes hub (LogPageV3.jsx RecipesPanel): ways to create one, then the saved list. */
+export function RecipesPanel({ recipes, onOpen, onView }: RecipesPanelProps) {
+  const option = (start: StudioStart, title: string, sub: string, icon: ReactNode, tint: string, last?: boolean) => (
+    <Pressable
+      key={start}
+      onPress={() => onOpen(null, start)}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.option, !last && styles.divider, pressed && styles.pressed]}>
+      <View style={[styles.optionIcon, { backgroundColor: tint }]}>{icon}</View>
+      <View style={styles.flex}>
+        <Text style={styles.optionTitle}>{title}</Text>
+        <Text style={styles.optionSub}>{sub}</Text>
+      </View>
+      <ChevronRightIcon size={16} color={colors.textTertiary} strokeWidth={2.4} />
+    </Pressable>
+  );
 
   return (
     <View>
       <SheetTitle>Recipes</SheetTitle>
-      <View style={styles.tabRow}>
-        <Pill label="Saved" selected={tab === 'saved'} onPress={() => setTab('saved')} fontSize={fontSize.small} flex />
-        <Pill label="Build new" selected={tab === 'new'} onPress={() => setTab('new')} fontSize={fontSize.small} flex />
-      </View>
-      <MealPicker value={meal} onChange={onMeal} />
+      <SheetSubtitle>Build a meal from its ingredients or import one. Saved recipes log like any food.</SheetSubtitle>
 
-      {tab === 'saved' ? (
-        <View style={styles.list}>
-          {RECIPES.map((r, i) => {
-            const t = recipeTotals(r.items);
+      <SectionLabel>Create</SectionLabel>
+      <View style={[styles.group, styles.groupGap]}>
+        {option('scratch', 'Build from ingredients', 'Search and add each ingredient', <PlusIcon size={19} color={colors.brandPrimary} />, 'rgba(99,102,241,0.10)')}
+        {option('photo', 'Import from photo', 'Recipe card, cookbook page or plate', <CameraIcon size={19} color={colors.amberText} />, colors.chipAmberTint)}
+        {option('link', 'Import from link', 'Paste a recipe from any website', <LinkIcon size={19} color={colors.greenText} />, colors.chipGreenTint, true)}
+      </View>
+
+      <View style={styles.listHead}>
+        <SectionLabel style={styles.noMargin}>Your recipes</SectionLabel>
+        <Text style={styles.count}>{recipes.length}</Text>
+      </View>
+      {recipes.length === 0 ? (
+        <Text style={styles.empty}>Recipes you save appear here, ready to log in one tap.</Text>
+      ) : (
+        <View style={styles.group}>
+          {recipes.map((r, i) => {
+            const perServing = Math.round(recipeTotals(r.items).kcal / (r.servings || 1));
             return (
-              <Pressable
-                key={r.id}
-                onPress={() => onAddRecipe(r, t)}
-                style={({ pressed }) => [
-                  styles.recipeRow,
-                  i < RECIPES.length - 1 && styles.rowDivider,
-                  pressed && styles.rowPressed,
-                ]}>
-                <View style={styles.starChip}>
-                  <RecipeIcon size={18} color={colors.brandPrimary} strokeWidth={2} />
-                </View>
-                <View style={styles.recipeText}>
-                  <Text style={styles.recipeName}>{r.name}</Text>
-                  <Text style={styles.recipeMeta}>
-                    {r.items.length} ingredients · P{t.protein} C{t.carbs} F{t.fat}
-                  </Text>
-                </View>
-                <Text style={styles.recipeKcal}>{t.kcal} kcal</Text>
-              </Pressable>
+              <View key={r.id} style={[styles.recipeRow, i < recipes.length - 1 && styles.divider]}>
+                <Pressable
+                  onPress={() => onView(r)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${r.name}`}
+                  style={({ pressed }) => [styles.recipeMain, pressed && styles.pressed]}>
+                  <FoodIcon name={recipeFood(r).iconName} size={44} />
+                  <View style={styles.flex}>
+                    <Text style={styles.recipeName}>{r.name}</Text>
+                    <Text style={styles.recipeMeta}>
+                      {r.items.length} ingredients · {r.servings} {r.servings === 1 ? 'serving' : 'servings'}
+                      {r.source ? ` · ${r.source}` : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.kcal}>
+                    <Text style={styles.kcalValue}>{perServing}</Text>
+                    <Text style={styles.kcalUnit}>kcal/serving</Text>
+                  </View>
+                </Pressable>
+                <Pressable onPress={() => onOpen(r)} accessibilityRole="button" accessibilityLabel={`Edit ${r.name}`} style={styles.edit}>
+                  <PencilIcon size={17} color={colors.textTertiary} />
+                </Pressable>
+              </View>
             );
           })}
-        </View>
-      ) : (
-        <View>
-          <Field style={styles.nameInput} value={name} onChangeText={setName} placeholder="Recipe name" />
-          <SectionLabel>Ingredients ({picked.length})</SectionLabel>
-          <View style={styles.chipWrap}>
-            {FOOD_DB.slice(0, 8).map((f) => {
-              const on = picked.some(([id]) => id === f.id);
-              return (
-                <Pill
-                  key={f.id}
-                  label={`${on ? '✓ ' : '+ '}${f.name}`}
-                  selected={on}
-                  onPress={() => setPicked((p) => (on ? p.filter(([id]) => id !== f.id) : [...p, [f.id, 100, 'g']]))}
-                  fontSize={fontSize.micro}
-                />
-              );
-            })}
-          </View>
-          {picked.length > 0 ? (
-            <View style={styles.totalsStrip}>
-              <Text style={styles.totalsKcal}>{draftTotals.kcal} kcal</Text>
-              <Text style={styles.totalsMeta}>
-                auto-calculated · P{draftTotals.protein} C{draftTotals.carbs} F{draftTotals.fat}
-              </Text>
-            </View>
-          ) : null}
-          <Button
-            label={`Save & add to ${meal}`}
-            disabled={!picked.length}
-            onPress={() => onAddRecipe({ name: name || 'My recipe' }, draftTotals)}
-          />
         </View>
       )}
     </View>
@@ -107,75 +90,36 @@ export function RecipesPanel({ meal, onMeal, onAddRecipe }: RecipesPanelProps) {
 }
 
 const styles = StyleSheet.create({
-  tabRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  list: {
+  flex: { flex: 1, minWidth: 0 },
+  group: { borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: radius.lg, overflow: 'hidden' },
+  groupGap: { marginBottom: 22 },
+  divider: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
+  pressed: { backgroundColor: colors.overlayPress },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingVertical: 10, paddingHorizontal: 14 },
+  optionIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  optionTitle: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
+  optionSub: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: 3 },
+  listHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 },
+  noMargin: { marginBottom: 0 },
+  count: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.textTertiary },
+  empty: {
+    paddingVertical: 22,
+    paddingHorizontal: spacing.lg,
+    textAlign: 'center',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
     borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  recipeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg - 2,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
-  rowPressed: { backgroundColor: colors.overlayPress },
-  starChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.chipIndigoTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recipeText: { flex: 1, minWidth: 0 },
-  recipeName: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.body,
-    color: colors.textPrimary,
-  },
-  recipeMeta: {
     fontFamily: fontFamily.medium,
-    fontSize: fontSize.micro,
-    color: colors.textTertiary,
-    marginTop: 3,
-  },
-  recipeKcal: {
-    fontFamily: fontFamily.bold,
     fontSize: fontSize.small,
-    color: colors.textPrimary,
-  },
-  nameInput: { marginBottom: spacing.md },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: spacing.md,
-  },
-  totalsStrip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md + 2,
-    backgroundColor: colors.successTint,
-    borderRadius: radius.md,
-    marginBottom: spacing.lg - 2,
-  },
-  totalsKcal: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.body,
-    color: colors.textPrimary,
-  },
-  totalsMeta: {
-    fontFamily: fontFamily.semibold,
-    fontSize: fontSize.micro,
     color: colors.textSecondary,
   },
+  recipeRow: { flexDirection: 'row', alignItems: 'center' },
+  recipeMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 72, paddingVertical: spacing.md, paddingLeft: 14 },
+  recipeName: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
+  recipeMeta: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: 4 },
+  kcal: { alignItems: 'flex-end', flexShrink: 0 },
+  kcalValue: { fontFamily: fontFamily.extrabold, fontSize: fontSize.body, color: colors.textPrimary },
+  kcalUnit: { fontFamily: fontFamily.medium, fontSize: fontSize.nano, color: colors.textTertiary, marginTop: 4 },
+  edit: { width: 48, height: 48, marginRight: 6, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 });

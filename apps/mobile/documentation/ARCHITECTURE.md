@@ -4,8 +4,10 @@ How Nora AI Nutrition's codebase is organized, and where new code should go.
 
 ## Stack
 
-- **Expo** (SDK 54) + **React Native** 0.81, new architecture
-- **Expo Router** (file-based routing, typed routes enabled)
+- **Expo** (SDK 57) + **React Native** 0.86, new architecture (the only one since SDK 55)
+- **Expo Router** (file-based routing, typed routes enabled). Since SDK 56 it no longer depends on
+  React Navigation: import navigation themes and types from `expo-router/react-navigation`, not
+  `@react-navigation/*`.
 - **TypeScript**, strict mode
 - **react-native-reanimated** for animation, **expo-linear-gradient** for gradients (RN's `experimental_backgroundImage` does not render on web — see `src/components/ui/button.tsx` for the pattern)
 - **react-native-svg** for the remote food-icon illustrations
@@ -56,7 +58,7 @@ components/
     └── panels/       # one file per bottom-sheet flow (add food, scan, recipes, ...)
 ```
 
-Rule of thumb: if a component has no idea what "food" or "macros" means, it belongs in `ui/`. If it's part of the Log screen's vocabulary (FoodIcon, MacroBar, MealPicker, ...), it belongs in `log/`. See [COMPONENTS.md](./COMPONENTS.md) for the full decision guide.
+Rule of thumb: if a component has no idea what "food" or "macros" means, it belongs in `ui/`. If it's part of the Log screen's vocabulary (FoodIcon, MacroBar, WhenPicker, Timeline, ...), it belongs in `log/`. See [COMPONENTS.md](./COMPONENTS.md) for the full decision guide.
 
 ## `src/features/` — domain logic
 
@@ -64,7 +66,8 @@ Rule of thumb: if a component has no idea what "food" or "macros" means, it belo
 features/
 └── food/
     ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES, seed() — swap points for real APIs
-    └── hooks/use-food-log.ts # entries/water state + the mutation surface (addEntry, updateEntry, ...)
+    ├── hooks/use-food-log.ts # the day's timeline of entries + the mutation surface (addEntry, changeEntry, ...)
+    └── time.ts               # "HH:MM" helpers, eating moments, and the local-offset logged_at sent to the API
 ```
 
 This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. Only `food/` exists today because it's the only feature with real code to hold; `nutrition/`, `meals/`, `dashboard/`, `profile/` are not created until they have something to contain.

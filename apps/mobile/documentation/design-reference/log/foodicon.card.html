@@ -1,22 +1,42 @@
-<!-- @dsCard group="Components" viewport="700x220" name="Food Icons" subtitle="Colorful illustrated food icons (Twemoji CDN) in soft tinted containers" -->
+<!-- @dsCard group="Components" viewport="700x330" name="Food Icons" subtitle="10 category icons (selectable) + specific food icons, Noto Emoji in soft tinted containers" -->
 <link rel="stylesheet" href="../../styles.css">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="../../_ds_bundle.js"></script>
-<div id="root" data-identity="v2" style="background:var(--bg-app);padding:20px"></div>
+<div id="root" data-identity="v2" style="background:var(--bg-app);padding:18px 20px"></div>
 <script type="text/babel">
-const { FoodIcon } = window.NoraDesignSystem_a9ff6f;
-const foods = ['Greek Yogurt','Banana','Almonds','Chicken Breast','Rice','Salad','Salmon','Vegetables','Apple'];
+const NS = window.NoraDesignSystem_a9ff6f || {};
+const { FoodIcon, FoodCategoryIcon } = NS;
+const CATS = NS.FOOD_CATEGORIES || [
+  {id:'baked',label:'Baked Goods'},{id:'meat',label:'Meats'},{id:'veg',label:'Vegetables'},{id:'seafood',label:'Seafood'},{id:'fruit',label:'Fruit'},
+  {id:'nuts',label:'Nuts and Seeds'},{id:'dairy',label:'Dairy and Eggs'},{id:'drinks',label:'Drinks'},{id:'sweets',label:'Sweets'},{id:'other',label:'Other'},
+];
+const foods = ['Greek Yogurt','Banana','Almonds','Chicken Breast','Rice','Salad','Salmon','Shrimp','Steak','Croissant','Strawberries','Cheese','Coffee','Chocolate'];
+const label = {font:'var(--weight-bold) 11px/1 var(--font-sans)',color:'var(--text-tertiary)',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:12};
 function Demo(){
+  const [sel,setSel]=React.useState('seafood');
+  if (!FoodIcon) return null;
   return (
-    <div style={{display:'flex',gap:14,flexWrap:'wrap',fontFamily:'var(--font-sans)'}}>
-      {foods.map(f => (
-        <div key={f} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,width:64}}>
-          <FoodIcon name={f} size={48} />
-          <span style={{font:'var(--weight-semibold) 10px/1.2 var(--font-sans)',color:'var(--text-secondary)',textAlign:'center'}}>{f}</span>
-        </div>
-      ))}
+    <div style={{fontFamily:'var(--font-sans)'}}>
+      <div style={label}>Categories</div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:'14px 8px',marginBottom:20}}>
+        {CATS.map(c => FoodCategoryIcon
+          ? <FoodCategoryIcon key={c.id} category={c.id} size={48} selected={sel===c.id} onClick={()=>setSel(c.id)} />
+          : <div key={c.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7,width:66}}>
+              <FoodIcon category={c.id} name={c.label} size={48} />
+              <span style={{font:'var(--weight-semibold) 11px/1.2 var(--font-sans)',color:'var(--text-secondary)',textAlign:'center'}}>{c.label}</span>
+            </div>
+        )}
+      </div>
+      <div style={label}>Specific foods</div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:10}}>
+        {foods.map(f => (
+          <div key={f} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:5,width:40}}>
+            <FoodIcon name={f} size={38} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AmountField } from '@/components/log/amount-field';
-import { MealPicker } from '@/components/log/meal-picker';
+import { WhenPicker } from '@/components/log/when-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
 import { colors, fontFamily, spacing, trackWide } from '@/theme';
-import { MealName } from '@/features/food/data/mock-data';
 import { CustomFoodForm } from '@/features/food/hooks/use-food-log';
 
 type CustomFoodPanelProps = {
-  meal: MealName;
-  onMeal: (meal: MealName) => void;
+  /** "HH:MM" eaten. */
+  time: string;
+  onTime: (time: string) => void;
   onSave: (form: CustomFoodForm) => void;
 };
 
@@ -23,7 +23,7 @@ const NUMERIC_FIELDS: Array<{ key: keyof CustomFoodForm; label: string }> = [
   { key: 'fat', label: 'Fat' },
 ];
 
-export function CustomFoodPanel({ meal, onMeal, onSave }: CustomFoodPanelProps) {
+export function CustomFoodPanel({ time, onTime, onSave }: CustomFoodPanelProps) {
   const [form, setForm] = useState<CustomFoodForm>({ name: '', amount: 100, unit: 'g', kcal: '', protein: '', carbs: '', fat: '' });
   const set = (k: keyof CustomFoodForm, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
   const valid = form.name.trim().length > 0 && Number(form.kcal) > 0;
@@ -55,8 +55,8 @@ export function CustomFoodPanel({ meal, onMeal, onSave }: CustomFoodPanelProps) 
         ))}
       </View>
 
-      <MealPicker value={meal} onChange={onMeal} />
-      <Button label={`Save food & add to ${meal}`} disabled={!valid} onPress={() => onSave(form)} />
+      <WhenPicker value={time} onChange={onTime} />
+      <Button label={`Save food & log at ${time}`} disabled={!valid} onPress={() => onSave(form)} />
     </View>
   );
 }

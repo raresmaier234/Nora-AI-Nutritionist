@@ -45,7 +45,7 @@ export function BarcodeScanner({ onBarcodeScanned, onClose }: BarcodeScannerProp
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -7,6 +7,8 @@ import { colors, motion, radius, shadows, spacing } from '@/theme';
 type SheetProps = {
   visible: boolean;
   onClose: () => void;
+  /** Called once the sheet has fully closed — only then can another modal or route open. */
+  onDismissed?: () => void;
   children: ReactNode;
 };
 
@@ -21,7 +23,7 @@ type SheetProps = {
  * edit/custom-food sheets) — it silently leaves the second sheet stuck at opacity 0. The card's
  * scale-in "pop" instead uses a plain mount-driven shared value, which doesn't hit that path.
  */
-export function Sheet({ visible, onClose, children }: SheetProps) {
+export function Sheet({ visible, onClose, onDismissed, children }: SheetProps) {
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
 
@@ -40,10 +42,17 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
     transform: [{ scale: scale.value }],
   }));
 
-  if (!visible) return null;
+  // iOS reports the end of the dismiss animation through onDismiss; other platforms have no
+  // such event and are done as soon as the modal is hidden.
+  const wasVisible = useRef(visible);
+  useEffect(() => {
+    if (wasVisible.current && !visible && Platform.OS !== 'ios') onDismissed?.();
+    wasVisible.current = visible;
+  }, [visible, onDismissed]);
 
+  // Kept mounted while hidden, so iOS runs the dismiss and reports onDismiss.
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismissed} statusBarTranslucent>
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         <KeyboardAvoidingView

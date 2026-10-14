@@ -48,7 +48,7 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
             colors={TONE_GRADIENT[tone]}
             start={gradientAngle.start}
             end={gradientAngle.end}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         </Animated.View>
       </View>
