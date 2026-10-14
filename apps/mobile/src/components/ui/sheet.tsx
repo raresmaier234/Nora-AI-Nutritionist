@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, motion, radius, shadows, spacing } from '@/theme';
+import { Palette, motion, radius, spacing, useStyles } from '@/theme';
 
 type SheetProps = {
   visible: boolean;
@@ -24,6 +24,7 @@ type SheetProps = {
  * scale-in "pop" instead uses a plain mount-driven shared value, which doesn't hit that path.
  */
 export function Sheet({ visible, onClose, onDismissed, children }: SheetProps) {
+  const styles = useStyles(makeStyles);
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
 
@@ -73,7 +74,7 @@ export function Sheet({ visible, onClose, onDismissed, children }: SheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: colors.overlayBackdrop,
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
     maxHeight: '84%',
     backgroundColor: colors.bgSurfaceSolid,
     borderRadius: radius.lg,
-    boxShadow: shadows.lg,
+    boxShadow: colors.shadowLg,
   },
   scrollContent: {
     padding: spacing.xl,

@@ -4,7 +4,6 @@ import {
   ApiError,
   FoodLogEntry,
   FoodLogEntryCreate,
-  copyDay,
   createEntry,
   deleteEntry,
   listEntries,
@@ -184,20 +183,6 @@ export function useFoodLog(date: string, onNotify?: Notify) {
     [onNotify],
   );
 
-  const copyYesterday = useCallback(async () => {
-    try {
-      const copied = await copyDay(shiftDate(date, -1), date);
-      if (copied.length === 0) {
-        onNotify?.('info', 'Nothing was logged the day before.');
-        return;
-      }
-      reload();
-      onNotify?.('success', `Copied ${copied.length} item${copied.length === 1 ? '' : 's'} from the day before.`);
-    } catch (err) {
-      onNotify?.('info', `Not copied: ${describeError(err)}`);
-    }
-  }, [date, onNotify, reload]);
-
   const addScanned = useCallback(
     async (time: string, product: ScannedProduct) => {
       const created = await create([
@@ -251,7 +236,6 @@ export function useFoodLog(date: string, onNotify?: Notify) {
     addEntry,
     changeEntry,
     removeEntry,
-    copyYesterday,
     addScanned,
     addPhotoItems,
     saveCustom,

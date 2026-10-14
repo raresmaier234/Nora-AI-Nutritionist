@@ -6,7 +6,7 @@ import { WhenPicker } from '@/components/log/when-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { colors, fontFamily, spacing, trackWide } from '@/theme';
+import { Palette, fontFamily, spacing, trackWide, useStyles } from '@/theme';
 import { CustomFoodForm } from '@/features/food/hooks/use-food-log';
 
 type CustomFoodPanelProps = {
@@ -24,6 +24,7 @@ const NUMERIC_FIELDS: Array<{ key: keyof CustomFoodForm; label: string }> = [
 ];
 
 export function CustomFoodPanel({ time, onTime, onSave }: CustomFoodPanelProps) {
+  const styles = useStyles(makeStyles);
   const [form, setForm] = useState<CustomFoodForm>({ name: '', amount: 100, unit: 'g', kcal: '', protein: '', carbs: '', fat: '' });
   const set = (k: keyof CustomFoodForm, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
   const valid = form.name.trim().length > 0 && Number(form.kcal) > 0;
@@ -61,7 +62,7 @@ export function CustomFoodPanel({ time, onTime, onSave }: CustomFoodPanelProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   nameInput: { marginBottom: spacing.md + 2 },
   servingWrap: { marginBottom: spacing.md + 2 },
   fieldGrid: {

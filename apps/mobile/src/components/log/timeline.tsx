@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FoodIcon } from '@/components/log/food-icon';
 import { PlusIcon } from '@/components/log/icons';
-import { colors, fontFamily, fontSize, radius, shadows, spacing, trackWide } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, trackWide, useColors, useStyles } from '@/theme';
 import { Entry, entryMacros } from '@/features/food/data/mock-data';
 import { fmtDur, fromMin, groupMoments, nowHHMM, toMin } from '@/features/food/time';
 
@@ -25,6 +25,8 @@ type TimelineProps = {
  * from LogPageV3.jsx's timeline block.
  */
 export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelineProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [showNight, setShowNight] = useState(false);
   // Re-render each minute so the now line and "last ate" stay current.
   const [, setTick] = useState(0);
@@ -181,7 +183,7 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
 
 const num = { fontVariant: ['tabular-nums' as const] };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.trackEmpty,
   },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: radius.pill },
-  tabOn: { backgroundColor: colors.bgSurfaceSolid, boxShadow: shadows.sm },
+  tabOn: { backgroundColor: colors.bgSurfaceSolid, boxShadow: colors.shadowSm },
   tabLabel: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textSecondary },
   tabLabelOn: { color: colors.textPrimary },
   tabRange: { fontFamily: fontFamily.medium, fontSize: fontSize.nano, color: colors.textTertiary, ...num },
@@ -220,12 +222,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    boxShadow: shadows.sm,
+    boxShadow: colors.shadowSm,
     overflow: 'hidden',
   },
   hour: { flexDirection: 'row' },
   hourDivider: { borderTopWidth: 1, borderTopColor: colors.borderSubtle },
-  nowHour: { backgroundColor: 'rgba(99,102,241,0.04)' },
+  nowHour: { backgroundColor: colors.brandWash },
   hourCol: { width: 64, flexShrink: 0, paddingTop: 15, paddingBottom: 10, paddingLeft: spacing.lg },
   hourLabel: { fontFamily: fontFamily.bold, fontSize: 12, color: colors.textSecondary, ...num },
   hourFuture: { color: colors.textTertiary },
@@ -271,7 +273,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 11,
     borderRadius: radius.pill,
-    backgroundColor: colors.brandPrimary,
+    backgroundColor: colors.brandFill,
   },
   nowPillText: { fontFamily: fontFamily.bold, fontSize: fontSize.micro, color: colors.white, ...num },
   addAt: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14 },

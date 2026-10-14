@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import { colors, fontFamily } from '@/theme';
-import { FoodTint, GENERIC_FOOD_ICON, foodIllustration } from '@/features/food/food-icons';
+import { Palette, fontFamily, useColors, useStyles } from '@/theme';
+import { FoodTint, GENERIC_FOOD_ICON, foodIllustration, tintForIcon } from '@/features/food/food-icons';
+import { useFoodIconOverride } from '@/features/food/icon-overrides';
 
 /**
  * Food → colorful illustrated icon (Noto Emoji CDN) inside a softly tinted rounded container.
@@ -13,12 +14,12 @@ import { FoodTint, GENERIC_FOOD_ICON, foodIllustration } from '@/features/food/f
 
 export { foodIllustration };
 
-const TINT_BG: Record<FoodTint, string> = {
+const tintBg = (colors: Palette): Record<FoodTint, string> => ({
   indigo: colors.chipIndigoTint,
   green: colors.chipGreenTint,
   amber: colors.chipAmberTint,
-  neutral: colors.slate100,
-};
+  neutral: colors.surfaceMuted,
+});
 
 // Some Noto files (🍴 the generic icon, 🍩, 🍨, 🧈, …) are Illustrator exports with a
 // `<!DOCTYPE … [ <!ENTITY …> ]>` block, which react-native-svg's parser rejects. The drawing
@@ -70,32 +71,53 @@ type FoodIconProps = {
 };
 
 export function FoodIcon({ name = '', category, size = 48, generic }: FoodIconProps) {
+  // An icon the user picked for this food wins over the automatic match.
+  const picked = useFoodIconOverride(name);
   const ic = generic
     ? { src: GENERIC_FOOD_ICON, tint: 'indigo' as const, fallback: GENERIC_FOOD_ICON }
-    : foodIllustration(name, category);
+    : picked
+      ? { src: picked, tint: tintForIcon(picked), fallback: GENERIC_FOOD_ICON }
+      : foodIllustration(name, category);
+  return <FoodIconImage src={ic.src} fallback={ic.fallback} tint={ic.tint} size={size} initial={name} />;
+}
+
+type FoodIconImageProps = {
+  src: string;
+  tint: FoodTint;
+  size: number;
+  /** Tried when `src` can't be loaded; defaults to the generic icon. */
+  fallback?: string;
+  /** Text whose first letter shows if no image loads. */
+  initial?: string;
+};
+
+/** One icon image in its tinted tile — FoodIcon's renderer, also used by the icon picker grid. */
+export function FoodIconImage({ src, tint, size, fallback = GENERIC_FOOD_ICON, initial: initialText = '' }: FoodIconImageProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const glyphSize = size * 0.52;
-  const [svg, setSvg] = useState<{ src: string; xml: string | null; failed: boolean }>({ src: ic.src, xml: null, failed: false });
+  const [svg, setSvg] = useState<{ src: string; xml: string | null; failed: boolean }>({ src, xml: null, failed: false });
 
   useEffect(() => {
     let cancelled = false;
-    loadFirst(ic.src === ic.fallback ? [ic.src] : [ic.src, ic.fallback]).then((xml) => {
-      if (!cancelled) setSvg({ src: ic.src, xml, failed: xml === null });
+    loadFirst(src === fallback ? [src] : [src, fallback]).then((xml) => {
+      if (!cancelled) setSvg({ src, xml, failed: xml === null });
     });
     return () => {
       cancelled = true;
     };
-  }, [ic.src, ic.fallback]);
+  }, [src, fallback]);
 
-  const current = svg.src === ic.src ? svg : { xml: null, failed: false };
+  const current = svg.src === src ? svg : { xml: null, failed: false };
   // The icon is decoration: if nothing loads (offline, CDN down), show the food's initial
   // rather than an error.
-  const initial = <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{name.trim().charAt(0).toUpperCase()}</Text>;
+  const initial = <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initialText.trim().charAt(0).toUpperCase()}</Text>;
 
   return (
     <View
       style={[
         styles.container,
-        { width: size, height: size, borderRadius: size * 0.42, backgroundColor: TINT_BG[ic.tint] },
+        { width: size, height: size, borderRadius: size * 0.42, backgroundColor: tintBg(colors)[tint] },
       ]}>
       {current.failed ? (
         initial
@@ -114,7 +136,7 @@ export function FoodIcon({ name = '', category, size = 48, generic }: FoodIconPr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',

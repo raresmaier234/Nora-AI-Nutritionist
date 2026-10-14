@@ -1,15 +1,17 @@
 import { StyleProp, StyleSheet, TextInput, TextInputProps, TextStyle } from 'react-native';
 
-import { colors, fontFamily, fontSize, radius } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, useColors, useStyles } from '@/theme';
 
 type FieldProps = TextInputProps & { style?: StyleProp<TextStyle> };
 
 /** Bordered text/number input, matching the inputs used throughout LogPageV3.jsx's sheets. */
 export function Field({ style, ...rest }: FieldProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return <TextInput placeholderTextColor={colors.textTertiary} style={[styles.field, style]} {...rest} />;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   field: {
     borderRadius: radius.md,
     borderWidth: 1,

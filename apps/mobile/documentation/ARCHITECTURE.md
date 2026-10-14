@@ -74,13 +74,13 @@ This is where business logic, feature-specific hooks, feature-specific types, an
 
 A feature folder grows its own `components/`, `hooks/`, `services/`, `types/`, `utils/` subfolders only as needed — `food/` currently only needs `data/` and `hooks/`.
 
-## `src/constants/` — design tokens
+## `src/theme/` — design tokens and night mode
 
-`src/constants/log-theme.ts` is the single source of design tokens: colors, gradients, shadows, radii, spacing, font family/size, motion durations. It's the code form of [`documentation/DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) — token names were corrected during implementation to match what they actually render (the design doc's §14.1 flags the original mockup's tokens were misnamed, e.g. `--lime-500` actually held indigo).
+`src/theme/` is the single source of design tokens: colors, gradients, shadows, radii, spacing, font family/size, motion durations — the code form of [`documentation/DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md). Token names were corrected during implementation to match what they actually render (the design doc's §14.1 flags the original mockup's tokens were misnamed, e.g. `--lime-500` actually held indigo).
 
-It's named `log-theme` rather than a generic `theme` because, right now, the Log screen *is* the app — there's only one design system in use. If a second feature ships with materially different visual needs, split shared tokens (color primitives, type scale, spacing scale) out into a genuinely feature-agnostic module at that point rather than in advance.
+Colors come in a light and a dark palette with the same keys (`src/theme/colors.ts`). There is deliberately no static `colors` export: a component reads the active palette with `useColors()`, or defines `const makeStyles = (colors: Palette) => StyleSheet.create({...})` at module level and calls `const styles = useStyles(makeStyles)`. Food-specific colors (nutrient families, macro accents) follow the same pattern in `src/features/food/theme.ts` via `useFoodColors()`.
 
-There's no dark-mode variant yet — the design system is a fixed light palette. `src/hooks/use-color-scheme.ts`/`.web.ts` (a hydration-safe wrapper around React Native's `useColorScheme`) is kept in place for when that's needed, even though nothing currently imports it.
+Night mode follows the phone unless the user picks Light or Dark (the Appearance button on the Log screen). The choice is saved with AsyncStorage and applied through `Appearance.setColorScheme`, so React Native's `useColorScheme()` and native UI (tab bar, keyboard, status bar) follow it too — see `src/theme/use-theme.ts`. The design system only defines a light v2 palette; the dark one is ours, from the same slate + indigo family.
 
 ## `src/hooks/`
 

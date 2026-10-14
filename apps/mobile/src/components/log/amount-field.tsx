@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UnitPickerSheet } from '@/components/log/unit-picker-sheet';
 import { Field } from '@/components/ui/field';
-import { colors, fontFamily, fontSize, radius } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, useStyles } from '@/theme';
 
 type AmountFieldProps = {
   amount: number | string;
@@ -13,6 +13,7 @@ type AmountFieldProps = {
 
 /** Amount number input + unit selector. The unit selector opens a UnitPickerSheet (mini sheet). */
 export function AmountField({ amount, unit, onChange }: AmountFieldProps) {
+  const styles = useStyles(makeStyles);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
@@ -40,7 +41,7 @@ export function AmountField({ amount, unit, onChange }: AmountFieldProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 8,

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppearanceButton } from '@/components/common/appearance-button';
 import { CalorieSummaryCard } from '@/components/log/calorie-summary-card';
 import { DateNavigator } from '@/components/log/date-navigator';
 import { LogFoodBar } from '@/components/log/log-food-bar';
@@ -24,7 +25,7 @@ import { Timeline } from '@/components/log/timeline';
 import { FullScreen, FullScreenLayer } from '@/components/ui/full-screen';
 import { Sheet } from '@/components/ui/sheet';
 import { ToastOverlay, useToastHost } from '@/components/ui/toast';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 import { Entry, Food, Macro, RECIPES, Recipe, TARGETS, entryMacros, toGrams } from '@/features/food/data/mock-data';
 import { shiftDate, toDateString, useFoodLog } from '@/features/food/hooks/use-food-log';
 import { recipeFood } from '@/features/food/recipes';
@@ -42,6 +43,8 @@ const minus = (a: Macro, b: Macro): Macro => ({
 });
 
 export default function LogScreen() {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [fontsLoaded] = useFonts({
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
@@ -171,6 +174,9 @@ export default function LogScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + LOG_BAR_CLEARANCE }]}
         showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <AppearanceButton />
+        </View>
         <DateNavigator dayOffset={dayOffset} onChange={setDayOffset} anchorDate={today} />
 
         <CalorieSummaryCard
@@ -178,7 +184,6 @@ export default function LogScreen() {
           remaining={foodLog.remaining}
           pct={foodLog.pct}
           over={foodLog.over}
-          onCopyYesterday={foodLog.copyYesterday}
         />
 
         {foodLog.loadState === 'loading' ? (
@@ -368,7 +373,7 @@ export default function LogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bgApp,
@@ -383,6 +388,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     gap: spacing.xl - 2,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: -spacing.sm,
   },
   loadError: {
     alignItems: 'center',

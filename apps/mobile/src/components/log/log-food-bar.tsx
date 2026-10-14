@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PlusIcon, SearchIcon } from '@/components/log/icons';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 
 type LogFoodBarProps = { onPress: () => void; bottomInset: number };
 
@@ -11,9 +11,11 @@ type LogFoodBarProps = { onPress: () => void; bottomInset: number };
  * single entry point to full-screen search (photo, barcode, recipes and custom live inside it).
  */
 export function LogFoodBar({ onPress, bottomInset }: LogFoodBarProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: bottomInset + spacing.sm }]}>
-      <LinearGradient pointerEvents="none" colors={['rgba(248,250,252,0)', colors.bgApp]} locations={[0, 0.42]} style={StyleSheet.absoluteFill} />
+      <LinearGradient pointerEvents="none" colors={[`${colors.bgApp}00`, colors.bgApp]} locations={[0, 0.42]} style={StyleSheet.absoluteFill} />
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
@@ -32,7 +34,7 @@ export function LogFoodBar({ onPress, bottomInset }: LogFoodBarProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 18, paddingHorizontal: spacing.xl },
   bar: {
     minHeight: 60,
@@ -52,5 +54,5 @@ const styles = StyleSheet.create({
   text: { flex: 1, minWidth: 0 },
   title: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
   subtitle: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: 2 },
-  plus: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
+  plus: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandFill, alignItems: 'center', justifyContent: 'center' },
 });

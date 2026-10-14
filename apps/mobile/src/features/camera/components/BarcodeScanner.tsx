@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CameraView } from '@/features/camera/components/CameraView';
 import { FOOD_BARCODE_TYPES, type BarcodeScanResult } from '@/features/camera/types/camera';
-import { colors, fontFamily, fontSize, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, spacing, useStyles } from '@/theme';
 
 type BarcodeScannerProps = {
   onBarcodeScanned: (result: BarcodeScanResult) => void;
@@ -13,6 +13,7 @@ type BarcodeScannerProps = {
 
 /** Full-screen barcode scanner. Fires `onBarcodeScanned` at most once per mount. */
 export function BarcodeScanner({ onBarcodeScanned, onClose }: BarcodeScannerProps) {
+  const styles = useStyles(makeStyles);
   const hasScannedRef = useRef(false);
 
   const handleScanned = useCallback(
@@ -43,7 +44,7 @@ export function BarcodeScanner({ onBarcodeScanned, onClose }: BarcodeScannerProp
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

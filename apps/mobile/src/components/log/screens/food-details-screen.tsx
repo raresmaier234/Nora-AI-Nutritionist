@@ -6,21 +6,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Stop, LinearGradient as SvgGradient } from 'react-native-svg';
 
 import { FoodIcon, foodIllustration } from '@/components/log/food-icon';
+import { FoodIconPicker } from '@/components/log/food-icon-picker';
 import type { FoodTint } from '@/features/food/food-icons';
-import { ArrowRightIcon, ChevronDownIcon, MinusIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
+import { ArrowRightIcon, ChevronDownIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
 import { WhenPicker } from '@/components/log/when-picker';
-import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, shadows, spacing, trackTight, trackWide } from '@/theme';
+import { Palette, Scheme, fontFamily, fontSize, gradientAngle, motion, radius, spacing, trackTight, trackWide, useColors, useStyles, useTheme } from '@/theme';
+import { NutrientFamily, foodColors, useFoodColors } from '@/features/food/theme';
 import { Food, Macro, TARGETS } from '@/features/food/data/mock-data';
-import { NutrientFamily, nutrientFamily as nu, overInk } from '@/features/food/theme';
 
 /** Grams, then 100 g, then the food's own servings: [label, grams]. */
 export type Serving = [string, number];
 
-const HERO: Record<FoodTint, [string, string]> = {
-  amber: ['#FFF4E4', '#FFDDB0'],
-  green: ['#EAF9F0', '#BFEFD2'],
-  indigo: ['#EFF0FF', '#D3D8FF'],
-  neutral: ['#F3F5F9', '#DDE3EC'],
+/** Hero wash behind the food's icon, and the icon tile's glow, per tint. */
+const HERO: Record<Scheme, Record<FoodTint, [string, string]>> = {
+  light: {
+    amber: ['#FFF4E4', '#FFDDB0'],
+    green: ['#EAF9F0', '#BFEFD2'],
+    indigo: ['#EFF0FF', '#D3D8FF'],
+    neutral: ['#F3F5F9', '#DDE3EC'],
+  },
+  dark: {
+    amber: ['rgba(227,188,107,0.13)', 'rgba(0,0,0,0.35)'],
+    green: ['rgba(127,209,160,0.12)', 'rgba(0,0,0,0.35)'],
+    indigo: ['rgba(155,164,242,0.13)', 'rgba(0,0,0,0.35)'],
+    neutral: ['rgba(123,132,148,0.12)', 'rgba(0,0,0,0.35)'],
+  },
 };
 const ZERO: Macro = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
@@ -60,6 +70,10 @@ type FoodDetailsScreenProps = {
  * they are not rendered.
  */
 export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams, servings: extra, consumed, onClose, onAdd, onSave, onDelete }: FoodDetailsScreenProps) {
+  const { scheme } = useTheme();
+  const { nu } = useFoodColors();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const servings = useMemo<Serving[]>(() => [['g', 1], ['100 g', 100], ...(extra ?? [])], [extra]);
   const startIdx = initialGrams || !extra?.length ? 0 : 2;
@@ -67,9 +81,10 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const [qty, setQty] = useState<string>(String(startIdx === 0 ? Math.round(initialGrams ?? 100) : 1));
   const [time, setTime] = useState(initialTime);
   const [scrolled, setScrolled] = useState(false);
+  const [pickingIcon, setPickingIcon] = useState(false);
 
   const art = foodIllustration(food.name);
-  const hero = HERO[art.tint];
+  const hero = HERO[scheme][art.tint];
   const [servingLabel, servingGrams] = servings[servingIdx];
   const isGrams = servingIdx === 0;
   const step = isGrams ? 10 : 0.5;
@@ -132,11 +147,18 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 220 + insets.bottom }}>
         {/* Hero — compact: small icon left of the title so the details stay in view */}
-        <LinearGradient colors={[hero[0], colors.white]} style={[styles.hero, { paddingTop: 64 + insets.top }]}>
+        <LinearGradient colors={[hero[0], colors.bgSurfaceSolid]} style={[styles.hero, { paddingTop: 64 + insets.top }]}>
           <View style={styles.heroRow}>
-            <View style={[styles.heroIcon, { boxShadow: `0px 8px 20px ${hero[1]}` }]}>
+            <Pressable
+              onPress={() => setPickingIcon(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Change icon for ${food.name}`}
+              style={[styles.heroIcon, { boxShadow: `0px 8px 20px ${hero[1]}` }]}>
               <FoodIcon name={food.name} size={56} />
-            </View>
+              <View style={styles.heroEdit}>
+                <PencilIcon size={11} color={colors.white} strokeWidth={2.6} />
+              </View>
+            </Pressable>
             <View style={styles.heroText}>
               <Text style={styles.heroName}>{food.name}</Text>
               <Text style={styles.heroQty}>{qtyLabel}</Text>
@@ -210,7 +232,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
                     style={[styles.chip, on ? styles.chipOn : styles.chipOff]}>
-                    {on ? <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
+                    {on ? <LinearGradient colors={colors.gradPrimary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
                     <Text style={[styles.chipText, on && styles.chipTextOn]}>
                       {label}
                       {i > 1 ? <Text style={[styles.chipGrams, on && styles.chipTextOn]}> · {g} g</Text> : null}
@@ -222,7 +244,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
             <Text style={styles.qtyLabel}>Quantity</Text>
             <View style={styles.stepper}>
               <Pressable onPress={() => stepQty(-1)} accessibilityRole="button" accessibilityLabel="Decrease" style={[styles.stepButton, styles.stepMinus]}>
-                <MinusIcon size={20} color={nu.protein.ink} />
+                <MinusIcon size={20} color={colors.textPrimary} />
               </Pressable>
               <View style={styles.qtyField}>
                 <TextInput
@@ -235,7 +257,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
                 <Text style={styles.qtyUnit}>{isGrams ? 'g' : unitIsGrams ? `× ${servingLabel}` : unitName}</Text>
               </View>
               <Pressable onPress={() => stepQty(1)} accessibilityRole="button" accessibilityLabel="Increase" style={[styles.stepButton, styles.stepPlus]}>
-                <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={colors.gradPrimary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
                 <PlusIcon size={20} color={colors.white} strokeWidth={2.6} />
               </Pressable>
             </View>
@@ -259,13 +281,15 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
         </View>
       </ScrollView>
 
+      <FoodIconPicker visible={pickingIcon} name={food.name} onClose={() => setPickingIcon(false)} />
+
       {/* Sticky action area — always reachable, clears the home indicator */}
       <View style={[styles.actions, { paddingBottom: 14 + insets.bottom }]}>
         <WhenPicker value={time} onChange={setTime} label="Eaten at" compact />
         {mode === 'edit' ? (
           <View style={styles.actionRow}>
             <Pressable onPress={onDelete} accessibilityRole="button" accessibilityLabel="Delete from log" style={styles.delete}>
-              <TrashIcon size={20} color={overInk} />
+              <TrashIcon size={20} color={colors.errorText} />
             </Pressable>
             <PrimaryAction label={`Save changes · ${kcal} kcal`} disabled={!grams} onPress={() => onSave?.(result())} />
           </View>
@@ -278,9 +302,11 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
 }
 
 function PrimaryAction({ label, badge, disabled, onPress }: { label: string; badge?: string; disabled?: boolean; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled }} style={[styles.primary, disabled && styles.disabled]}>
-      <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={colors.gradConfirm} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
       <Text style={styles.primaryText}>{label}</Text>
       {badge ? (
         <View style={styles.badge}>
@@ -302,6 +328,8 @@ function Fill({ pct, color, opacity = 1, delay = false }: { pct: number; color: 
 }
 
 function CalorieRing({ kcal, beforePct, addPct }: { kcal: number; beforePct: number; addPct: number }) {
+  const { nu } = useFoodColors();
+  const styles = useStyles(makeStyles);
   const size = 124;
   const stroke = 12;
   const r = (size - stroke) / 2;
@@ -357,6 +385,8 @@ function CalorieRing({ kcal, beforePct, addPct }: { kcal: number; beforePct: num
 
 /** Daily target bar: full width = daily goal. Faded = eaten today, solid = this food. */
 function MacroTargetBar({ family, label, add, before, goal }: { family: NutrientFamily; label: string; add: number; before: number; goal: number }) {
+  const { nu } = useFoodColors();
+  const styles = useStyles(makeStyles);
   const b = Math.max(0, before);
   const a = Math.max(0, add);
   const total = b + a;
@@ -402,6 +432,8 @@ function MacroTargetBar({ family, label, add, before, goal }: { family: Nutrient
  * tick. Over target, the scale stretches to the new total so the tick moves left.
  */
 function ImpactBar({ family, label, unit, eaten, add, target }: { family: NutrientFamily; label: string; unit: string; eaten: number; add: number; target: number }) {
+  const { nu } = useFoodColors();
+  const styles = useStyles(makeStyles);
   const total = eaten + add;
   const scale = Math.max(target, total) || 1;
   const over = total - target;
@@ -440,7 +472,7 @@ function ImpactBar({ family, label, unit, eaten, add, target }: { family: Nutrie
 
 const num = { fontVariant: ['tabular-nums' as const] };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bgSurfaceSolid },
   topBar: {
     position: 'absolute',
@@ -456,13 +488,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'transparent',
   },
-  topBarSolid: { backgroundColor: 'rgba(255,255,255,0.96)', borderBottomColor: colors.borderSubtle },
+  topBarSolid: { backgroundColor: colors.bgSurface, borderBottomColor: colors.borderSubtle },
   close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  closeRaised: { backgroundColor: 'rgba(255,255,255,0.9)', boxShadow: shadows.sm },
+  closeRaised: { backgroundColor: colors.bgSurface, boxShadow: colors.shadowSm },
   topTitle: { flex: 1, textAlign: 'center', fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
   hero: { paddingHorizontal: spacing.xl, paddingBottom: 46 },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  heroIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
+  heroIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.bgSurface, alignItems: 'center', justifyContent: 'center' },
+  heroEdit: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.bgSurfaceSolid,
+    backgroundColor: colors.brandFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroText: { flex: 1, minWidth: 0 },
   heroName: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, lineHeight: 25, color: colors.textPrimary, letterSpacing: trackTight(fontSize.h1) },
   heroQty: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 6 },
@@ -472,7 +517,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: spacing.xl,
     borderWidth: 1,
-    borderColor: '#EEF1F5',
+    borderColor: colors.borderSubtle,
     boxShadow: '0px 12px 32px rgba(17,24,39,0.08)',
   },
   summaryTop: { flexDirection: 'row', alignItems: 'center', gap: 18 },
@@ -480,23 +525,23 @@ const styles = StyleSheet.create({
   overline: { fontFamily: fontFamily.bold, fontSize: fontSize.micro, color: colors.textTertiary, letterSpacing: trackWide(fontSize.micro), textTransform: 'uppercase' },
   dayRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm },
   dayBefore: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textTertiary, ...num },
-  dayAfter: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, color: nu.kcal.ink, letterSpacing: trackTight(fontSize.h1), ...num },
+  dayAfter: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, color: foodColors[scheme].nu.kcal.ink, letterSpacing: trackTight(fontSize.h1), ...num },
   dayOf: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textSecondary, marginTop: 6 },
   dayLeft: { fontFamily: fontFamily.bold, color: colors.textPrimary },
-  dayOver: { fontFamily: fontFamily.extrabold, color: overInk },
-  splitBar: { flexDirection: 'row', height: 8, borderRadius: radius.pill, overflow: 'hidden', gap: 2, marginTop: 14, marginBottom: spacing.sm, backgroundColor: nu.other.tint },
+  dayOver: { fontFamily: fontFamily.extrabold, color: colors.errorText },
+  splitBar: { flexDirection: 'row', height: 8, borderRadius: radius.pill, overflow: 'hidden', gap: 2, marginTop: 14, marginBottom: spacing.sm, backgroundColor: foodColors[scheme].nu.other.tint },
   splitLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   splitText: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.textTertiary },
-  rule: { height: 1, backgroundColor: nu.other.tint, marginTop: 20, marginBottom: 18 },
+  rule: { height: 1, backgroundColor: foodColors[scheme].nu.other.tint, marginTop: 20, marginBottom: 18 },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: spacing.lg },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendSwatch: { width: 16, height: 8, borderRadius: radius.pill, backgroundColor: nu.other.base },
+  legendSwatch: { width: 16, height: 8, borderRadius: radius.pill, backgroundColor: foodColors[scheme].nu.other.base },
   legendText: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.textTertiary },
   legendEnd: { marginLeft: 'auto' },
   macroBars: { gap: spacing.lg },
   ringCenter: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   ringKcal: { fontFamily: fontFamily.extrabold, fontSize: 32, color: colors.textPrimary, letterSpacing: trackTight(32), ...num },
-  ringUnit: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: nu.kcal.ink, marginTop: 4 },
+  ringUnit: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: foodColors[scheme].nu.kcal.ink, marginTop: 4 },
   mbHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.sm },
   mbLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { width: 10, height: 10, borderRadius: 5 },
@@ -508,20 +553,20 @@ const styles = StyleSheet.create({
   mbFootText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, ...num },
   strong: { fontFamily: fontFamily.extrabold, color: colors.textPrimary },
   mbLeft: { fontFamily: fontFamily.bold, color: colors.textSecondary },
-  mbOver: { fontFamily: fontFamily.extrabold, color: overInk },
-  qtyCard: { backgroundColor: nu.protein.tint, borderRadius: 26, padding: 18 },
-  qtyLabel: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: nu.protein.ink, marginBottom: spacing.md },
+  mbOver: { fontFamily: fontFamily.extrabold, color: colors.errorText },
+  qtyCard: { backgroundColor: colors.bgSurfaceSolid, borderRadius: 26, padding: 18, borderWidth: 1, borderColor: colors.borderSubtle },
+  qtyLabel: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textSecondary, marginBottom: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: 18 },
   chip: { minHeight: 44, paddingHorizontal: spacing.lg, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   chipOn: { boxShadow: '0px 6px 14px rgba(99,102,241,0.28)' },
-  chipOff: { borderWidth: 1, borderColor: 'rgba(99,102,241,0.18)', backgroundColor: colors.bgSurfaceSolid },
+  chipOff: { borderWidth: 1, borderColor: colors.borderSubtle, backgroundColor: colors.surfaceMuted },
   chipText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textPrimary },
   chipTextOn: { color: colors.white },
   chipGrams: { fontFamily: fontFamily.medium, color: colors.textTertiary },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   stepButton: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
-  stepMinus: { backgroundColor: colors.bgSurfaceSolid, boxShadow: shadows.sm },
-  stepPlus: { boxShadow: shadows.glowPrimary },
+  stepMinus: { backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderSubtle },
+  stepPlus: { boxShadow: colors.glowPrimary },
   qtyField: {
     flex: 1,
     height: 56,
@@ -530,8 +575,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderRadius: 18,
-    backgroundColor: colors.bgSurfaceSolid,
-    boxShadow: shadows.sm,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
   },
   qtyInput: { minWidth: 56, maxWidth: 110, textAlign: 'right', fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, color: colors.textPrimary, padding: 0, ...num },
   qtyUnit: { fontFamily: fontFamily.semibold, fontSize: fontSize.body, color: colors.textTertiary },
@@ -541,13 +587,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: colors.surfaceMuted,
     fontFamily: fontFamily.medium,
     fontSize: fontSize.small,
     color: colors.textSecondary,
   },
-  forGrams: { fontFamily: fontFamily.extrabold, color: nu.protein.ink },
-  impactCard: { backgroundColor: colors.bgSurfaceSolid, borderRadius: 26, paddingTop: 18, paddingHorizontal: 18, paddingBottom: spacing.xl, borderWidth: 1, borderColor: '#EEF1F5' },
+  forGrams: { fontFamily: fontFamily.extrabold, color: colors.textPrimary },
+  impactCard: { backgroundColor: colors.bgSurfaceSolid, borderRadius: 26, paddingTop: 18, paddingHorizontal: 18, paddingBottom: spacing.xl, borderWidth: 1, borderColor: colors.borderSubtle },
   impactTitle: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h2, color: colors.textPrimary, marginBottom: 18 },
   impactBars: { gap: 22 },
   ibHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 4 },
@@ -567,12 +613,12 @@ const styles = StyleSheet.create({
     zIndex: 3,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.xl,
-    backgroundColor: 'rgba(255,255,255,0.97)',
+    backgroundColor: colors.bgSurface,
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
   },
   actionRow: { flexDirection: 'row', gap: 10 },
-  delete: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FEECEC', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  delete: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.dangerTint, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   primary: {
     flex: 1,
     height: 56,
@@ -582,7 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    boxShadow: shadows.glowPrimary,
+    boxShadow: colors.glowConfirm,
   },
   disabled: { opacity: 0.5 },
   primaryText: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.white, ...num },

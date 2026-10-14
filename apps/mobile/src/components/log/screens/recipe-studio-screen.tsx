@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FoodIcon } from '@/components/log/food-icon';
+import { FoodIconPicker } from '@/components/log/food-icon-picker';
 import {
   AlertIcon,
   CameraIcon,
@@ -20,9 +21,9 @@ import {
 import { UnitPickerSheet } from '@/components/log/unit-picker-sheet';
 import { WhenPicker } from '@/components/log/when-picker';
 import { StudioStart } from '@/components/log/panels/recipes-panel';
-import { colors, fontFamily, fontSize, gradientAngle, gradients, radius, shadows, spacing, trackTight, trackWide } from '@/theme';
+import { Palette, Scheme, fontFamily, fontSize, gradientAngle, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
+import { useFoodColors } from '@/features/food/theme';
 import { FOOD_DB, FOOD_SERVINGS, Food, Recipe, RecipeItem } from '@/features/food/data/mock-data';
-import { nutrientFamily as nu, overInk } from '@/features/food/theme';
 import {
   IMPORT_LINK,
   IMPORT_PHOTO,
@@ -63,6 +64,9 @@ type RecipeStudioScreenProps = {
  * from the ingredients; a recipe can't be saved while an imported ingredient is unmatched.
  */
 export function RecipeStudioScreen({ initial, start, time, onTimeChange, onClose, onSave, onLog, onDetails }: RecipeStudioScreenProps) {
+  const { nu } = useFoodColors();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const editing = !!initial;
   const [name, setName] = useState(initial?.name ?? '');
@@ -319,7 +323,7 @@ export function RecipeStudioScreen({ initial, start, time, onTimeChange, onClose
           accessibilityRole="button"
           accessibilityState={{ disabled: !ready }}
           style={[styles.cta, ready ? styles.ctaOn : styles.ctaOff]}>
-          {ready ? <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
+          {ready ? <LinearGradient colors={colors.gradPrimary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
           <Text style={[styles.ctaText, !ready && styles.ctaTextOff]}>{ctaLabel}</Text>
         </Pressable>
       </View>
@@ -328,6 +332,7 @@ export function RecipeStudioScreen({ initial, start, time, onTimeChange, onClose
 }
 
 function Macro({ label, value, color }: { label: string; value: number; color: string }) {
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.flex}>
       <View style={styles.macroLabelRow}>
@@ -343,6 +348,8 @@ function Macro({ label, value, color }: { label: string; value: number; color: s
 }
 
 function Stepper({ value, onChange, step, min, suffix, label }: { value: number; onChange: (v: number) => void; step: number; min: number; suffix?: string; label: string }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const atMin = value <= min;
   return (
     <View style={styles.stepper} accessibilityRole="adjustable" accessibilityLabel={label}>
@@ -373,6 +380,8 @@ type Imported = { name: string; servings: number; items: RecipeItem[]; steps: st
 
 /** Photo / link import, mocked: a short "reading" sequence, then IMPORT_PHOTO or IMPORT_LINK. */
 function ImportCard({ start, onImported }: { start?: StudioStart; onImported: (r: Imported) => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [kind, setKind] = useState<'photo' | 'link' | null>(start === 'link' ? 'link' : start === 'photo' ? 'photo' : null);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState(0);
@@ -417,7 +426,7 @@ function ImportCard({ start, onImported }: { start?: StudioStart; onImported: (r
   );
   const bigButton = (label: string, sub: string, icon: ReactNode, primary: boolean) => (
     <Pressable onPress={() => run('photo')} accessibilityRole="button" style={[styles.bigButton, primary ? styles.bigPrimary : styles.bigSecondary]}>
-      {primary ? <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
+      {primary ? <LinearGradient colors={colors.gradPrimary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} /> : null}
       {icon}
       <View>
         <Text style={[styles.bigLabel, primary && styles.onBrand]}>{label}</Text>
@@ -489,7 +498,7 @@ function ImportCard({ start, onImported }: { start?: StudioStart; onImported: (r
                   disabled={!url.trim()}
                   accessibilityRole="button"
                   style={[styles.importButton, !url.trim() && styles.disabled]}>
-                  <LinearGradient colors={gradients.primary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={colors.gradPrimary} start={gradientAngle.start} end={gradientAngle.end} style={StyleSheet.absoluteFill} />
                   <Text style={styles.importButtonText}>Import</Text>
                 </Pressable>
               </View>
@@ -503,6 +512,8 @@ function ImportCard({ start, onImported }: { start?: StudioStart; onImported: (r
 }
 
 function FoodPicker({ exclude, placeholder, autoFocus, onPick }: { exclude: string[]; placeholder: string; autoFocus?: boolean; onPick: (f: Food) => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [q, setQ] = useState('');
   const query = q.trim().toLowerCase();
   const results = query ? FOOD_DB.filter((f) => !exclude.includes(f.id) && f.name.toLowerCase().includes(query)).slice(0, 6) : [];
@@ -550,8 +561,11 @@ function FoodPicker({ exclude, placeholder, autoFocus, onPick }: { exclude: stri
 }
 
 function IngredientRow({ it, exclude, onChange, onRemove }: { it: Item; exclude: string[]; onChange: (n: RecipeItem) => void; onRemove: () => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [matching, setMatching] = useState(false);
   const [pickingUnit, setPickingUnit] = useState(false);
+  const [pickingIcon, setPickingIcon] = useState(false);
   const f = recipeFoodById(it.id);
   const removeButton = (label: string) => (
     <Pressable onPress={onRemove} accessibilityRole="button" accessibilityLabel={`Remove ${label}`} style={styles.remove}>
@@ -597,7 +611,10 @@ function IngredientRow({ it, exclude, onChange, onRemove }: { it: Item; exclude:
   const low = it.confidence != null && it.confidence < 0.7;
   return (
     <View style={[styles.ingredient, styles.ingredientRow]}>
-      <FoodIcon name={f.name} size={42} />
+      <Pressable onPress={() => setPickingIcon(true)} accessibilityRole="button" accessibilityLabel={`Change icon for ${f.name}`}>
+        <FoodIcon name={f.name} size={42} />
+      </Pressable>
+      <FoodIconPicker visible={pickingIcon} name={f.name} onClose={() => setPickingIcon(false)} />
       <View style={styles.flex}>
         <View style={styles.ingredientTop}>
           <Text style={[styles.ingredientName, styles.flex]}>{f.name}</Text>
@@ -641,6 +658,8 @@ function IngredientRow({ it, exclude, onChange, onRemove }: { it: Item; exclude:
 }
 
 function Method({ steps, onChange }: { steps: string[]; onChange: (s: string[]) => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [open, setOpen] = useState(steps.length > 0);
   const [draft, setDraft] = useState('');
   // Imported steps arrive after mount; show them.
@@ -698,7 +717,7 @@ function Method({ steps, onChange }: { steps: string[]; onChange: (s: string[]) 
 
 const num = { fontVariant: ['tabular-nums' as const] };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bgApp },
   flex: { flex: 1, minWidth: 0 },
   pressed: { backgroundColor: colors.overlayPress },
@@ -730,8 +749,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: trackTight(fontSize.h1),
   },
-  nameInputErr: { borderBottomColor: colors.red500 },
-  errText: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: overInk, marginTop: spacing.sm },
+  nameInputErr: { borderBottomColor: colors.stateError },
+  errText: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.errorText, marginTop: spacing.sm },
   sourceChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -760,14 +779,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurfaceSolid,
   },
   importLinkText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textSecondary },
-  card: { backgroundColor: colors.bgSurfaceSolid, borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: radius.lg, boxShadow: shadows.sm, overflow: 'hidden' },
+  card: { backgroundColor: colors.bgSurfaceSolid, borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: radius.lg, boxShadow: colors.shadowSm, overflow: 'hidden' },
   cardPad: { padding: 18 },
   nutHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: spacing.lg },
   overline: { fontFamily: fontFamily.bold, fontSize: fontSize.micro, color: colors.textTertiary, letterSpacing: trackWide(fontSize.micro), textTransform: 'uppercase' },
   overlineGap: { marginBottom: 14 },
   segment: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: radius.pill, backgroundColor: colors.trackEmpty },
   segmentTab: { minHeight: 34, paddingHorizontal: spacing.md, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
-  segmentOn: { backgroundColor: colors.bgSurfaceSolid, boxShadow: shadows.sm },
+  segmentOn: { backgroundColor: colors.bgSurfaceSolid, boxShadow: colors.shadowSm },
   segmentText: { fontFamily: fontFamily.bold, fontSize: fontSize.micro, color: colors.textSecondary },
   segmentTextOn: { color: colors.textPrimary },
   kcalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
@@ -802,18 +821,18 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: fontFamily.bold, fontSize: fontSize.h2, color: colors.textPrimary },
   sectionCount: { fontFamily: fontFamily.semibold, color: colors.textTertiary },
   sectionKcal: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textSecondary, ...num },
-  banner: { flexDirection: 'row', gap: 10, paddingVertical: spacing.md, paddingHorizontal: 14, marginBottom: 10, borderRadius: radius.md, backgroundColor: 'rgba(245,158,11,0.10)' },
+  banner: { flexDirection: 'row', gap: 10, paddingVertical: spacing.md, paddingHorizontal: 14, marginBottom: 10, borderRadius: radius.md, backgroundColor: colors.warningTint },
   bannerText: { flex: 1, fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textPrimary, lineHeight: 18 },
   ingredient: { paddingVertical: 14, paddingLeft: spacing.lg, paddingRight: 4, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
   ingredientRow: { flexDirection: 'row', gap: spacing.md },
-  unmatched: { backgroundColor: 'rgba(245,158,11,0.06)' },
+  unmatched: { backgroundColor: colors.warningTint },
   unmatchedIcon: {
     width: 42,
     height: 42,
     borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: 'rgba(180,83,9,0.45)',
+    borderColor: `${colors.amberText}73`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -826,7 +845,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(180,83,9,0.35)',
+    borderColor: `${colors.amberText}59`,
     backgroundColor: colors.bgSurfaceSolid,
   },
   matchButtonText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.amberText },
@@ -874,24 +893,24 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 14,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(99,102,241,0.06)',
+    backgroundColor: colors.brandWash,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: 'rgba(99,102,241,0.35)',
+    borderColor: `${colors.brandPrimary}59`,
   },
   pickerInput: { flex: 1, minWidth: 0, fontFamily: fontFamily.semibold, fontSize: fontSize.body, color: colors.textPrimary, padding: 0 },
   pickerResults: { marginTop: 6 },
   pickerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, padding: 6, borderRadius: 12 },
   pickerName: { flex: 1, minWidth: 0, fontFamily: fontFamily.semibold, fontSize: fontSize.body, color: colors.textPrimary },
   pickerKcal: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, ...num },
-  pickerAdd: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
+  pickerAdd: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.brandFill, alignItems: 'center', justifyContent: 'center' },
   pickerNone: { paddingVertical: spacing.md, paddingHorizontal: spacing.sm, fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textSecondary },
   methodHead: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingHorizontal: spacing.lg },
   methodCount: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.textTertiary },
   flip: { transform: [{ rotate: '180deg' }] },
   methodBody: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
   step: { flexDirection: 'row', gap: spacing.md, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.borderSubtle },
-  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(99,102,241,0.10)', alignItems: 'center', justifyContent: 'center' },
+  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center' },
   stepNumText: { fontFamily: fontFamily.extrabold, fontSize: fontSize.micro, color: colors.brandPrimary },
   stepText: { flex: 1, minWidth: 0, fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textPrimary, lineHeight: 19 },
   stepRemove: { width: 32, height: 32, marginTop: -4, alignItems: 'center', justifyContent: 'center' },
@@ -934,7 +953,7 @@ const styles = StyleSheet.create({
   importBody: { marginTop: spacing.md },
   bigRow: { flexDirection: 'row', gap: 10 },
   bigButton: { flex: 1, minWidth: 0, minHeight: 84, justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: 14, borderRadius: radius.md, overflow: 'hidden' },
-  bigPrimary: { boxShadow: shadows.glowPrimary },
+  bigPrimary: { boxShadow: colors.glowPrimary },
   bigSecondary: { borderWidth: 1, borderColor: colors.borderSubtle, backgroundColor: colors.bgSurfaceSolid },
   bigLabel: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textPrimary },
   bigSub: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: 2 },
@@ -953,15 +972,15 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     backgroundColor: colors.bgApp,
   },
-  linkFieldErr: { borderColor: colors.red500 },
+  linkFieldErr: { borderColor: colors.stateError },
   linkInput: { flex: 1, minWidth: 0, paddingVertical: 10, fontFamily: fontFamily.medium, fontSize: fontSize.body, color: colors.textPrimary },
   importButton: { minHeight: 40, paddingHorizontal: spacing.lg, borderRadius: radius.pill, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   importButtonText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.white },
-  progress: { paddingTop: 14, paddingHorizontal: 14, paddingBottom: spacing.lg, borderRadius: radius.md, backgroundColor: 'rgba(99,102,241,0.07)' },
+  progress: { paddingTop: 14, paddingHorizontal: 14, paddingBottom: spacing.lg, borderRadius: radius.md, backgroundColor: colors.brandWash },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   progressLater: { opacity: 0.45 },
   progressDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  progressDone: { backgroundColor: colors.green500 },
+  progressDone: { backgroundColor: colors.successFill },
   progressPending: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.borderStrong },
   progressText: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, color: colors.textPrimary },
   actions: {
@@ -990,7 +1009,7 @@ const styles = StyleSheet.create({
   },
   saveSecondaryText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textPrimary },
   cta: { flex: 1, minHeight: 52, borderRadius: radius.pill, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md },
-  ctaOn: { boxShadow: shadows.glowPrimary },
+  ctaOn: { boxShadow: colors.glowPrimary },
   ctaOff: { backgroundColor: colors.trackEmpty },
   ctaText: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.white, ...num },
   ctaTextOff: { color: colors.textSecondary },

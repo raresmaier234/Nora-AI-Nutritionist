@@ -4,7 +4,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckIcon } from '@/components/log/icons';
-import { colors, fontFamily, fontSize, motion, radius, shadows, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, motion, radius, spacing, useColors, useStyles } from '@/theme';
 import type { Notify, NotifyKind } from '@/features/food/hooks/use-food-log';
 
 export type ToastState = { id: number; kind: NotifyKind; message: string } | null;
@@ -27,6 +27,8 @@ export function useToastHost() {
 }
 
 export function ToastOverlay({ toast }: { toast: ToastState }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(14);
@@ -60,7 +62,7 @@ export function ToastOverlay({ toast }: { toast: ToastState }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   host: {
     position: 'absolute',
     left: 0,
@@ -75,7 +77,7 @@ const styles = StyleSheet.create({
     maxWidth: 330,
     backgroundColor: colors.bgSurface,
     borderRadius: radius.pill,
-    boxShadow: shadows.lg,
+    boxShadow: colors.shadowLg,
     paddingVertical: 9,
     paddingRight: spacing.xl,
     paddingLeft: 9,
@@ -87,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconChipSuccess: { backgroundColor: colors.green500 },
+  iconChipSuccess: { backgroundColor: colors.successFill },
   iconChipInfo: { backgroundColor: colors.slate600 },
   message: {
     flexShrink: 1,

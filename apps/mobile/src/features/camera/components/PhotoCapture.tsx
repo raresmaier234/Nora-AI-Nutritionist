@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CameraView, type CameraViewHandle } from '@/features/camera/components/CameraView';
 import type { PhotoCaptureResult } from '@/features/camera/types/camera';
-import { colors, spacing } from '@/theme';
+import { Palette, spacing, useStyles } from '@/theme';
 
 type PhotoCaptureProps = {
   onPhotoCaptured: (result: PhotoCaptureResult) => void;
@@ -13,6 +13,7 @@ type PhotoCaptureProps = {
 
 /** Full-screen photo capture: live preview + native-style shutter button. */
 export function PhotoCapture({ onPhotoCaptured, onClose }: PhotoCaptureProps) {
+  const styles = useStyles(makeStyles);
   const cameraRef = useRef<CameraViewHandle>(null);
   const [capturing, setCapturing] = useState(false);
 
@@ -51,7 +52,7 @@ export function PhotoCapture({ onPhotoCaptured, onClose }: PhotoCaptureProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   controls: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

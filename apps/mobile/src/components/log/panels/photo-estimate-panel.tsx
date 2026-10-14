@@ -13,7 +13,7 @@ import { FOOD_DB, entryMacros, sumMacros } from '@/features/food/data/mock-data'
 import { DetectedItem } from '@/features/food/hooks/use-food-log';
 import { viewfinderBg } from '@/features/food/theme';
 import type { PhotoCaptureResult } from '@/features/camera';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 
 type Phase = 'capture' | 'analyzing' | 'result';
 
@@ -35,6 +35,8 @@ const MOCK_RESULT = () => [
 ];
 
 export function PhotoEstimatePanel({ time, onTime, onAdd, onOpenCamera, photoResult }: PhotoEstimatePanelProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [phase, setPhase] = useState<Phase>(() => (photoResult ? 'analyzing' : 'capture'));
   const [photoUri, setPhotoUri] = useState<string | null>(photoResult?.uri ?? null);
   const [items, setItems] = useState<DetectedItem[]>([]);
@@ -170,7 +172,7 @@ export function PhotoEstimatePanel({ time, onTime, onAdd, onOpenCamera, photoRes
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   subtitle: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.small,
@@ -222,7 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  toggleOn: { backgroundColor: colors.green500 },
+  toggleOn: { backgroundColor: colors.successFill },
   toggleOff: { borderWidth: 2, borderColor: colors.borderStrong },
   itemText: { flex: 1, minWidth: 0 },
   itemName: {

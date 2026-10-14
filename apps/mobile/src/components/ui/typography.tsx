@@ -1,23 +1,26 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
 
-import { colors, fontFamily, fontSize, spacing, trackWide } from '@/theme';
+import { Palette, fontFamily, fontSize, spacing, trackWide, useStyles } from '@/theme';
 
 type TextBlockProps = { children: ReactNode; style?: StyleProp<TextStyle> };
 
 export function SheetTitle({ children, style }: TextBlockProps) {
+  const styles = useStyles(makeStyles);
   return <Text style={[styles.title, style]}>{children}</Text>;
 }
 
 export function SheetSubtitle({ children, style }: TextBlockProps) {
+  const styles = useStyles(makeStyles);
   return <Text style={[styles.subtitle, style]}>{children}</Text>;
 }
 
 export function SectionLabel({ children, style }: TextBlockProps) {
+  const styles = useStyles(makeStyles);
   return <Text style={[styles.section, style]}>{children}</Text>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   title: {
     fontFamily: fontFamily.extrabold,
     fontSize: fontSize.h1,

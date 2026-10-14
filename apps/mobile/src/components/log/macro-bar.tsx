@@ -3,16 +3,16 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, trackWide } from '@/theme';
+import { Palette, fontFamily, fontSize, gradientAngle, motion, radius, trackWide, useColors, useStyles } from '@/theme';
 
 export type MacroTone = 'protein' | 'carbs' | 'fat';
 
-// Canonical macro→color mapping (DESIGN_SYSTEM.md §2.4): protein=indigo, carbs=amber, fat=green.
-const TONE_GRADIENT: Record<MacroTone, [string, string]> = {
-  protein: gradients.primary,
-  carbs: gradients.accent,
-  fat: gradients.success,
-};
+// Macro colors: protein = indigo, carbs = amber, fat = rose (see foodColors in features/food/theme.ts).
+const toneGradient = (colors: Palette): Record<MacroTone, [string, string]> => ({
+  protein: colors.gradPrimary,
+  carbs: colors.gradAccent,
+  fat: colors.gradFat,
+});
 
 type MacroBarProps = {
   tone: MacroTone;
@@ -23,6 +23,8 @@ type MacroBarProps = {
 };
 
 export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const width = useSharedValue(0);
   const pct = Math.min(100, target > 0 ? (current / target) * 100 : 0);
 
@@ -45,7 +47,7 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
       <View style={styles.track}>
         <Animated.View style={[styles.fill, fillStyle]}>
           <LinearGradient
-            colors={TONE_GRADIENT[tone]}
+            colors={toneGradient(colors)[tone]}
             start={gradientAngle.start}
             end={gradientAngle.end}
             style={StyleSheet.absoluteFill}
@@ -56,7 +58,7 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1 },
   label: {
     fontFamily: fontFamily.bold,

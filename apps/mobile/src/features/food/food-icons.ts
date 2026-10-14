@@ -288,3 +288,26 @@ export function foodIllustration(name?: string, category?: string): FoodIllustra
   const src = item ? item.src : explicit || keyword ? c.src : GENERIC_FOOD_ICON;
   return { src, tint: item ? item.tint : c.tint, category: c.id, fallback: GENERIC_FOOD_ICON };
 }
+
+export type IconChoice = { name: string; src: string; tint: FoodTint };
+export type IconChoiceGroup = { id: FoodCategoryId; label: string; icons: IconChoice[] };
+
+/**
+ * Every icon a user can pick for a food, grouped by category in display order. An image used
+ * by several items ("Chicken Leg", "Chicken Wings") is listed once, under its first name.
+ */
+export const ICON_CHOICES: IconChoiceGroup[] = (() => {
+  const seen = new Set<string>();
+  return FOOD_CATEGORIES.map((c) => ({
+    id: c.id,
+    label: c.label,
+    icons: [{ name: c.label, src: c.src }, ...c.items]
+      .filter((it) => !seen.has(it.src) && seen.add(it.src))
+      .map((it) => ({ name: it.name, src: it.src, tint: c.tint })),
+  }));
+})();
+
+const TINT_BY_SRC = new Map(ICON_CHOICES.flatMap((g) => g.icons.map((i) => [i.src, i.tint] as const)));
+
+/** The tint that goes with an icon image (the category it belongs to). */
+export const tintForIcon = (src: string): FoodTint => TINT_BY_SRC.get(src) ?? (src === GENERIC_FOOD_ICON ? 'indigo' : 'neutral');

@@ -10,7 +10,7 @@ import { SheetSubtitle, SheetTitle } from '@/components/ui/typography';
 import { BARCODES, Barcode } from '@/features/food/data/mock-data';
 import { viewfinderBg } from '@/features/food/theme';
 import type { BarcodeScanResult } from '@/features/camera';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useStyles } from '@/theme';
 
 type Phase = 'ready' | 'found' | 'notfound' | 'manual';
 
@@ -26,6 +26,7 @@ type BarcodeScannerPanelProps = {
 };
 
 export function BarcodeScannerPanel({ time, onTime, onAdd, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
+  const styles = useStyles(makeStyles);
   const initialHit = scanResult ? (BARCODES.find((b) => b.code === scanResult.data) ?? null) : null;
   const [phase, setPhase] = useState<Phase>(() => {
     if (!scanResult) return 'ready';
@@ -99,7 +100,7 @@ export function BarcodeScannerPanel({ time, onTime, onAdd, onOpenCamera, scanRes
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   viewfinder: {
     height: 168,
     borderRadius: radius.lg,

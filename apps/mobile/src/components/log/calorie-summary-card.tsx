@@ -1,11 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { MacroBar } from '@/components/log/macro-bar';
 import { GlassCard } from '@/components/ui/card';
-import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, spacing, trackTight } from '@/theme';
+import { Palette, fontFamily, fontSize, gradientAngle, motion, radius, spacing, trackTight, useColors, useStyles } from '@/theme';
 import { Macro, TARGETS } from '@/features/food/data/mock-data';
 
 type CalorieSummaryCardProps = {
@@ -13,10 +13,11 @@ type CalorieSummaryCardProps = {
   remaining: number;
   pct: number;
   over: boolean;
-  onCopyYesterday: () => void;
 };
 
-export function CalorieSummaryCard({ totals, remaining, pct, over, onCopyYesterday }: CalorieSummaryCardProps) {
+export function CalorieSummaryCard({ totals, remaining, pct, over }: CalorieSummaryCardProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const width = useSharedValue(0);
   useEffect(() => {
     width.value = withTiming(pct, { duration: motion.slow });
@@ -31,20 +32,17 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onCopyYesterd
             <Text style={styles.total}>{totals.kcal.toLocaleString()}</Text>
             <Text style={styles.target}>/ {TARGETS.kcal.toLocaleString()} kcal</Text>
           </View>
-          <Text style={[styles.remaining, { color: over ? colors.red500 : colors.greenText }]}>
+          <Text style={[styles.remaining, { color: over ? colors.errorText : colors.greenText }]}>
             {over ? `${(totals.kcal - TARGETS.kcal).toLocaleString()} kcal over` : `${remaining.toLocaleString()} kcal remaining`}
           </Text>
         </View>
-        <Pressable onPress={onCopyYesterday} accessibilityRole="button" style={styles.copyButton}>
-          <Text style={styles.copyLabel}>Copy yesterday</Text>
-        </Pressable>
       </View>
 
       <View style={styles.track}>
-        <Animated.View style={[styles.fill, over && { backgroundColor: colors.red500 }, fillStyle]}>
+        <Animated.View style={[styles.fill, over && { backgroundColor: colors.stateError }, fillStyle]}>
           {!over && (
             <LinearGradient
-              colors={gradients.success}
+              colors={colors.gradSuccess}
               start={gradientAngle.start}
               end={gradientAngle.end}
               style={StyleSheet.absoluteFill}
@@ -62,7 +60,7 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onCopyYesterd
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -89,19 +87,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bold,
     fontSize: fontSize.small,
     marginTop: 6,
-  },
-  copyButton: {
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgApp,
-    borderRadius: radius.pill,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-  },
-  copyLabel: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.nano,
-    color: colors.textSecondary,
   },
   track: {
     height: 10,

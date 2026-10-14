@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { colors, fontFamily, fontSize, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, spacing, useColors, useStyles } from '@/theme';
 import { API_BASE_URL, API_VERSION_PREFIX, ApiError, apiRequest, getHealth } from '@/services/api';
 
 type CheckState =
@@ -19,6 +19,8 @@ type CheckState =
  * by direct navigation during development. Safe to delete once real API-backed screens exist.
  */
 export default function ApiHealthDevScreen() {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const router = useRouter();
   const [state, setState] = useState<CheckState>({ status: 'idle' });
 
@@ -71,7 +73,7 @@ export default function ApiHealthDevScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgApp, padding: spacing.xl },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   actions: { gap: spacing.md, marginTop: spacing.lg },

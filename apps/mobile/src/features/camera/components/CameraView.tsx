@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraIcon, CloseIcon } from '@/components/log/icons';
 import { Button } from '@/components/ui/button';
 import { useCameraPermissions } from '@/features/camera/hooks/useCameraPermissions';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 
 export type CameraViewHandle = ExpoCameraView;
 
@@ -29,6 +29,8 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
   { facing = 'back', barcodeScannerSettings, onBarcodeScanned, onClose, permissionTitle, permissionDescription, children },
   ref
 ) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const { state, requestPermission, openSettings } = useCameraPermissions();
   const [mountError, setMountError] = useState<string | null>(null);
 
@@ -92,7 +94,7 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
   );
 });
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.slate900,

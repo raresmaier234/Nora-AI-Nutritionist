@@ -3,7 +3,7 @@ import { Modal, Platform, StyleSheet, View, useWindowDimensions } from 'react-na
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { colors, motion } from '@/theme';
+import { Palette, motion, useColors, useStyles } from '@/theme';
 
 type FullScreenProps = {
   visible: boolean;
@@ -24,7 +24,9 @@ type FullScreenProps = {
  * wrong the Log never comes back — a black screen. Never nest one FullScreen in another; put a
  * second page inside as a <FullScreenLayer> instead.
  */
-export function FullScreen({ visible, onClose, onDismissed, children, background = colors.bgSurfaceSolid }: FullScreenProps) {
+export function FullScreen({ visible, onClose, onDismissed, children, background }: FullScreenProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   // iOS reports the end of the dismiss animation through onDismiss; other platforms have no
   // such event and are done as soon as the modal is hidden.
   const wasVisible = useRef(visible);
@@ -42,7 +44,7 @@ export function FullScreen({ visible, onClose, onDismissed, children, background
       onDismiss={onDismissed}
       statusBarTranslucent>
       <SafeAreaProvider>
-        <View style={[styles.root, { backgroundColor: background }]}>{children}</View>
+        <View style={[styles.root, { backgroundColor: background ?? colors.bgSurfaceSolid }]}>{children}</View>
       </SafeAreaProvider>
     </Modal>
   );
@@ -51,16 +53,17 @@ export function FullScreen({ visible, onClose, onDismissed, children, background
 type FullScreenLayerProps = { children: ReactNode; background?: string };
 
 /** A second full-screen page inside a FullScreen (e.g. Food Details over Search), sliding up. */
-export function FullScreenLayer({ children, background = colors.bgSurfaceSolid }: FullScreenLayerProps) {
+export function FullScreenLayer({ children, background }: FullScreenLayerProps) {
+  const colors = useColors();
   const { height } = useWindowDimensions();
   const offset = useSharedValue(1);
   useEffect(() => {
     offset.value = withTiming(0, { duration: motion.slow, easing: Easing.out(Easing.cubic) });
   }, [offset]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: offset.value * height }] }));
-  return <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }, style]}>{children}</Animated.View>;
+  return <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background ?? colors.bgSurfaceSolid }, style]}>{children}</Animated.View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   root: { flex: 1 },
 });

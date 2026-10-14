@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, shadows, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, gradientAngle, motion, radius, spacing, useColors, useStyles } from '@/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost';
 
@@ -19,6 +19,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /** Primary/secondary/destructive/ghost button, matching DESIGN_SYSTEM.md §7.1 Button. */
 export function Button({ label, onPress, variant = 'primary', disabled, flex, style }: ButtonProps) {
+  const variantContainer = useStyles(makeVariantContainer);
+  const variantLabel = useStyles(makeVariantLabel);
+  const styles = useStyles(makeStyles);
+  const colors = useColors();
   const scale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -44,7 +48,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
       ]}>
       {variant === 'primary' && (
         <LinearGradient
-          colors={gradients.primary}
+          colors={colors.gradPrimary}
           start={gradientAngle.start}
           end={gradientAngle.end}
           style={styles.gradientFill}
@@ -55,7 +59,7 @@ export function Button({ label, onPress, variant = 'primary', disabled, flex, st
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   base: {
     borderRadius: radius.pill,
     paddingVertical: 14,
@@ -75,9 +79,9 @@ const styles = StyleSheet.create({
   },
 });
 
-const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet.create({
+const makeVariantContainer = (colors: Palette): Record<ButtonVariant, StyleProp<ViewStyle>> => StyleSheet.create({
   primary: {
-    boxShadow: shadows.glowPrimary,
+    boxShadow: colors.glowPrimary,
     paddingHorizontal: spacing.lg,
   },
   secondary: {
@@ -89,7 +93,7 @@ const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet
   destructive: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.red500,
+    borderColor: colors.stateError,
     paddingVertical: 13,
     paddingHorizontal: spacing.xl,
   },
@@ -100,9 +104,9 @@ const variantContainer: Record<ButtonVariant, StyleProp<ViewStyle>> = StyleSheet
   },
 });
 
-const variantLabel: Record<ButtonVariant, StyleProp<TextStyle>> = {
+const makeVariantLabel = (colors: Palette): Record<ButtonVariant, StyleProp<TextStyle>> => ({
   primary: { color: colors.textOnBrand },
   secondary: { color: colors.textPrimary },
-  destructive: { color: colors.red500 },
+  destructive: { color: colors.errorText },
   ghost: { color: colors.brandPrimary },
-};
+});

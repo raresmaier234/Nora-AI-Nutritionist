@@ -5,11 +5,15 @@
  *   src/components/log) → feature-specific semantics (e.g. src/features/food/theme.ts).
  *
  * Import everything from this barrel, not the individual files:
- *   import { colors, spacing, radius, fontSize, fontFamily } from '@/theme';
+ *   import { useStyles, Palette, spacing, radius, fontSize, fontFamily } from '@/theme';
+ *
+ * Colors depend on light/dark mode, so they are read at render time — `useColors()` in a
+ * component, or `const makeStyles = (colors: Palette) => StyleSheet.create({...})` with
+ * `const styles = useStyles(makeStyles)`. There is no static `colors` export on purpose.
  */
 export * from './colors';
+export * from './use-theme';
 export * from './gradients';
-export * from './shadows';
 export * from './radius';
 export * from './spacing';
 export * from './typography';

@@ -163,3 +163,30 @@ export function AlertIcon({ size = 16, color = '#B45309', strokeWidth = 2.4 }: I
     </Svg>
   );
 }
+
+export function SunIcon({ size = 18, color = '#475569', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={4} />
+      <Path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </Svg>
+  );
+}
+
+export function MoonIcon({ size = 18, color = '#475569', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </Svg>
+  );
+}
+
+/** Half-filled circle: "follow the phone". */
+export function AutoThemeIcon({ size = 18, color = '#475569', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 3a9 9 0 0 1 0 18z" fill={color} />
+    </Svg>
+  );
+}

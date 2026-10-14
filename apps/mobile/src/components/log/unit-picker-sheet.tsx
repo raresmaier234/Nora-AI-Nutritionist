@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Sheet } from '@/components/ui/sheet';
-import { colors, fontFamily, fontSize, radius, spacing, trackWide } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, trackWide, useStyles } from '@/theme';
 import { UNITS } from '@/features/food/data/mock-data';
 
 type UnitPickerSheetProps = {
@@ -15,6 +15,7 @@ type UnitPickerSheetProps = {
 
 /** Mini centered sheet used by AmountField and Recipe Studio to pick a unit — replaces the web <select>. */
 export function UnitPickerSheet({ visible, value, onSelect, onClose, units }: UnitPickerSheetProps) {
+  const styles = useStyles(makeStyles);
   const options = units ?? UNITS.map((u): [string, number] => [u.label, u.grams]);
   return (
     <Sheet visible={visible} onClose={onClose}>
@@ -45,7 +46,7 @@ export function UnitPickerSheet({ visible, value, onSelect, onClose, units }: Un
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.micro,

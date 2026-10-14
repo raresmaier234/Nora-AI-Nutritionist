@@ -1,12 +1,13 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { colors, radius, shadows } from '@/theme';
+import { Palette, radius, useStyles } from '@/theme';
 
 type CardProps = { children: ReactNode; padding?: number; style?: StyleProp<ViewStyle> };
 
 /** Plain solid surface — meal sections, list containers, row groups. */
 export function Card({ children, padding = 0, style }: CardProps) {
+  const styles = useStyles(makeStyles);
   return <View style={[styles.card, { padding }, style]}>{children}</View>;
 }
 
@@ -17,22 +18,23 @@ export function Card({ children, padding = 0, style }: CardProps) {
  * visually very close here since the card always sits over the flat `--bg-app` page background.
  */
 export function GlassCard({ children, padding = 18, style }: CardProps) {
+  const styles = useStyles(makeStyles);
   return <View style={[styles.glass, { padding }, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   card: {
     backgroundColor: colors.bgSurfaceSolid,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    boxShadow: shadows.sm,
+    boxShadow: colors.shadowSm,
   },
   glass: {
     backgroundColor: colors.bgSurface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    boxShadow: shadows.md,
+    boxShadow: colors.shadowMd,
   },
 });

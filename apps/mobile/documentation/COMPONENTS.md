@@ -33,7 +33,8 @@ Don't guess which one applies before there's a second real consumer — that's p
 
 - Files: kebab-case (`food-row.tsx`, `macro-bar.tsx`, `unit-picker-sheet.tsx`).
 - Components: PascalCase, named export (`export function FoodIcon(...)`), matching the filename.
-- One component per file, styles live in the same file via `StyleSheet.create` directly below the component — this codebase doesn't use a separate stylesheet file per component.
+- One component per file, styles live in the same file directly below the component — this codebase doesn't use a separate stylesheet file per component.
+- Styles are a module-level `const makeStyles = (colors: Palette) => StyleSheet.create({...})`, used with `const styles = useStyles(makeStyles)`, so they follow night mode. Never hard-code a surface, text or border color — use a palette token (`colors.bgSurfaceSolid`, `colors.textSecondary`, …). Fixed colors are fine only where they don't change with the theme: white on an indigo button, the camera viewfinder, drop shadows.
 
 ## Composition principles
 

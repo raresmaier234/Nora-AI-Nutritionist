@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/log/icons';
-import { colors, fontFamily, fontSize } from '@/theme';
+import { Palette, fontFamily, fontSize, useColors, useStyles } from '@/theme';
 
 type DateNavigatorProps = {
   dayOffset: number;
@@ -12,6 +12,8 @@ type DateNavigatorProps = {
 };
 
 export function DateNavigator({ dayOffset, onChange, anchorDate }: DateNavigatorProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const date = useMemo(() => {
     const d = new Date(anchorDate);
     d.setDate(d.getDate() + dayOffset);
@@ -24,20 +26,20 @@ export function DateNavigator({ dayOffset, onChange, anchorDate }: DateNavigator
   return (
     <View style={styles.row}>
       <Pressable onPress={() => onChange(dayOffset - 1)} accessibilityRole="button" accessibilityLabel="Previous day" style={styles.iconButton}>
-        <ChevronLeftIcon />
+        <ChevronLeftIcon color={colors.textSecondary} />
       </Pressable>
       <View style={styles.center}>
         <Text style={styles.dayLabel}>{dayLabel}</Text>
         <Text style={styles.dateLabel}>{dateLabel}</Text>
       </View>
       <Pressable onPress={() => onChange(dayOffset + 1)} accessibilityRole="button" accessibilityLabel="Next day" style={styles.iconButton}>
-        <ChevronRightIcon />
+        <ChevronRightIcon color={colors.textSecondary} />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',

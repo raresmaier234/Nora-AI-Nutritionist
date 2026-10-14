@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { colors, fontFamily, fontSize, gradientAngle, gradients, motion, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, gradientAngle, motion, radius, spacing, useColors, useStyles } from '@/theme';
 
 type PillProps = {
   label: string;
@@ -17,6 +17,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /** Selectable pill/chip — used by MealPicker, segmented tabs, and ingredient chips. */
 export function Pill({ label, selected, onPress, flex, fontSize: fontSizeProp, style }: PillProps) {
+  const styles = useStyles(makeStyles);
+  const colors = useColors();
   const resolvedFontSize = fontSizeProp ?? fontSize.micro;
   const scale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -35,7 +37,7 @@ export function Pill({ label, selected, onPress, flex, fontSize: fontSizeProp, s
       style={[styles.base, selected ? styles.selected : styles.unselected, flex && styles.flex, pressStyle, style]}>
       {selected && (
         <LinearGradient
-          colors={gradients.primary}
+          colors={colors.gradPrimary}
           start={gradientAngle.start}
           end={gradientAngle.end}
           style={styles.gradientFill}
@@ -50,7 +52,7 @@ export function Pill({ label, selected, onPress, flex, fontSize: fontSizeProp, s
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   base: {
     borderRadius: radius.pill,
     paddingVertical: 9,

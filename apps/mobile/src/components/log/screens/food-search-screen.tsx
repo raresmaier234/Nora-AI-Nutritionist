@@ -5,9 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FoodIcon } from '@/components/log/food-icon';
 import { BarcodeIcon, CameraIcon, CheckIcon, ChevronLeftIcon, CloseIcon, PlusIcon, RecipeIcon, SearchIcon } from '@/components/log/icons';
 import { WhenPicker } from '@/components/log/when-picker';
-import { colors, fontFamily, fontSize, radius, spacing, trackTight, trackWide } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { Entry, Food } from '@/features/food/data/mock-data';
 import { describeError } from '@/features/food/hooks/use-food-log';
+import { useFoodColors } from '@/features/food/theme';
 import { searchFoods } from '@/services/api';
 
 /** Wait this long after the last keystroke before searching, so typing "milk" is one request. */
@@ -17,11 +18,11 @@ const DEFAULT_GRAMS = 100;
 
 export type SearchMode = 'photo' | 'scan' | 'recipes' | 'custom';
 
-const ACTIONS: Array<{ mode: SearchMode; label: string; tint: string; ink: string; icon: (c: string) => React.ReactNode }> = [
-  { mode: 'photo', label: 'Photo', tint: 'rgba(99,102,241,0.10)', ink: colors.brandPrimary, icon: (c) => <CameraIcon size={19} color={c} /> },
+const actions = (colors: Palette): Array<{ mode: SearchMode; label: string; tint: string; ink: string; icon: (c: string) => React.ReactNode }> => [
+  { mode: 'photo', label: 'Photo', tint: colors.brandTint, ink: colors.brandPrimary, icon: (c) => <CameraIcon size={19} color={c} /> },
   { mode: 'scan', label: 'Barcode', tint: colors.chipAmberTint, ink: colors.amberText, icon: (c) => <BarcodeIcon size={19} color={c} /> },
   { mode: 'recipes', label: 'Recipes', tint: colors.chipGreenTint, ink: colors.greenText, icon: (c) => <RecipeIcon size={19} color={c} /> },
-  { mode: 'custom', label: 'Custom', tint: colors.slate100, ink: colors.textSecondary, icon: (c) => <PlusIcon size={19} color={c} /> },
+  { mode: 'custom', label: 'Custom', tint: colors.surfaceMuted, ink: colors.textSecondary, icon: (c) => <PlusIcon size={19} color={c} /> },
 ];
 
 type FoodSearchScreenProps = {
@@ -43,6 +44,8 @@ type FoodSearchScreenProps = {
  * leaving search.
  */
 export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, onOpenFood, onQuickAdd, onMode, onClose }: FoodSearchScreenProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
@@ -169,7 +172,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, o
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom) }}>
         {!q ? (
           <View style={styles.actions}>
-            {ACTIONS.map((a) => (
+            {actions(colors).map((a) => (
               <Pressable
                 key={a.mode}
                 onPress={() => onMode(a.mode)}
@@ -235,6 +238,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, o
 }
 
 function Highlight({ text, query }: { text: string; query: string }) {
+  const colors = useColors();
   const i = query ? text.toLowerCase().indexOf(query.toLowerCase()) : -1;
   if (i < 0) return <>{text}</>;
   return (
@@ -249,6 +253,9 @@ function Highlight({ text, query }: { text: string; query: string }) {
 const round = (v: number) => (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
 
 function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: string; onOpen: () => void; onQuickAdd: () => void }) {
+  const macro = useFoodColors();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const f = DEFAULT_GRAMS / 100;
   const kcal = Math.round(food.per100.kcal * f);
   const [added, setAdded] = useState(false);
@@ -258,9 +265,9 @@ function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: str
     return () => clearTimeout(t);
   }, [added]);
   const macros: Array<[string, number, string]> = [
-    ['P', food.per100.protein, colors.indigo500],
-    ['C', food.per100.carbs, colors.amber500],
-    ['F', food.per100.fat, colors.green500],
+    ['P', food.per100.protein, macro.accentProtein],
+    ['C', food.per100.carbs, macro.accentCarbs],
+    ['F', food.per100.fat, macro.warnFat],
   ];
   return (
     <Pressable onPress={onOpen} accessibilityRole="button" style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
@@ -300,7 +307,7 @@ function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: str
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bgSurfaceSolid },
   header: {
     paddingHorizontal: spacing.xl,
@@ -315,7 +322,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, color: colors.textPrimary, letterSpacing: trackTight(fontSize.h1) },
   subtitle: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 3 },
   left: { fontFamily: fontFamily.bold, color: colors.greenText },
-  over: { fontFamily: fontFamily.bold, color: '#DC2626' },
+  over: { fontFamily: fontFamily.bold, color: colors.errorText },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -377,7 +384,7 @@ const styles = StyleSheet.create({
   emptyButton: { flex: 1, minHeight: 48, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   emptySecondary: { borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.bgSurfaceSolid },
   emptySecondaryText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textPrimary },
-  emptyPrimary: { backgroundColor: colors.brandPrimary },
+  emptyPrimary: { backgroundColor: colors.brandFill },
   emptyPrimaryText: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.textOnBrand },
   rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.borderSubtle },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: spacing.xl, minHeight: 76 },
@@ -397,8 +404,8 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(99,102,241,0.10)',
+    backgroundColor: colors.brandTint,
     flexShrink: 0,
   },
-  quickAdded: { backgroundColor: colors.green500 },
+  quickAdded: { backgroundColor: colors.successFill },
 });

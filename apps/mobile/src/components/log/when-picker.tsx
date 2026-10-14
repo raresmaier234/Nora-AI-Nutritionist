@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Pill } from '@/components/ui/pill';
 import { Sheet } from '@/components/ui/sheet';
 import { SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { colors, fontFamily, fontSize, radius, spacing, trackTight } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, trackTight, useColors, useStyles } from '@/theme';
 import { fromMin, nowHHMM, toMin } from '@/features/food/time';
 
 const OFFSETS: Array<[string, number]> = [
@@ -30,6 +30,8 @@ type WhenPickerProps = {
  * WhenPicker; the native `<input type="time">` becomes TimePickerSheet.
  */
 export function WhenPicker({ value, onChange, label, compact }: WhenPickerProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const [picking, setPicking] = useState(false);
   const now = toMin(nowHHMM());
   const active = OFFSETS.find(([, o]) => fromMin(now - o) === value);
@@ -77,6 +79,7 @@ type TimePickerSheetProps = { visible: boolean; value: string; onClose: () => vo
 
 /** Hour and minute steppers (minutes in 5s), so any time of day is a few taps away. */
 function TimePickerSheet({ visible, value, onClose, onDone }: TimePickerSheetProps) {
+  const styles = useStyles(makeStyles);
   const [draft, setDraft] = useState(value);
   const [shown, setShown] = useState(visible);
   // Start from the current value every time the sheet opens.
@@ -114,6 +117,8 @@ function TimePickerSheet({ visible, value, onClose, onDone }: TimePickerSheetPro
 }
 
 function Stepper({ label, value, onDec, onInc }: { label: string; value: string; onDec: () => void; onInc: () => void }) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   return (
     <View style={styles.stepper}>
       <Pressable onPress={onInc} accessibilityRole="button" accessibilityLabel={`Later ${label.toLowerCase()}`} style={styles.stepButton}>
@@ -129,7 +134,7 @@ function Stepper({ label, value, onDec, onInc }: { label: string; value: string;
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -149,7 +154,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(99,102,241,0.10)',
+    backgroundColor: colors.brandTint,
   },
   pressed: { opacity: 0.7 },
   timeText: {

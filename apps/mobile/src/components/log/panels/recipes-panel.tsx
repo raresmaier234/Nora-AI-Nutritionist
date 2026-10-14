@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FoodIcon } from '@/components/log/food-icon';
 import { CameraIcon, ChevronRightIcon, LinkIcon, PencilIcon, PlusIcon } from '@/components/log/icons';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { colors, fontFamily, fontSize, radius, spacing } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 import { Recipe } from '@/features/food/data/mock-data';
 import { recipeFood, recipeTotals } from '@/features/food/recipes';
 
@@ -20,6 +20,8 @@ type RecipesPanelProps = {
 
 /** Recipes hub (LogPageV3.jsx RecipesPanel): ways to create one, then the saved list. */
 export function RecipesPanel({ recipes, onOpen, onView }: RecipesPanelProps) {
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
   const option = (start: StudioStart, title: string, sub: string, icon: ReactNode, tint: string, last?: boolean) => (
     <Pressable
       key={start}
@@ -42,7 +44,7 @@ export function RecipesPanel({ recipes, onOpen, onView }: RecipesPanelProps) {
 
       <SectionLabel>Create</SectionLabel>
       <View style={[styles.group, styles.groupGap]}>
-        {option('scratch', 'Build from ingredients', 'Search and add each ingredient', <PlusIcon size={19} color={colors.brandPrimary} />, 'rgba(99,102,241,0.10)')}
+        {option('scratch', 'Build from ingredients', 'Search and add each ingredient', <PlusIcon size={19} color={colors.brandPrimary} />, colors.brandTint)}
         {option('photo', 'Import from photo', 'Recipe card, cookbook page or plate', <CameraIcon size={19} color={colors.amberText} />, colors.chipAmberTint)}
         {option('link', 'Import from link', 'Paste a recipe from any website', <LinkIcon size={19} color={colors.greenText} />, colors.chipGreenTint, true)}
       </View>
@@ -89,7 +91,7 @@ export function RecipesPanel({ recipes, onOpen, onView }: RecipesPanelProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) => StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   group: { borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: radius.lg, overflow: 'hidden' },
   groupGap: { marginBottom: 22 },
