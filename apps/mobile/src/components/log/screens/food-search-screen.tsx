@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FoodIcon } from '@/components/log/food-icon';
@@ -47,7 +47,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, o
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<'recent' | 'frequent'>('recent');
   const [results, setResults] = useState<Food[]>([]);
