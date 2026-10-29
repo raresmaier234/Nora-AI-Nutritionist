@@ -120,8 +120,10 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
 src/services/api/
 ├── config.ts   API_BASE_URL, API_VERSION_PREFIX
 ├── client.ts   ApiError, apiRequest<T>(path, options)
-├── types.ts    ApiErrorKind, HealthResponse, ...
+├── types.ts    ApiErrorKind, HealthResponse, FoodDetail, FoodLogEntry, ...
 ├── health.ts   getHealth()
+├── foods.ts    searchFoods(), getFood()
+├── meals.ts    listEntries(), createEntry(), updateEntry(), deleteEntry(), copyDay()
 └── index.ts    barrel export — import from '@/services/api'
 ```
 

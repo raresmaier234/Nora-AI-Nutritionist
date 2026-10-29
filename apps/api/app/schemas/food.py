@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -89,3 +90,22 @@ class FoodSearchResult(BaseModel):
     id: int
     name: str
     per_100g: Per100g
+
+
+class NutrientAmount(BaseModel):
+    """How much of one nutrient 100g of a food contains."""
+
+    key: str = Field(description="The nutrient, e.g. 'fiber', 'vitamin_c', 'omega_3'.")
+    unit: Literal["g", "mg", "ug"]
+    amount: float = Field(ge=0)
+
+
+class FoodDetail(BaseModel):
+    """A food with its full nutrient profile, per 100g. Nutrients without data are left out."""
+
+    id: int
+    name: str
+    per_100g: Per100g | None = Field(
+        description="Null when the food lacks calories, protein, carbs or fat."
+    )
+    nutrients: list[NutrientAmount]

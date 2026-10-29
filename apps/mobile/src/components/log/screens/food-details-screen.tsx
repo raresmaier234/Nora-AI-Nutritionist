@@ -8,11 +8,22 @@ import Svg, { Circle, Defs, Stop, LinearGradient as SvgGradient } from 'react-na
 import { FoodIcon, foodIllustration } from '@/components/log/food-icon';
 import { FoodIconPicker } from '@/components/log/food-icon-picker';
 import type { FoodTint } from '@/features/food/food-icons';
-import { ArrowRightIcon, ChevronDownIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
+import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, MinusIcon, NutrientSectionIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, Scheme, fontFamily, fontSize, gradientAngle, motion, radius, spacing, trackTight, trackWide, useColors, useStyles, useTheme } from '@/theme';
 import { NutrientFamily, foodColors, useFoodColors } from '@/features/food/theme';
 import { Food, Macro, TARGETS } from '@/features/food/data/mock-data';
+import { useFoodNutrients } from '@/features/food/hooks/use-food-nutrients';
+import {
+  NUTRIENT_SECTIONS,
+  NUTRIENT_TARGETS,
+  NutrientRow,
+  NutrientSection,
+  NutrientSectionId,
+  NutrientValues,
+  goodSources,
+  nutrientValues,
+} from '@/features/food/nutrients';
 
 /** Grams, then 100 g, then the food's own servings: [label, grams]. */
 export type Serving = [string, number];
@@ -61,13 +72,13 @@ type FoodDetailsScreenProps = {
 };
 
 /**
- * Full-screen food details (FoodDetailsV3.jsx): compact hero → calories + macros → serving and
- * quantity → impact on your day → sticky Add to Log (or Save / Delete when editing). Values
- * scale live with the quantity.
+ * Full-screen food details (FoodDetailsV3.jsx): compact hero → calories + macros (+ fibre) →
+ * serving and quantity → impact on your day → good source of → full nutrition → sticky Add to
+ * Log (or Save / Delete when editing). Values scale live with the quantity.
  *
- * The design's "Good source of" and "Full nutrition" sections need vitamins and minerals; the
- * API sends calories and macros only so far, and the design hides sections without data, so
- * they are not rendered.
+ * Fibre, vitamins, minerals and the rest come from GET /foods/{id} once the screen opens, so
+ * they appear a moment after the macros. Nutrients without data are never shown, and a section
+ * left empty disappears — a food known only from its label shows just those values.
  */
 export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams, servings: extra, consumed, onClose, onAdd, onSave, onDelete }: FoodDetailsScreenProps) {
   const { scheme } = useTheme();
@@ -104,6 +115,17 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const cK = values.carbs * 4;
   const fK = values.fat * 9;
   const tK = pK + cK + fK || 1;
+  const { nutrients, failed: nutrientsFailed, retry: retryNutrients } = useFoodNutrients(food.id);
+  const per100All = useMemo(() => nutrientValues(food.per100, nutrients), [food.per100, nutrients]);
+  const all: NutrientValues = Object.fromEntries(Object.entries(per100All).map(([k, v]) => [k, v * f]));
+  const sources = goodSources(all);
+  const summaries: Partial<Record<NutrientSectionId, string>> = {
+    macros: `${fmt(all.protein)} g protein · ${fmt(all.carbs)} g carbs · ${fmt(all.fat)} g fat`,
+    sugars: all.sugar != null ? `${fmt(all.sugar)} g total sugars` : undefined,
+    fats: `${fmt(all.fat)} g total${all.cholesterol != null ? ` · ${fmt(all.cholesterol)} mg cholesterol` : ''}`,
+    minerals: all.sodium != null ? `${fmt(all.sodium)} mg sodium` : undefined,
+    other: all.caffeine ? `${fmt(all.caffeine)} mg caffeine` : all.alcohol ? `${fmt(all.alcohol)} g alcohol` : undefined,
+  };
   const split: Array<{ f: NutrientFamily; l: string; pct: number }> = [
     { f: 'protein', l: 'protein', pct: Math.round((pK / tK) * 100) },
     { f: 'carbs', l: 'carbs', pct: Math.round((cK / tK) * 100) },
@@ -216,6 +238,8 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
               <MacroTargetBar family="protein" label="Protein" add={values.protein} before={consumed.protein} goal={TARGETS.protein} />
               <MacroTargetBar family="carbs" label="Carbs" add={values.carbs} before={consumed.carbs} goal={TARGETS.carbs} />
               <MacroTargetBar family="fat" label="Fat" add={values.fat} before={consumed.fat} goal={TARGETS.fat} />
+              {/* The log doesn't count fibre eaten yet, so this bar shows the portion alone. */}
+              {all.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={all.fiber} before={null} goal={NUTRIENT_TARGETS.fiber.value} /> : null}
             </View>
           </View>
 
@@ -277,6 +301,38 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
               <ImpactBar family="carbs" label="Carbs" unit="g" eaten={consumed.carbs} add={values.carbs} target={TARGETS.carbs} />
               <ImpactBar family="fat" label="Fat" unit="g" eaten={consumed.fat} add={values.fat} target={TARGETS.fat} />
             </View>
+          </View>
+
+          {/* Standout vitamins & minerals: at least 10% of the daily value in this portion */}
+          {sources.length > 0 ? (
+            <View>
+              <Text style={styles.sectionTitle}>Good source of</Text>
+              <View style={styles.sourceGrid}>
+                {sources.map((m) => (
+                  <GoodSourceTile key={m.key} label={m.label} pct={m.pct} family={m.family} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Every nutrient with data, by section — Macronutrients open, the rest collapsed */}
+          <View>
+            <Text style={styles.sectionTitle}>Full nutrition</Text>
+            <View style={styles.sections}>
+              {NUTRIENT_SECTIONS.map((s) => (
+                <NutrientSectionCard key={s.id} section={s} values={all} summary={summaries[s.id]} />
+              ))}
+            </View>
+            {nutrientsFailed ? (
+              <Text style={styles.nutritionNote}>
+                Couldn&apos;t load vitamins and minerals.{' '}
+                <Text onPress={retryNutrients} accessibilityRole="button" style={styles.retry}>
+                  Retry
+                </Text>
+              </Text>
+            ) : (
+              <Text style={styles.nutritionNote}>% DV based on a 2,000 kcal diet. Nutrients without data for this food are not shown.</Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -383,11 +439,15 @@ function CalorieRing({ kcal, beforePct, addPct }: { kcal: number; beforePct: num
   );
 }
 
-/** Daily target bar: full width = daily goal. Faded = eaten today, solid = this food. */
-function MacroTargetBar({ family, label, add, before, goal }: { family: NutrientFamily; label: string; add: number; before: number; goal: number }) {
+/**
+ * Daily target bar: full width = daily goal. Faded = eaten today, solid = this food. With no
+ * `before` (a nutrient the log doesn't count), it shows this food's share of the goal alone.
+ */
+function MacroTargetBar({ family, label, add, before, goal }: { family: NutrientFamily; label: string; add: number; before: number | null; goal: number }) {
   const { nu } = useFoodColors();
   const styles = useStyles(makeStyles);
-  const b = Math.max(0, before);
+  const hasDay = before !== null;
+  const b = Math.max(0, before ?? 0);
   const a = Math.max(0, add);
   const total = b + a;
   const bPct = Math.min(100, (b / goal) * 100);
@@ -402,20 +462,22 @@ function MacroTargetBar({ family, label, add, before, goal }: { family: Nutrient
           <Text style={styles.mbLabel}>{label}</Text>
         </View>
         <Text style={[styles.mbValue, { color: nu[family].ink }]}>
-          +{fmt(a)}
+          {hasDay ? '+' : ''}
+          {fmt(a)}
           <Text style={styles.mbUnit}> g</Text>
         </Text>
       </View>
       <View
         accessibilityRole="image"
-        accessibilityLabel={`${label}: ${fmt(b)} g eaten, plus ${fmt(a)} g, ${fmt(total)} of ${goal} g target`}
+        accessibilityLabel={hasDay ? `${label}: ${fmt(b)} g eaten, plus ${fmt(a)} g, ${fmt(total)} of ${goal} g target` : `${label}: ${fmt(a)} of ${goal} g target`}
         style={[styles.mbTrack, { backgroundColor: nu[family].tint, gap: b > 0 && a > 0 && bPct < 100 ? 2 : 0 }]}>
         <Fill pct={bPct} color={nu[family].base} opacity={0.35} />
         <Fill pct={aPct} color={nu[family].base} delay />
       </View>
       <View style={styles.mbFoot}>
         <Text style={styles.mbFootText}>
-          {fmt(b)} → <Text style={styles.strong}>{fmt(total)}</Text> of {goal} g
+          {hasDay ? `${fmt(b)} → ` : ''}
+          <Text style={styles.strong}>{fmt(total)}</Text> of {goal} g
         </Text>
         {left >= 0 ? (
           <Text style={[styles.mbFootText, styles.mbLeft]}>{fmt(left)} g left</Text>
@@ -466,6 +528,130 @@ function ImpactBar({ family, label, unit, eaten, add, target }: { family: Nutrie
       <Text style={[styles.ibFoot, over > 0 && { color: nu[family].ink }]}>
         {over > 0 ? `+${n(over)} ${unit} over target` : `${n(-over)} ${unit} remaining`}
       </Text>
+    </View>
+  );
+}
+
+/** One "Good source of" tile: % of the daily value in this portion, with a small bar. */
+function GoodSourceTile({ label, pct, family }: { label: string; pct: number; family: NutrientFamily }) {
+  const { nu } = useFoodColors();
+  const styles = useStyles(makeStyles);
+  return (
+    <View style={[styles.sourceTile, { backgroundColor: nu[family].tint }]}>
+      <Text style={[styles.sourcePct, { color: nu[family].ink }]}>{pct}%</Text>
+      <Text style={styles.sourceLabel}>{label}</Text>
+      <View style={styles.sourceTrack}>
+        <Fill pct={pct} color={nu[family].base} />
+      </View>
+    </View>
+  );
+}
+
+/** Each section's colour and glyph (FD_SECTION_META). */
+const SECTION_FAMILY: Record<NutrientSectionId, NutrientFamily> = {
+  macros: 'kcal',
+  sugars: 'carbs',
+  fats: 'fat',
+  amino: 'protein',
+  vitamins: 'vitamin',
+  minerals: 'mineral',
+  other: 'other',
+};
+
+/** A collapsible "Full nutrition" card. Only rows with data are listed; with none, it's not shown. */
+function NutrientSectionCard({ section, values, summary }: { section: NutrientSection; values: NutrientValues; summary?: string }) {
+  const { nu } = useFoodColors();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
+  const [open, setOpen] = useState(!!section.open);
+  const rows = section.rows.filter((r) => values[r.key] != null);
+  if (!rows.length) return null;
+  const family = SECTION_FAMILY[section.id];
+  return (
+    <View style={styles.sectionCard}>
+      <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} style={styles.sectionHead}>
+        <View style={[styles.sectionIcon, { backgroundColor: nu[family].tint }]}>
+          <NutrientSectionIcon section={section.id} color={nu[family].ink} />
+        </View>
+        <View style={styles.sectionText}>
+          <Text style={styles.sectionLabel}>{section.label}</Text>
+          <Text style={styles.sectionSummary}>{summary ?? `${rows.length} nutrients`}</Text>
+        </View>
+        <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+          <ChevronRightIcon size={20} color={colors.textTertiary} />
+        </View>
+      </Pressable>
+      {open ? (
+        <View style={styles.sectionRows}>
+          {rows.map((r, i) => (
+            <View key={r.key}>
+              {r.group ? <Text style={[styles.rowGroup, { color: nu[family].ink }]}>{r.group}</Text> : null}
+              <NutrientRowView row={r} value={values[r.key]} family={family} first={i === 0 || !!r.group} />
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * One nutrient. With a daily target it gets a compact bar — this portion against the target —
+ * otherwise just its value. Only a limit turns red when passed; passing a goal (346% of vitamin
+ * K) is good news, so it reads "goal reached".
+ */
+function NutrientRowView({ row, value, family, first }: { row: NutrientRow; value: number; family: NutrientFamily; first: boolean }) {
+  const { nu } = useFoodColors();
+  const colors = useColors();
+  const styles = useStyles(makeStyles);
+  const target = NUTRIENT_TARGETS[row.key];
+  const label = <Text style={[styles.rowLabel, row.sub && styles.rowLabelSub]}>{row.label}</Text>;
+  if (!target) {
+    return (
+      <View style={[styles.rowPlain, row.sub && styles.rowSub, !first && styles.rowBorder]}>
+        {label}
+        <Text>
+          <Text style={styles.rowValue}>{fmt(value)}</Text>
+          <Text style={styles.rowUnit}> {row.unit}</Text>
+        </Text>
+      </View>
+    );
+  }
+  const limit = target.kind === 'limit';
+  const left = target.value - value;
+  const overLimit = limit && left < 0;
+  const pct = (value / target.value) * 100;
+  return (
+    <View style={[styles.rowTarget, row.sub && styles.rowSub, !first && styles.rowBorder]}>
+      <View style={styles.rowHead}>
+        {label}
+        <Text style={[styles.rowAmount, { color: nu[family].ink }]}>
+          {fmt(value)} {row.unit}
+        </Text>
+      </View>
+      <View
+        accessibilityRole="image"
+        accessibilityLabel={`${row.label}: ${fmt(value)} of ${fmt(target.value)} ${row.unit} ${limit ? 'limit' : 'target'}`}
+        style={[styles.rowTrack, { backgroundColor: nu[family].tint }]}>
+        <Fill pct={value > 0 ? Math.max(pct, 1.5) : 0} color={overLimit ? colors.errorText : nu[family].base} />
+      </View>
+      <View style={styles.mbFoot}>
+        <Text style={styles.mbFootText}>
+          <Text style={styles.strong}>{fmt(value)}</Text> / {fmt(target.value)} {row.unit}
+          {limit ? ' limit' : ''}
+        </Text>
+        {left >= 0 ? (
+          <Text style={[styles.mbFootText, styles.mbLeft]}>
+            {fmt(left)} {row.unit} left
+          </Text>
+        ) : overLimit ? (
+          <Text style={[styles.mbFootText, styles.mbOver]}>
+            {fmt(-left)} {row.unit} over
+          </Text>
+        ) : (
+          <Text style={[styles.mbFootText, styles.mbLeft, { color: nu[family].ink }]}>Goal reached</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -605,6 +791,40 @@ const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   ibTrack: { ...StyleSheet.absoluteFill, flexDirection: 'row', borderRadius: radius.pill, overflow: 'hidden' },
   ibTick: { position: 'absolute', top: -4, bottom: -4, width: 3, marginLeft: -1.5, borderRadius: 2, backgroundColor: colors.textPrimary, opacity: 0.75 },
   ibFoot: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 9 },
+  sectionTitle: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h2, color: colors.textPrimary, marginTop: 6, marginHorizontal: 2, marginBottom: spacing.md },
+  sourceGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  sourceTile: { width: '48.5%', borderRadius: 20, paddingTop: 14, paddingHorizontal: 14, paddingBottom: 13 },
+  sourcePct: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, letterSpacing: trackTight(fontSize.h1), ...num },
+  sourceLabel: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, lineHeight: 17, color: colors.textPrimary, marginTop: 6 },
+  sourceTrack: {
+    height: 5,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    marginTop: 10,
+    backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.75)',
+  },
+  sections: { gap: 10 },
+  sectionCard: { backgroundColor: colors.bgSurfaceSolid, borderRadius: 22, borderWidth: 1, borderColor: colors.borderSubtle, overflow: 'hidden' },
+  sectionHead: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: spacing.lg },
+  sectionIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  sectionText: { flex: 1, minWidth: 0 },
+  sectionLabel: { fontFamily: fontFamily.bold, fontSize: 16, color: colors.textPrimary },
+  sectionSummary: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 4, ...num },
+  sectionRows: { paddingHorizontal: spacing.lg, paddingBottom: 10 },
+  rowGroup: { fontFamily: fontFamily.bold, fontSize: fontSize.micro, letterSpacing: trackWide(fontSize.micro), textTransform: 'uppercase', paddingTop: 14, paddingBottom: 6 },
+  rowPlain: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  rowTarget: { paddingVertical: spacing.md },
+  rowSub: { paddingLeft: spacing.lg },
+  rowBorder: { borderTopWidth: 1, borderTopColor: foodColors[scheme].nu.other.tint },
+  rowLabel: { flex: 1, minWidth: 0, fontFamily: fontFamily.semibold, fontSize: fontSize.body, color: colors.textPrimary },
+  rowLabelSub: { fontFamily: fontFamily.medium, color: colors.textSecondary },
+  rowValue: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary, ...num },
+  rowUnit: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary },
+  rowHead: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  rowAmount: { flexShrink: 0, fontFamily: fontFamily.extrabold, fontSize: fontSize.small, ...num },
+  rowTrack: { flexDirection: 'row', height: 8, borderRadius: radius.pill, overflow: 'hidden', marginTop: 9, marginBottom: 0 },
+  nutritionNote: { paddingTop: spacing.lg, paddingHorizontal: 4, fontFamily: fontFamily.medium, fontSize: fontSize.micro, lineHeight: 18, color: colors.textTertiary },
+  retry: { fontFamily: fontFamily.bold, color: colors.brandPrimary },
   actions: {
     position: 'absolute',
     left: 0,

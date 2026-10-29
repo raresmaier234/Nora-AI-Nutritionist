@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react';
 import Svg, { Circle, Path } from 'react-native-svg';
+
+import type { NutrientSectionId } from '@/features/food/nutrients';
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
 
@@ -187,6 +190,57 @@ export function AutoThemeIcon({ size = 18, color = '#475569', strokeWidth = 2 }:
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
       <Circle cx={12} cy={12} r={9} />
       <Path d="M12 3a9 9 0 0 1 0 18z" fill={color} />
+    </Svg>
+  );
+}
+
+/** Food Details' nutrition section glyphs, from FoodDetailsV3.jsx (FD_SECTION_META). */
+const SECTION_GLYPHS: Record<NutrientSectionId, ReactNode> = {
+  macros: (
+    <>
+      <Path d="M21 12A9 9 0 1 1 12 3v9z" />
+      <Path d="M15.5 3.7A9 9 0 0 1 20.3 8.5H15.5z" />
+    </>
+  ),
+  sugars: (
+    <>
+      <Path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" />
+      <Path d="M12 12l8-4.5M12 12v9M12 12 4 7.5" />
+    </>
+  ),
+  fats: <Path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z" />,
+  amino: (
+    <>
+      <Circle cx={6} cy={12} r={2.5} />
+      <Circle cx={18} cy={6} r={2.5} />
+      <Circle cx={18} cy={18} r={2.5} />
+      <Path d="M8.3 10.9l7.4-3.8M8.3 13.1l7.4 3.8" />
+    </>
+  ),
+  vitamins: (
+    <>
+      <Path d="M10.5 20.5 3.5 13.5a4.95 4.95 0 1 1 7-7l7 7a4.95 4.95 0 1 1-7 7z" />
+      <Path d="M8.5 8.5l7 7" />
+    </>
+  ),
+  minerals: (
+    <>
+      <Path d="M6 3h12l4 6-10 12L2 9z" />
+      <Path d="M2 9h20M12 21 8 9l4-6 4 6-4 12" />
+    </>
+  ),
+  other: (
+    <>
+      <Path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3" />
+      <Path d="M7 15h10" />
+    </>
+  ),
+};
+
+export function NutrientSectionIcon({ section, size = 21, color = '#475569', strokeWidth = 2 }: IconProps & { section: NutrientSectionId }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      {SECTION_GLYPHS[section]}
     </Svg>
   );
 }

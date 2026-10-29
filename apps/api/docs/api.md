@@ -80,6 +80,38 @@ by trigram similarity, exact name first. The response is the same either way.
 ]
 ```
 
+### `GET /api/v1/foods/{id}`
+
+- **Tag:** Foods
+- **Summary:** Get a food's full nutrition
+- **Response model:** `FoodDetail` (`app/schemas/food.py`); logic in `app/services/food_details.py`.
+
+One food with its whole nutrient profile, per 100g, for the app's food details screen. Search
+keeps sending only calories and macros; the app asks for this when a food is opened.
+
+`per_100g` holds calories, protein, carbs and fat, as in search, and is `null` when the food lacks
+any of them. `nutrients` lists every other nutrient the food has a value for: the label's fibre,
+sugar, saturated fat and sodium first, then the full profile in the order of
+`app/services/ingest/nutrients.py` (carbohydrate breakdown, fats and fatty acids, amino acids,
+vitamins, minerals, other compounds). Each states its `unit` — `g`, `mg` or `ug` — matching the
+`foods` column it comes from. A nutrient without data is left out, never sent as `null`; a `0`
+is a measured zero. Foods known only from their nutrition label return just those values. A
+missing food is a 404.
+
+```json
+{
+  "id": 1755,
+  "name": "Butter, salted",
+  "per_100g": {"kcal": 717.0, "protein": 0.85, "carbs": 0.06, "fat": 81.11},
+  "nutrients": [
+    {"key": "fiber", "unit": "g", "amount": 0.0},
+    {"key": "saturated_fat", "unit": "g", "amount": 51.368},
+    {"key": "sodium", "unit": "mg", "amount": 643.0},
+    {"key": "vitamin_a", "unit": "ug", "amount": 684.0}
+  ]
+}
+```
+
 ### Food log — `/api/v1/meals/entries`
 
 - **Tag:** Meals

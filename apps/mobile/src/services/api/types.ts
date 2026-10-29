@@ -24,6 +24,24 @@ export interface FoodSearchResult {
   per_100g: Per100g;
 }
 
+/** How much of one nutrient 100 g contains, e.g. { key: 'vitamin_c', unit: 'mg', amount: 8.7 }. */
+export interface NutrientAmount {
+  key: string;
+  unit: 'g' | 'mg' | 'ug';
+  amount: number;
+}
+
+/**
+ * GET /foods/{id} — a food's full nutrient profile, per 100 g. `per_100g` is null when the food
+ * lacks calories or a macro; `nutrients` leaves out anything without data.
+ */
+export interface FoodDetail {
+  id: number;
+  name: string;
+  per_100g: Per100g | null;
+  nutrients: NutrientAmount[];
+}
+
 export type MealSlug = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 export type FoodLogSource = 'database' | 'custom' | 'barcode' | 'photo' | 'recipe';
 
