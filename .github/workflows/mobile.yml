@@ -53,7 +53,7 @@ jobs:
           eas-version: 27.1.0
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas update --branch development--message "$COMMIT_MESSAGE" --non-interactive
+      - run: eas update --branch development --message "$COMMIT_MESSAGE" --non-interactive
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
