@@ -56,4 +56,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # Railway builds apps/api/Dockerfile and runs migrations before switching traffic (railway.toml).
-      - run: npx --yes @railway/cli@5.71.0 up apps/api --path-as-root --service api --ci
+      - run: npx --yes @railway/cli@5.71.0 up apps/api --path-as-root --service nora-ai-nutrition-api-dev --ci
