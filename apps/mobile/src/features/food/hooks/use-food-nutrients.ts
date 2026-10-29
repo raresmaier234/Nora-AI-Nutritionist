@@ -7,7 +7,7 @@ import { NutrientAmount, getFood } from '@/services/api';
 // dropped so Retry asks again.
 const requests = new Map<number, Promise<NutrientAmount[]>>();
 
-function loadNutrients(id: number): Promise<NutrientAmount[]> {
+export function loadNutrients(id: number): Promise<NutrientAmount[]> {
   let request = requests.get(id);
   if (!request) {
     request = getFood(id).then((food) => food.nutrients);

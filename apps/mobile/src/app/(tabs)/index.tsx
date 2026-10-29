@@ -12,12 +12,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AppearanceButton } from '@/components/common/appearance-button';
 import { CalorieSummaryCard } from '@/components/log/calorie-summary-card';
-import { DateNavigator } from '@/components/log/date-navigator';
+import { DateNavigator, dayLabels } from '@/components/log/date-navigator';
 import { LogFoodBar } from '@/components/log/log-food-bar';
 import { BarcodeScannerPanel } from '@/components/log/panels/barcode-scanner-panel';
 import { CustomFoodPanel } from '@/components/log/panels/custom-food-panel';
 import { PhotoEstimatePanel } from '@/components/log/panels/photo-estimate-panel';
 import { RecipesPanel, StudioStart } from '@/components/log/panels/recipes-panel';
+import { DayNutritionScreen } from '@/components/log/screens/day-nutrition-screen';
 import { FoodDetailsScreen } from '@/components/log/screens/food-details-screen';
 import { FoodSearchScreen, SearchMode } from '@/components/log/screens/food-search-screen';
 import { RecipeStudioScreen } from '@/components/log/screens/recipe-studio-screen';
@@ -68,6 +69,8 @@ export default function LogScreen() {
   const foodLog = useFoodLog(date, notify);
   /** Entry being edited in Food Details. */
   const [detail, setDetail] = useState<Entry | null>(null);
+  /** The day's full nutrition, opened from the summary card. */
+  const [showDay, setShowDay] = useState(false);
   /** Food opened from search, to add at `time`. */
   const [foodView, setFoodView] = useState<{ food: Food; time: string } | null>(null);
   /** "HH:MM" while full-screen search is open, logging at that time. */
@@ -184,6 +187,7 @@ export default function LogScreen() {
           remaining={foodLog.remaining}
           pct={foodLog.pct}
           over={foodLog.over}
+          onPress={() => setShowDay(true)}
         />
 
         {foodLog.loadState === 'loading' ? (
@@ -202,6 +206,18 @@ export default function LogScreen() {
       </ScrollView>
 
       <LogFoodBar onPress={() => setAdding(nowHHMM())} bottomInset={insets.bottom} />
+
+      {/* The day's totals: macros, fibre, vitamins, minerals, and what's left of each */}
+      <FullScreen visible={showDay} onClose={() => setShowDay(false)}>
+        {showDay ? (
+          <DayNutritionScreen
+            {...dayLabels(today, dayOffset)}
+            entries={foodLog.entries}
+            totals={foodLog.totals}
+            onClose={() => setShowDay(false)}
+          />
+        ) : null}
+      </FullScreen>
 
       {/* Edit a logged entry */}
       <FullScreen visible={!!detail} onClose={() => setDetail(null)}>

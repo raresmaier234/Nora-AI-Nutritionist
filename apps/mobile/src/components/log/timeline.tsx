@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FoodIcon } from '@/components/log/food-icon';
 import { PlusIcon } from '@/components/log/icons';
-import { Palette, fontFamily, fontSize, radius, spacing, trackWide, useColors, useStyles } from '@/theme';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 import { Entry, entryMacros } from '@/features/food/data/mock-data';
-import { fmtDur, fromMin, groupMoments, nowHHMM, toMin } from '@/features/food/time';
+import { fromMin, nowHHMM, toMin } from '@/features/food/time';
 
 const DAY_START = 6;
 const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
@@ -28,7 +28,7 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const [showNight, setShowNight] = useState(false);
-  // Re-render each minute so the now line and "last ate" stay current.
+  // Re-render each minute so the now line stays current.
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -38,10 +38,6 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
   const nowStr = nowHHMM();
   const nowMin = toMin(nowStr);
   const nowH = Math.floor(nowMin / 60);
-  const moments = groupMoments(entries);
-  const past = isToday ? entries.filter((e) => toMin(e.time) <= nowMin) : entries;
-  const lastE = past[past.length - 1];
-  const sinceLast = isToday && lastE ? Math.max(0, nowMin - toMin(lastE.time)) : null;
   const hourOf = (e: Entry) => Math.floor(toMin(e.time) / 60);
   const firstH = entries.length ? hourOf(entries[0]) : 24;
   const start = showNight ? 0 : Math.min(DAY_START, firstH, isToday ? nowH : 24);
@@ -92,23 +88,6 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
 
   return (
     <View>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Timeline</Text>
-          <Text style={styles.subtitle}>
-            {entries.length
-              ? `${moments.length} ${moments.length === 1 ? 'time' : 'times'} eaten`
-              : 'Tap any hour to log what you ate then'}
-          </Text>
-        </View>
-        {sinceLast != null ? (
-          <View style={styles.lastAte}>
-            <Text style={styles.lastAteLabel}>Last ate</Text>
-            <Text style={styles.lastAteValue}>{fmtDur(sinceLast)} ago</Text>
-          </View>
-        ) : null}
-      </View>
-
       <View accessibilityRole="tablist" style={styles.tabs}>
         {(
           [
@@ -184,26 +163,6 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
 const num = { fontVariant: ['tabular-nums' as const] };
 
 const makeStyles = (colors: Palette) => StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    marginHorizontal: 2,
-    marginBottom: spacing.md,
-  },
-  headerText: { minWidth: 0, flexShrink: 1 },
-  title: { fontFamily: fontFamily.bold, fontSize: fontSize.h2, color: colors.textPrimary },
-  subtitle: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 5 },
-  lastAte: { alignItems: 'flex-end', flexShrink: 0 },
-  lastAteLabel: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.nano,
-    color: colors.textTertiary,
-    letterSpacing: trackWide(fontSize.nano),
-    textTransform: 'uppercase',
-  },
-  lastAteValue: { fontFamily: fontFamily.extrabold, fontSize: fontSize.body, color: colors.brandPrimary, marginTop: 5, ...num },
   tabs: {
     flexDirection: 'row',
     gap: 4,

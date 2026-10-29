@@ -11,17 +11,20 @@ type DateNavigatorProps = {
   anchorDate: Date;
 };
 
+/** "Today" / "Yesterday" / a weekday, and "Thu, Oct 29", for the day `dayOffset` days from `anchorDate`. */
+export function dayLabels(anchorDate: Date, dayOffset: number) {
+  const date = new Date(anchorDate);
+  date.setDate(date.getDate() + dayOffset);
+  return {
+    dayLabel: dayOffset === 0 ? 'Today' : dayOffset === -1 ? 'Yesterday' : date.toLocaleDateString('en-US', { weekday: 'long' }),
+    dateLabel: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+  };
+}
+
 export function DateNavigator({ dayOffset, onChange, anchorDate }: DateNavigatorProps) {
   const colors = useColors();
   const styles = useStyles(makeStyles);
-  const date = useMemo(() => {
-    const d = new Date(anchorDate);
-    d.setDate(d.getDate() + dayOffset);
-    return d;
-  }, [anchorDate, dayOffset]);
-
-  const dayLabel = dayOffset === 0 ? 'Today' : dayOffset === -1 ? 'Yesterday' : date.toLocaleDateString('en-US', { weekday: 'long' });
-  const dateLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const { dayLabel, dateLabel } = useMemo(() => dayLabels(anchorDate, dayOffset), [anchorDate, dayOffset]);
 
   return (
     <View style={styles.row}>

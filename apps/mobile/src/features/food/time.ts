@@ -22,15 +22,6 @@ export const fromMin = (m: number) => {
   return `${pad(Math.floor(v / 60))}:${pad(v % 60)}`;
 };
 
-/** 95 → "1 h 35 min". */
-export const fmtDur = (mins: number) => {
-  const m = Math.max(0, Math.round(mins));
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  if (h === 0) return `${r} min`;
-  return r === 0 ? `${h} h` : `${h} h ${r} min`;
-};
-
 /** "HH:MM" of an ISO timestamp, in the device's timezone. */
 export const timeOf = (iso: string) => {
   const d = new Date(iso);
@@ -54,21 +45,3 @@ export function toLoggedAt(date: string, time: string): string {
 
 export const byTime = <T extends { time: string; uid: number }>(a: T, b: T) =>
   toMin(a.time) - toMin(b.time) || a.uid - b.uid;
-
-export type Moment<T> = { start: number; end: number; time: string; items: T[] };
-
-/** Entries eaten within 30 min of each other form one eating moment on the timeline. */
-export function groupMoments<T extends { time: string; uid: number }>(list: T[]): Moment<T>[] {
-  const out: Moment<T>[] = [];
-  [...list].sort(byTime).forEach((e) => {
-    const last = out[out.length - 1];
-    const t = toMin(e.time);
-    if (last && t - last.end <= 30) {
-      last.items.push(e);
-      last.end = t;
-    } else {
-      out.push({ start: t, end: t, time: e.time, items: [e] });
-    }
-  });
-  return out;
-}
