@@ -1,10 +1,11 @@
-# Publishes the mobile app's JS as an EAS Update on every push that touches it. The update
-# opens in Expo Go (QR code on the update's page at expo.dev) and in any build on the
-# "development" channel (eas.json: the "preview" build profile).
+# Publishes the mobile app's JS as an EAS Update on every push that touches it: master to the
+# "development" update branch, main (merged from master) to "production". An update opens in
+# Expo Go (QR code on the update's page at expo.dev) and in any build on the channel of the same
+# name (eas.json: "preview" builds follow development, "production" builds follow production).
 #
-# Needs in GitHub (Settings → Secrets and variables → Actions):
+# Needs in GitHub:
 #   secret   EXPO_TOKEN — an Expo access token (expo.dev → Account settings → Access tokens)
-#   variable API_URL    — the public API base URL, e.g. https://api-production-xxxx.up.railway.app
+#   variable API_URL    — in each environment, that environment's public API base URL
 name: Mobile
 
 on:
@@ -34,9 +35,9 @@ jobs:
     needs: check
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: development
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     concurrency:
-      group: mobile-publish
+      group: mobile-publish-${{ github.ref_name }}
       cancel-in-progress: true
     defaults:
       run:
@@ -53,7 +54,8 @@ jobs:
           eas-version: 27.1.0
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas update --branch development --message "$COMMIT_MESSAGE" --non-interactive
+      - run: eas update --branch "$EAS_BRANCH" --message "$COMMIT_MESSAGE" --non-interactive
         env:
+          EAS_BRANCH: ${{ github.ref_name == 'main' && 'production' || 'development' }}
           EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}

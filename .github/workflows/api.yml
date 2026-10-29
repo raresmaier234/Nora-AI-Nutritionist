@@ -1,7 +1,9 @@
-# Tests the API on every push/PR that touches it, and deploys pushes to Railway once tests pass.
+# Tests the API on every push/PR that touches it, and deploys pushes to Railway once tests pass:
+# master deploys to development, main (merged from master) to production.
 #
-# Needs in GitHub (Settings → Secrets and variables → Actions):
-#   secret RAILWAY_TOKEN — a Railway *project* token for the development environment
+# Needs in each GitHub environment, development and production (Settings → Environments):
+#   secret   RAILWAY_TOKEN   — a Railway *project* token for that Railway environment
+#   variable RAILWAY_SERVICE — the Railway service name (development falls back to the one below)
 name: API
 
 on:
@@ -47,13 +49,14 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment: development
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     concurrency:
-      group: api-deploy
+      group: api-deploy-${{ github.ref_name }}
       cancel-in-progress: false
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE || 'nora-ai-nutrition-api-dev' }}
     steps:
       - uses: actions/checkout@v4
       # Railway builds apps/api/Dockerfile and runs migrations before switching traffic (railway.toml).
-      - run: npx --yes @railway/cli@5.71.0 up apps/api --path-as-root --service nora-ai-nutrition-api-dev --ci
+      - run: npx --yes @railway/cli@5.71.0 up apps/api --path-as-root --service "$RAILWAY_SERVICE" --ci
