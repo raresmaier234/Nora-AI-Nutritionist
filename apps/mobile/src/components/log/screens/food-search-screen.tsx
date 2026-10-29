@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FoodIcon } from '@/components/log/food-icon';
-import { BarcodeIcon, CameraIcon, CheckIcon, ChevronLeftIcon, CloseIcon, PlusIcon, RecipeIcon, SearchIcon } from '@/components/log/icons';
+import { BarcodeIcon, CameraIcon, CheckIcon, CloseIcon, PlusIcon, RecipeIcon, SearchIcon } from '@/components/log/icons';
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { Entry, Food } from '@/features/food/data/mock-data';
@@ -120,7 +120,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, o
       <View style={[styles.header, { paddingTop: Math.max(14, insets.top) }]}>
         <View style={styles.titleRow}>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close search" style={styles.back}>
-            <ChevronLeftIcon size={22} color={colors.textPrimary} />
+            <CloseIcon size={16} color={colors.textPrimary} strokeWidth={2.6} />
           </Pressable>
           <View style={styles.titleCol}>
             <Text style={styles.title}>Add food</Text>

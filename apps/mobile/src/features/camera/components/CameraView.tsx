@@ -1,7 +1,7 @@
 import { CameraView as ExpoCameraView, type BarcodeScanningResult, type BarcodeSettings } from 'expo-camera';
 import { forwardRef, ReactNode, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraIcon, CloseIcon } from '@/components/log/icons';
 import { Button } from '@/components/ui/button';
@@ -31,12 +31,20 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
 ) {
   const colors = useColors();
   const styles = useStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const { state, requestPermission, openSettings } = useCameraPermissions();
   const [mountError, setMountError] = useState<string | null>(null);
 
+  // Placed from the safe-area insets, above everything else, with a dark fill so it reads on a
+  // bright preview: it is the only way out of the full-screen camera.
   const CloseButton = (
-    <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.closeButton}>
-      <CloseIcon size={16} color={colors.white} strokeWidth={2.4} />
+    <Pressable
+      onPress={onClose}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel="Close camera"
+      style={[styles.closeButton, { top: insets.top + spacing.sm }]}>
+      <CloseIcon size={18} color={colors.white} strokeWidth={2.6} />
     </Pressable>
   );
 
@@ -44,7 +52,6 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
     return (
       <View style={styles.root}>
         <SafeAreaView style={styles.permissionSafeArea}>
-          {CloseButton}
           <View style={styles.permissionContent}>
             {state === 'checking' ? (
               <ActivityIndicator color={colors.white} />
@@ -72,6 +79,7 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
             )}
           </View>
         </SafeAreaView>
+        {CloseButton}
       </View>
     );
   }
@@ -87,9 +95,7 @@ export const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(function
         onMountError={(event) => setMountError(event.message || 'The camera could not be started.')}
       />
       {children}
-      <SafeAreaView style={styles.chromeSafeArea} pointerEvents="box-none">
-        {CloseButton}
-      </SafeAreaView>
+      {CloseButton}
     </View>
   );
 });
@@ -99,21 +105,21 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.slate900,
   },
-  chromeSafeArea: {
-    ...StyleSheet.absoluteFill,
-  },
   permissionSafeArea: {
     flex: 1,
   },
   closeButton: {
-    width: 38,
-    height: 38,
+    position: 'absolute',
+    left: spacing.lg,
+    zIndex: 10,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(15,23,42,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: spacing.lg,
-    marginTop: spacing.sm,
   },
   permissionContent: {
     flex: 1,

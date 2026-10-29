@@ -26,6 +26,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     fontSize: fontSize.h1,
     color: colors.textPrimary,
     marginBottom: 4,
+    // Clear of the Sheet's close button in the card's top-right corner.
+    paddingRight: 32,
   },
   subtitle: {
     fontFamily: fontFamily.medium,

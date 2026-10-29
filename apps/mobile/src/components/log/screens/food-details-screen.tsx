@@ -7,7 +7,7 @@ import Svg, { Circle, Defs, Stop, LinearGradient as SvgGradient } from 'react-na
 import { FoodIcon, foodIllustration } from '@/components/log/food-icon';
 import { FoodIconPicker } from '@/components/log/food-icon-picker';
 import type { FoodTint } from '@/features/food/food-icons';
-import { ArrowRightIcon, ChevronDownIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
+import { ArrowRightIcon, CloseIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from '@/components/log/icons';
 import { Fill, GoodSourceTile, MacroTargetBar, NutrientSectionCard, fmt } from '@/components/log/nutrition-parts';
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, Scheme, fontFamily, fontSize, gradientAngle, radius, spacing, trackTight, trackWide, useColors, useStyles, useTheme } from '@/theme';
@@ -146,7 +146,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
       {/* Floating top bar — transparent over the hero, solid once the hero scrolls away */}
       <View style={[styles.topBar, { paddingTop: 10 + insets.top }, scrolled && styles.topBarSolid]}>
         <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={[styles.close, !scrolled && styles.closeRaised]}>
-          <ChevronDownIcon size={20} color={colors.textPrimary} />
+          <CloseIcon size={16} color={colors.textPrimary} strokeWidth={2.6} />
         </Pressable>
         <Text numberOfLines={1} style={[styles.topTitle, { opacity: scrolled ? 1 : 0 }]}>
           {food.name} · <Text style={{ color: nu.kcal.ink }}>{kcal} kcal</Text>

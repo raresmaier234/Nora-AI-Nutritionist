@@ -90,13 +90,27 @@ export default function LogScreen() {
   const [afterRecipes, setAfterRecipes] = useState<(() => void) | null>(null);
   const [scanResult, setScanResult] = useState<BarcodeScanResult | null>(null);
   const [photoResult, setPhotoResult] = useState<PhotoCaptureResult | null>(null);
+  /** The camera to open once the Photo / Barcode sheet has finished closing. */
+  const [pendingCamera, setPendingCamera] = useState<'scan' | 'photo' | null>(null);
 
   // The Sheet is a React Native Modal, which always renders above whatever the navigator pushes
   // next — so it has to close before the full-screen camera route opens, and reopen once the
   // camera route returns a result via router.dismissTo (see src/app/camera/*.tsx).
   const openCamera = (kind: 'scan' | 'photo') => {
-    setMode(null);
     router.push(kind === 'scan' ? '/camera/barcode' : '/camera/photo');
+  };
+  // From the Photo / Barcode sheet: only once it has finished closing. Pushed while the sheet
+  // is still animating out, iOS presents the camera from the sheet's window, and the camera's
+  // close button can no longer dismiss it.
+  const openCameraFromSheet = (kind: 'scan' | 'photo') => {
+    setPendingCamera(kind);
+    setMode(null);
+  };
+  const onCameraSheetDismissed = () => {
+    if (!pendingCamera) return;
+    const kind = pendingCamera;
+    setPendingCamera(null);
+    openCamera(kind);
   };
 
   useEffect(() => {
@@ -287,11 +301,12 @@ export default function LogScreen() {
         onClose={() => {
           setMode(null);
           setPhotoResult(null);
-        }}>
+        }}
+        onDismissed={onCameraSheetDismissed}>
         <PhotoEstimatePanel
           time={targetTime}
           onTime={setTargetTime}
-          onOpenCamera={() => openCamera('photo')}
+          onOpenCamera={() => openCameraFromSheet('photo')}
           photoResult={photoResult}
           onAdd={(items) => {
             foodLog.addPhotoItems(targetTime, items);
@@ -305,11 +320,12 @@ export default function LogScreen() {
         onClose={() => {
           setMode(null);
           setScanResult(null);
-        }}>
+        }}
+        onDismissed={onCameraSheetDismissed}>
         <BarcodeScannerPanel
           time={targetTime}
           onTime={setTargetTime}
-          onOpenCamera={() => openCamera('scan')}
+          onOpenCamera={() => openCameraFromSheet('scan')}
           scanResult={scanResult}
           onAdd={(product) => {
             foodLog.addScanned(targetTime, product);

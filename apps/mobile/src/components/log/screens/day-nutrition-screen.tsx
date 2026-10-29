@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ChevronDownIcon } from '@/components/log/icons';
+import { CloseIcon } from '@/components/log/icons';
 import { Fill, MacroTargetBar, NutrientSectionCard, fmt } from '@/components/log/nutrition-parts';
 import { Palette, Scheme, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { foodColors, useFoodColors } from '@/features/food/theme';
@@ -51,7 +51,7 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: 10 + insets.top }]}>
         <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
-          <ChevronDownIcon size={20} color={colors.textPrimary} />
+          <CloseIcon size={16} color={colors.textPrimary} strokeWidth={2.6} />
         </Pressable>
         <Text style={styles.topTitle}>Nutrition</Text>
         <View style={styles.close} />

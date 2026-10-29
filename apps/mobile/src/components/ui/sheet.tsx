@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useRef } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
-import { Palette, motion, radius, spacing, useStyles } from '@/theme';
+import { Palette, motion, radius, spacing, useColors, useStyles } from '@/theme';
 
 type SheetProps = {
   visible: boolean;
@@ -22,8 +23,11 @@ type SheetProps = {
  * unreliable once a Modal is nested inside another Modal (the unit picker opens from inside the
  * edit/custom-food sheets) — it silently leaves the second sheet stuck at opacity 0. The card's
  * scale-in "pop" instead uses a plain mount-driven shared value, which doesn't hit that path.
+ *
+ * Closes from the X in its top-right corner, a tap on the backdrop, or Android's back button.
  */
 export function Sheet({ visible, onClose, onDismissed, children }: SheetProps) {
+  const colors = useColors();
   const styles = useStyles(makeStyles);
   const scale = useSharedValue(0.96);
   const opacity = useSharedValue(0);
@@ -67,6 +71,11 @@ export function Sheet({ visible, onClose, onDismissed, children }: SheetProps) {
               keyboardShouldPersistTaps="handled">
               {children}
             </ScrollView>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close" style={styles.close}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={colors.textSecondary} strokeWidth={2.8} strokeLinecap="round">
+                <Path d="M18 6 6 18M6 6l12 12" />
+              </Svg>
+            </Pressable>
           </Animated.View>
         </KeyboardAvoidingView>
       </View>
@@ -96,5 +105,16 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   scrollContent: {
     padding: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  close: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
 });
