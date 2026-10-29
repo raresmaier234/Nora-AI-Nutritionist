@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "noraainutrition",
     "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
     "runtimeVersion": {
       "policy": "fingerprint"
     },
