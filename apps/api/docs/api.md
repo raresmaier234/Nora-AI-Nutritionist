@@ -53,11 +53,26 @@ Used as a liveness check. No auth, no dependencies.
 - **Summary:** Search foods
 - **Response model:** `list[FoodSearchResult]` (`app/schemas/food.py`)
 
-Foods whose name contains `q` or closely resembles it (trigram similarity), best match first:
-exact name, then names starting with `q`, then by similarity. Case, accents and punctuation
-are ignored ("creme-fraiche" finds "Crème Fraîche"). Only foods with calories, protein, carbs
-and fat are returned. `q` is required (1–100 characters); `limit` defaults to 20, at most 50.
-Logic lives in `app/services/food_search.py`.
+Foods whose name matches `q`, best match first. Built for search as you type:
+
+- **Unfinished words:** "alm" finds almond butter; "piept d" finds "piept de pui".
+- **Typos:** one wrong letter in words of 4–7 letters, two from 8 ("granloa", "almnds"). The
+  first letter must be right.
+- **English and Romanian:** the food database mixes both, so each finds the other through the
+  synonyms in `app/services/food_synonyms.py` — "chicken breast" finds "piept de pui", "olive
+  oil" finds "ulei de masline".
+- **Word forms, case, accents:** "eggs" finds "Egg", "SMANTANA" finds "Smântână". Connecting
+  words (de, cu, of, with, …) don't count toward a match.
+
+Ranking: the exact name first, then names starting with `q`, then the best matches; a
+typo-corrected match never outranks a real one. Only foods with calories, protein, carbs and
+fat are returned. `q` is required (1–100 characters); `limit` defaults to 20, at most 50.
+
+Runs on Elasticsearch when `ELASTICSEARCH_URL` is set — the query is `build_query` in
+`app/services/food_search.py`, the index `app/services/food_index.py` — and the matching foods
+are then loaded from PostgreSQL. Without Elasticsearch (unset, index not built yet, or not
+answering) the same endpoint searches PostgreSQL instead: names containing `q` or resembling it
+by trigram similarity, exact name first. The response is the same either way.
 
 ```json
 [

@@ -185,8 +185,12 @@ def process_job(
     *,
     source: FoodSource,
     stats: RunStats,
-) -> None:
-    """Run one URL through the pipeline and commit the outcome."""
+) -> list[int]:
+    """Run one URL through the pipeline and commit the outcome.
+
+    Returns the ids of the foods it added or changed, so the caller can bring the search
+    index up to date once they are committed.
+    """
     job.attempts += 1
 
     try:
@@ -198,9 +202,10 @@ def process_job(
         stats.failed += 1
         db.commit()
         logger.warning("job %s failed: %s", job.url, exc)
-        return
+        return []
 
     created = 0
+    saved: list[int] = []
     for raw in raw_foods:
         try:
             normalized = normalize_food(raw)
@@ -217,10 +222,12 @@ def process_job(
         if outcome.created:
             created += 1
             stats.foods_created += 1
+            saved.append(outcome.food.id)
         elif outcome.name_taken:
             stats.foods_name_taken += 1
         else:
             stats.foods_enriched += 1
+            saved.append(outcome.food.id)
         if outcome.similar:
             stats.flagged_for_review += 1
 
@@ -231,6 +238,7 @@ def process_job(
     job.processed_at = func.now()
     stats.succeeded += 1
     db.commit()
+    return saved
 
 
 def _fail_unexpectedly(db: Session, job_id: int, exc: Exception) -> None:
@@ -255,6 +263,7 @@ def run(
     limit: int | None = None,
     site: str | None = None,
     should_stop: Callable[[], bool] | None = None,
+    on_saved: Callable[[list[int]], None] | None = None,
 ) -> RunStats:
     """Process pending jobs until the frontier empties, `limit` is hit, or asked to stop.
 
@@ -265,6 +274,10 @@ def run(
     `site` restricts the run to one host's jobs. `should_stop` is polled between jobs,
     which is what lets Ctrl-C finish the page in flight and exit cleanly rather than
     abandoning it mid-write.
+
+    `on_saved` is called with the ids of the foods each page added or changed, after they
+    are committed — how the ingest command keeps the search index current. It must handle
+    its own errors: a failure there is not the page's failure.
     """
     source = HtmlSource(sites=sites, robots=robots, extractor=extractor)
     stats = RunStats()
@@ -286,7 +299,7 @@ def run(
 
         before = replace(stats, rejection_reasons=list(stats.rejection_reasons))
         try:
-            process_job(db, job, source=source, stats=stats)
+            saved = process_job(db, job, source=source, stats=stats)
         except Exception as exc:
             # Anything unexpected is recorded on the job rather than ending the run. Left
             # pending, the same job would be picked first again next run and crash it too.
@@ -294,6 +307,9 @@ def run(
             # The job's writes were rolled back, so its counts must be too.
             stats.__dict__.update(before.__dict__)
             stats.failed += 1
+            saved = []
         stats.processed += 1
+        if saved and on_saved is not None:
+            on_saved(saved)
 
     return stats

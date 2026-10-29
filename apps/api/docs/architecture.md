@@ -9,7 +9,9 @@ Expo Mobile App
        v
     FastAPI
        |
-       +---- PostgreSQL
+       +---- PostgreSQL       (source of truth)
+       |
+       +---- Elasticsearch    (food search index, derived from PostgreSQL)
        |
        +---- External APIs   (planned)
        |
@@ -57,10 +59,31 @@ input, call the DB, return a schema."
 - **`app/schemas/`** — empty right now. Future Pydantic request/response schemas go here.
   Schemas are kept separate from SQLAlchemy models on purpose — a database row and an API
   response are different shapes with different concerns (e.g. hiding a password hash).
-- **`app/services/`** — empty right now. Business logic that doesn't fit cleanly in a route
-  handler (multi-step operations, calls to external APIs, orchestration) goes here.
+- **`app/services/`** — business logic that doesn't fit cleanly in a route handler
+  (multi-step operations, calls to external APIs, orchestration): the food log, food search
+  and its index, the ingestion pipeline, scraping.
 - **`tests/`** — pytest tests using FastAPI's `TestClient`.
 - **`alembic/`** — the Alembic migration environment, pointed at `app.db.database.Base`.
+
+## Food search
+
+`GET /api/v1/foods` runs on an Elasticsearch index of the `foods` table
+(`app/services/food_index.py`); PostgreSQL stays the source of truth.
+
+- **Derived, disposable.** The index can be deleted and rebuilt from PostgreSQL at any time
+  with `python scripts/index_foods.py`. Search only takes matching ids from it and loads the
+  foods from PostgreSQL, so a stale document can never show stale values.
+- **Zero-downtime rebuilds.** Search reads the `foods` alias. A rebuild fills a new
+  timestamped index, then moves the alias onto it in one step and deletes the old one.
+- **Kept current by ingestion.** `scripts/ingest_foods.py run` indexes each page's new and
+  changed foods once they are committed. If Elasticsearch is down it carries on, and the next
+  rebuild catches up.
+- **Optional.** Without `ELASTICSEARCH_URL`, or when the index doesn't answer, search runs on
+  PostgreSQL (trigram matching) with the same response, so nothing else depends on it.
+- **One document per food:** its name, analyzed several ways (as written, Romanian and
+  English word forms, synonyms in the other language, prefixes for as-you-type), and its
+  macros per 100 g. Synonyms (`app/services/food_synonyms.py`) are applied while indexing, so
+  editing them needs a rebuild.
 
 ## Where future integrations should live
 
@@ -78,18 +101,17 @@ input, call the DB, return a schema."
 
 - `GET /api/v1/health`
 - FastAPI app with CORS
-- SQLAlchemy engine/session setup, no models
-- Alembic wired up, no migrations yet
-- Placeholder routers for auth/users/foods/barcodes/meals/nutrition (each returns
-  `501 Not Implemented`)
+- SQLAlchemy models and Alembic migrations (see [database.md](database.md))
+- Food database, filled by the ingestion pipeline (`scripts/ingest_foods.py`)
+- Food search (`GET /api/v1/foods`) on Elasticsearch, with PostgreSQL as fallback
+- Food logging (`/api/v1/meals/entries`)
+- Placeholder routers for auth/users/barcodes/nutrition (each returns `501 Not Implemented`)
 
 **Not implemented yet (planned):**
 
 - Authentication
 - User profiles
-- Food database
 - Barcode lookup
-- Food logging / meals
 - Calorie and macronutrient tracking
 - Daily nutrition summaries
 - Food photo uploads

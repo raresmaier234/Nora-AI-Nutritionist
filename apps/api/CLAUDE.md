@@ -11,6 +11,7 @@ FastAPI backend for the Nora AI Nutritionist mobile application.
 - Python
 - FastAPI
 - PostgreSQL
+- Elasticsearch (food search index, derived from PostgreSQL)
 - SQLAlchemy
 - Alembic
 - pytest

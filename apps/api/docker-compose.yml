@@ -1,6 +1,8 @@
-# Local PostgreSQL + pgAdmin — for running the app against a real database without installing
-# PostgreSQL directly, and browsing it via a web UI. The app itself is not containerized here;
-# run it with uvicorn.
+# Local PostgreSQL + pgAdmin + Elasticsearch — for running the app against real services without
+# installing them directly, and browsing the database via a web UI. The app itself is not
+# containerized here; run it with uvicorn.
+#
+#   docker compose up -d elasticsearch   # just the food search index (see docs/development.md)
 services:
   db:
     image: postgres:16-alpine
@@ -12,6 +14,20 @@ services:
       - "5432:5432"
     volumes:
       - nora_postgres_data:/var/lib/postgresql/data
+
+  # Food search index (see docs/architecture.md). Postgres stays the source of truth; this is
+  # rebuilt from it with `python scripts/index_foods.py`. Security is off because it only
+  # listens on this machine — never expose it like this beyond localhost.
+  elasticsearch:
+    image: elasticsearch:9.5.5
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - nora_es_data:/usr/share/elasticsearch/data
 
   pgadmin:
     image: dpage/pgadmin4:8
@@ -27,4 +43,5 @@ services:
 
 volumes:
   nora_postgres_data:
+  nora_es_data:
   pgadmin_data:

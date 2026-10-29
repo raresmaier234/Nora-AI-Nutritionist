@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins, e.g. "http://localhost:8081,https://app.example.com"
     cors_origins: str = "http://localhost:8081"
 
+    # Elasticsearch index behind food search (see app/services/food_index.py). Unset, food
+    # search runs on PostgreSQL alone. `elasticsearch_index` is an alias, so a rebuild can
+    # swap in a fresh index without downtime.
+    elasticsearch_url: str | None = None
+    elasticsearch_api_key: str | None = None
+    elasticsearch_index: str = "foods"
+
     # Local Ollama used by the food ingestion pipeline. Extraction runs on this machine,
     # so there is no API key and no per-request cost.
     ollama_host: str = "http://127.0.0.1:11434"

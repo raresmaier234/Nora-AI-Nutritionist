@@ -35,6 +35,7 @@ import sys
 from pathlib import Path
 
 import httpx
+from elasticsearch import ApiError, TransportError
 from sqlalchemy import func, select
 
 # Allow running as a plain script from the repo root, without installing the package.
@@ -43,6 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.db.database import SessionLocal, engine  # noqa: E402
 from app.db.models.food import Food  # noqa: E402
 from app.db.models.ingest_job import IngestJob  # noqa: E402
+from app.services.food_index import get_food_index, index_foods  # noqa: E402
 from app.services.ingest.extractor import OllamaExtractor  # noqa: E402
 from app.services.ingest.pipeline import (  # noqa: E402
     pending_count,
@@ -191,6 +193,19 @@ def cmd_run(args: argparse.Namespace) -> int:
                 return 0
 
             print(f"{remaining} pending. Ctrl-C to stop (the page in flight finishes first).")
+            # New and changed foods go into the search index as each page commits, so they
+            # are searchable straight away. Best effort: if Elasticsearch is down the run
+            # carries on, and `python scripts/index_foods.py` catches the index up later.
+            index = get_food_index()
+
+            def keep_index_current(food_ids: list[int]) -> None:
+                try:
+                    index_foods(db, index, food_ids)
+                except (ApiError, TransportError) as exc:
+                    logging.getLogger(__name__).warning(
+                        "search index not updated (%s); run scripts/index_foods.py later", exc
+                    )
+
             stats = run(
                 db,
                 sites=sites,
@@ -199,6 +214,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 limit=args.limit,
                 site=site,
                 should_stop=stop,
+                on_saved=keep_index_current if index is not None else None,
             )
 
     print(stats.summary())
