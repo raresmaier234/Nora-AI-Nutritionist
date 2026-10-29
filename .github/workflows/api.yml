@@ -1,0 +1,59 @@
+# Tests the API on every push/PR that touches it, and deploys pushes to Railway once tests pass.
+#
+# Needs in GitHub (Settings → Secrets and variables → Actions):
+#   secret RAILWAY_TOKEN — a Railway *project* token for the development environment
+name: API
+
+on:
+  push:
+    branches: [main, master]
+    paths: ["apps/api/**", ".github/workflows/api.yml"]
+  pull_request:
+    paths: ["apps/api/**", ".github/workflows/api.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nora
+          POSTGRES_PASSWORD: nora
+          POSTGRES_DB: nora_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://nora:nora@localhost:5432/nora_test
+      SECRET_KEY: ci-only-not-a-secret
+      DEBUG: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+      - run: pip install .
+      - run: alembic upgrade head
+      # Elasticsearch isn't started here; its tests skip themselves.
+      - run: pytest -q
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: development
+    concurrency:
+      group: api-deploy
+      cancel-in-progress: false
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      # Railway builds apps/api/Dockerfile and runs migrations before switching traffic (railway.toml).
+      - run: npx --yes @railway/cli@5.71.0 up apps/api --path-as-root --service api --ci

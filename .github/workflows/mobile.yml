@@ -1,0 +1,59 @@
+# Publishes the mobile app's JS as an EAS Update on every push that touches it. The update
+# opens in Expo Go (QR code on the update's page at expo.dev) and in any build on the
+# "development" channel (eas.json: the "preview" build profile).
+#
+# Needs in GitHub (Settings → Secrets and variables → Actions):
+#   secret   EXPO_TOKEN — an Expo access token (expo.dev → Account settings → Access tokens)
+#   variable API_URL    — the public API base URL, e.g. https://api-production-xxxx.up.railway.app
+name: Mobile
+
+on:
+  push:
+    branches: [main, master]
+    paths: ["apps/mobile/**", ".github/workflows/mobile.yml"]
+  pull_request:
+    paths: ["apps/mobile/**", ".github/workflows/mobile.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  publish:
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: development
+    concurrency:
+      group: mobile-publish
+      cancel-in-progress: true
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: 27.1.0
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas update --branch development--message "$COMMIT_MESSAGE" --non-interactive
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}

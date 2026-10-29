@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "scheme": "noraainutrition",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3b090adf-b317-49fd-b80a-1037073cc3ed"
+    },
     "ios": {},
     "android": {
       "adaptiveIcon": {
