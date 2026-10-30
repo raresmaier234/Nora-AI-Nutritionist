@@ -1,8 +1,11 @@
 """The food log: what was eaten, when, per day.
 
-A single shared log until user accounts exist — see `app/db/models/food_log_entry.py`.
+Every user has their own log. Each function takes the signed-in user's id and only ever
+reads or changes that user's entries: another user's entry is "not found", exactly like one
+that doesn't exist, so ids reveal nothing.
 """
 
+import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
@@ -24,7 +27,7 @@ class FoodNotLoggableError(ValueError):
 
 
 class EntryNotFoundError(LookupError):
-    """No log entry has this id."""
+    """The user has no log entry with this id."""
 
 
 def _decimal(value: float) -> Decimal:
@@ -48,16 +51,25 @@ def meal_for(eaten_at: datetime) -> str:
     return "snacks"
 
 
-def list_entries(db: Session, day: date) -> list[FoodLogEntry]:
+def list_entries(db: Session, user_id: uuid.UUID, day: date) -> list[FoodLogEntry]:
     statement = (
         select(FoodLogEntry)
-        .where(FoodLogEntry.logged_on == day)
+        .where(FoodLogEntry.user_id == user_id, FoodLogEntry.logged_on == day)
         .order_by(FoodLogEntry.logged_at, FoodLogEntry.id)
     )
     return list(db.execute(statement).scalars())
 
 
-def create_entry(db: Session, data: FoodLogEntryCreate) -> FoodLogEntry:
+def _get_entry(db: Session, user_id: uuid.UUID, entry_id: int) -> FoodLogEntry:
+    entry = db.execute(
+        select(FoodLogEntry).where(FoodLogEntry.id == entry_id, FoodLogEntry.user_id == user_id)
+    ).scalar_one_or_none()
+    if entry is None:
+        raise EntryNotFoundError(f"entry {entry_id} does not exist")
+    return entry
+
+
+def create_entry(db: Session, user_id: uuid.UUID, data: FoodLogEntryCreate) -> FoodLogEntry:
     """Log one food. A database food's name and values come from the database, not the request."""
     if data.food_id is not None:
         food = db.get(Food, data.food_id)
@@ -93,6 +105,7 @@ def create_entry(db: Session, data: FoodLogEntryCreate) -> FoodLogEntry:
     meal = data.meal or meal_for(eaten_at or datetime.now().astimezone())
 
     entry = FoodLogEntry(
+        user_id=user_id,
         logged_on=logged_on,
         meal=meal,
         food_id=data.food_id,
@@ -114,10 +127,10 @@ def create_entry(db: Session, data: FoodLogEntryCreate) -> FoodLogEntry:
     return entry
 
 
-def update_entry(db: Session, entry_id: int, data: FoodLogEntryUpdate) -> FoodLogEntry:
-    entry = db.get(FoodLogEntry, entry_id)
-    if entry is None:
-        raise EntryNotFoundError(f"entry {entry_id} does not exist")
+def update_entry(
+    db: Session, user_id: uuid.UUID, entry_id: int, data: FoodLogEntryUpdate
+) -> FoodLogEntry:
+    entry = _get_entry(db, user_id, entry_id)
 
     if data.logged_at is not None:
         entry.logged_at = data.logged_at
@@ -137,16 +150,16 @@ def update_entry(db: Session, entry_id: int, data: FoodLogEntryUpdate) -> FoodLo
     return entry
 
 
-def delete_entry(db: Session, entry_id: int) -> None:
-    entry = db.get(FoodLogEntry, entry_id)
-    if entry is None:
-        raise EntryNotFoundError(f"entry {entry_id} does not exist")
+def delete_entry(db: Session, user_id: uuid.UUID, entry_id: int) -> None:
+    entry = _get_entry(db, user_id, entry_id)
     db.delete(entry)
     db.commit()
 
 
-def copy_day(db: Session, from_date: date, to_date: date) -> list[FoodLogEntry]:
-    """Copy every entry of `from_date` onto `to_date`, keeping each entry's time of day.
+def copy_day(
+    db: Session, user_id: uuid.UUID, from_date: date, to_date: date
+) -> list[FoodLogEntry]:
+    """Copy the user's entries of `from_date` onto `to_date`, keeping each one's time of day.
 
     Breakfast logged at 08:10 yesterday is copied as 08:10 today, so the copied day reads
     the same. Done in one transaction: the day is copied whole or not at all.
@@ -154,6 +167,7 @@ def copy_day(db: Session, from_date: date, to_date: date) -> list[FoodLogEntry]:
     shift = datetime.combine(to_date, time()) - datetime.combine(from_date, time())
     copies = [
         FoodLogEntry(
+            user_id=user_id,
             logged_on=to_date,
             meal=entry.meal,
             food_id=entry.food_id,
@@ -168,7 +182,7 @@ def copy_day(db: Session, from_date: date, to_date: date) -> list[FoodLogEntry]:
             grams=entry.grams,
             logged_at=entry.logged_at + shift,
         )
-        for entry in list_entries(db, from_date)
+        for entry in list_entries(db, user_id, from_date)
     ]
     db.add_all(copies)
     db.commit()

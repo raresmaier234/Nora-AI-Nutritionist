@@ -1,8 +1,15 @@
 """Nutrition summary / AI estimation routes — planned, not implemented yet. See docs/api.md."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-router = APIRouter(prefix="/nutrition", tags=["Nutrition"])
+from app.services.auth import AUTH_RESPONSES, get_current_user
+
+router = APIRouter(
+    prefix="/nutrition",
+    tags=["Nutrition"],
+    dependencies=[Depends(get_current_user)],
+    responses=AUTH_RESPONSES,
+)
 
 
 @router.get(

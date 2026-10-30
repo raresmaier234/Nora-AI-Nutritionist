@@ -7,14 +7,14 @@ from app.core.config import get_settings
 settings = get_settings()
 
 tags_metadata = [
-    {"name": "Health", "description": "Liveness check for the API."},
-    {
-        "name": "Authentication",
-        "description": "Sign up, log in, and token management. Not implemented yet.",
-    },
+    {"name": "Health", "description": "Liveness check for the API. The only endpoint open to all."},
     {
         "name": "Users",
-        "description": "User profile: goals, preferences, account details. Not implemented yet.",
+        "description": (
+            "The signed-in user's profile, plan and daily targets, and account deletion. "
+            "Signing in happens in Supabase Auth (Google, Apple); every endpoint except "
+            "health needs its access token as `Authorization: Bearer <token>`."
+        ),
     },
     {
         "name": "Foods",
@@ -27,8 +27,7 @@ tags_metadata = [
     {
         "name": "Meals",
         "description": (
-            "Food logging: what was eaten, per meal and day. A single shared log until user "
-            "accounts exist."
+            "Food logging: what was eaten, per meal and day. Each user has their own log."
         ),
     },
     {

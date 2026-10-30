@@ -1,7 +1,6 @@
 """FoodLogEntry model: one food logged to one meal on one day.
 
-There are no user accounts yet, so this is a single shared log. When authentication is
-built, entries gain a `user_id` and every query filters on it.
+Each entry belongs to one user, and every query in `app/services/food_log.py` filters on it.
 
 An entry keeps its own copy of the food's name and per-100g macros rather than reading them
 through `food_id` at display time. That is what lets foods that are not in the database —
@@ -9,11 +8,12 @@ a custom food, a photo estimate, a recipe — be logged at all, and it keeps the
 fixed: re-farming or correcting a food must not change what someone ate last week.
 """
 
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, Text, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -29,6 +29,14 @@ class FoodLogEntry(Base):
     __tablename__ = "food_log_entries"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    # Whose log this is; deleting the user deletes their log. Nullable only for the shared
+    # log from before accounts: scripts/claim_shared_log.py gives those entries to their
+    # owner, and once it has run in every environment a follow-up migration makes this NOT
+    # NULL. New entries always have one.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
     logged_on: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     meal: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -64,6 +72,8 @@ class FoodLogEntry(Base):
     food: Mapped["Food | None"] = relationship()
 
     __table_args__ = (
+        # A user's day: what every food log query asks for.
+        Index("ix_food_log_entries_user_id_logged_on", "user_id", "logged_on"),
         CheckConstraint(
             "meal IN ('breakfast', 'lunch', 'dinner', 'snacks')", name="ck_food_log_entries_meal"
         ),

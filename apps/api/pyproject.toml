@@ -16,6 +16,8 @@ dependencies = [
     "beautifulsoup4>=4.15",
     # Food search index. The client's major version must match the server's (docker-compose.yml).
     "elasticsearch>=9.5,<10",
+    # Verifies Supabase access tokens (ES256/RS256) against the project's public keys.
+    "PyJWT[crypto]>=2.10",
 ]
 
 [build-system]

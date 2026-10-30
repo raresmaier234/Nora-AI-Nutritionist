@@ -1,15 +1,24 @@
-"""Food database routes: search, and one food's full nutrition. See docs/api.md."""
+"""Food database routes: search, and one food's full nutrition. See docs/api.md.
+
+Signed-in users only, which also keeps the food database from being scraped.
+"""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.food import FoodDetail, FoodSearchResult, Per100g
+from app.services.auth import AUTH_RESPONSES, get_current_user
 from app.services.food_details import get_food_detail
 from app.services.food_index import FoodIndex, get_food_index
 from app.services.food_search import DEFAULT_LIMIT, search_foods
 
-router = APIRouter(prefix="/foods", tags=["Foods"])
+router = APIRouter(
+    prefix="/foods",
+    tags=["Foods"],
+    dependencies=[Depends(get_current_user)],
+    responses=AUTH_RESPONSES,
+)
 
 
 @router.get(

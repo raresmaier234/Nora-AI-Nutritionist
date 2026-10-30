@@ -1,12 +1,14 @@
 """Tests for the food log (/api/v1/meals/entries).
 
-The database is shared with the real log, so every test logs to a date nobody uses.
+`client` is a new user each test, so only that test's entries are in its log. Tests still
+log to dates nobody uses, so a failure is easy to tell apart from real data.
 """
 
 from datetime import datetime
 from decimal import Decimal
 
 from app.db.models.food import Food
+from app.db.models.food_log_entry import FoodLogEntry
 
 DAY = "1999-01-02"
 NEXT_DAY = "1999-01-03"
@@ -236,3 +238,59 @@ def test_logged_at_must_carry_a_timezone_and_match_date(client) -> None:
     assert client.post(ENTRIES, json=naive).status_code == 422
     other_day = custom_entry(date=NEXT_DAY, logged_at=f"{DAY}T08:10:00+00:00")
     assert client.post(ENTRIES, json=other_day).status_code == 422
+
+
+def test_a_user_never_sees_or_changes_another_users_entries(client, other_client) -> None:
+    """Someone else's entry answers exactly like a missing one, so ids reveal nothing."""
+    mine = client.post(ENTRIES, json=custom_entry(name="Mine")).json()
+
+    assert other_client.get(ENTRIES, params={"date": DAY}).json() == []
+    patched = other_client.patch(f"{ENTRIES}/{mine['id']}", json={"grams": 5})
+    assert patched.status_code == 404
+    assert patched.json() == {"detail": f"entry {mine['id']} does not exist"}
+    assert other_client.delete(f"{ENTRIES}/{mine['id']}").status_code == 404
+
+    assert client.get(ENTRIES, params={"date": DAY}).json() == [mine]  # untouched
+
+
+def test_copy_a_day_copies_only_the_users_own_entries(client, other_client) -> None:
+    client.post(ENTRIES, json=custom_entry(name="Mine"))
+    other_client.post(ENTRIES, json=custom_entry(name="Theirs"))
+
+    copied = client.post(f"{ENTRIES}/copy", json={"from_date": DAY, "to_date": NEXT_DAY})
+
+    assert [e["name"] for e in copied.json()] == ["Mine"]
+    assert [e["name"] for e in client.get(ENTRIES, params={"date": NEXT_DAY}).json()] == ["Mine"]
+    assert other_client.get(ENTRIES, params={"date": NEXT_DAY}).json() == []
+
+
+def test_entries_without_a_user_belong_to_nobody(client, db_session) -> None:
+    """The shared log from before accounts stays hidden until claim_shared_log.py runs."""
+    unowned = FoodLogEntry(
+        user_id=None,
+        logged_on=datetime.fromisoformat(DAY).date(),
+        meal="lunch",
+        source="custom",
+        name="From the shared log",
+        kcal_per_100g=Decimal("100"),
+        protein_per_100g=Decimal("1"),
+        carbs_per_100g=Decimal("1"),
+        fat_per_100g=Decimal("1"),
+        amount=Decimal("1"),
+        unit="g",
+        grams=Decimal("100"),
+    )
+    db_session.add(unowned)
+    db_session.flush()
+
+    assert client.get(ENTRIES, params={"date": DAY}).json() == []
+    assert client.patch(f"{ENTRIES}/{unowned.id}", json={"grams": 5}).status_code == 404
+    assert client.delete(f"{ENTRIES}/{unowned.id}").status_code == 404
+    copied = client.post(f"{ENTRIES}/copy", json={"from_date": DAY, "to_date": NEXT_DAY})
+    assert copied.json() == []
+
+
+def test_a_new_entry_belongs_to_the_user_who_logged_it(client, user_id, db_session) -> None:
+    entry = client.post(ENTRIES, json=custom_entry()).json()
+
+    assert db_session.get(FoodLogEntry, entry["id"]).user_id == user_id

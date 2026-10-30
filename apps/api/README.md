@@ -42,7 +42,7 @@ app/
 ├── main.py             FastAPI app instance, middleware, router registration
 ├── api/
 │   ├── router.py        combines all route modules under /api/v1
-│   └── routes/          one file per route group (health, auth, users, foods, ...)
+│   └── routes/          one file per route group (health, users, foods, meals, ...)
 ├── core/
 │   └── config.py        Settings (env vars) via pydantic-settings
 ├── db/

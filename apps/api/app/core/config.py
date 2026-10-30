@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins, e.g. "http://localhost:8081,https://app.example.com"
     cors_origins: str = "http://localhost:8081"
 
+    # Supabase Auth (see app/services/auth.py). The project URL, e.g.
+    # "https://abcd1234.supabase.co", gives the public keys access tokens are checked against
+    # and the issuer they must name. Unset, every endpoint that needs sign-in answers 503:
+    # there is no anonymous fallback. The secret key is only used to delete Supabase users.
+    supabase_url: str | None = None
+    supabase_secret_key: str | None = None
+
     # Elasticsearch index behind food search (see app/services/food_index.py). Unset, food
     # search runs on PostgreSQL alone. `elasticsearch_index` is an alias, so a rebuild can
     # swap in a fresh index without downtime.

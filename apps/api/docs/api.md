@@ -17,7 +17,6 @@ Each resource gets its own module in `app/api/routes/` and its own Swagger tag:
 | Module                         | Prefix              | Tag              |
 | ------------------------------- | -------------------- | ---------------- |
 | `app/api/routes/health.py`     | `/api/v1/health`    | `Health`         |
-| `app/api/routes/auth.py`       | `/api/v1/auth`      | `Authentication` |
 | `app/api/routes/users.py`      | `/api/v1/users`     | `Users`          |
 | `app/api/routes/foods.py`      | `/api/v1/foods`     | `Foods`          |
 | `app/api/routes/barcodes.py`   | `/api/v1/barcodes`  | `Barcodes`       |
@@ -27,10 +26,16 @@ Each resource gets its own module in `app/api/routes/` and its own Swagger tag:
 `app/api/router.py` is the only place that wires a new route module into the app — it
 `include_router()`s each module under the shared `/api/v1` prefix.
 
+There are no `/auth` routes: signing in, signing out and refreshing tokens are Supabase Auth
+endpoints, called by the app through supabase-js. See "Authentication" below.
+
 Tag descriptions (shown at the top of each Swagger group) live in `tags_metadata` in
 `app/main.py`, next to the `FastAPI(...)` app instance.
 
 ## Implemented
+
+Every endpoint below except health needs a Supabase access token (`Authorization: Bearer
+<token>`); without a valid one it answers `401`. See [Authentication](#authentication).
 
 ### `GET /api/v1/health`
 
@@ -45,13 +50,75 @@ Tag descriptions (shown at the top of each Swagger group) live in `tags_metadata
 }
 ```
 
-Used as a liveness check. No auth, no dependencies.
+Used as a liveness check. No auth, no dependencies: the only endpoint that needs no access
+token.
+
+### Users — `/api/v1/users/me`
+
+- **Tag:** Users
+- **Schemas:** `UserRead`, `UserUpdate`, `TargetsUpdate` (`app/schemas/user.py`); logic in
+  `app/services/users.py`.
+
+The signed-in user's own profile. Every user only ever sees and changes their own; there is no
+way to address another user.
+
+| Method | Path | Does |
+|---|---|---|
+| `GET` | `/api/v1/users/me` | The profile. `200`. |
+| `PATCH` | `/api/v1/users/me` | Change `display_name` and/or any of the `targets`. `200` with the updated profile. |
+| `DELETE` | `/api/v1/users/me` | Delete the account and all its data. `204`; `502` or `503`, see below. |
+
+There is no sign-up endpoint. The first request with a new user's access token creates their
+profile from the token: `email`, the name (`user_metadata.full_name`, else `name`) and the
+avatar (`user_metadata.avatar_url`, else `picture`), on the `basic` plan with default targets.
+Afterwards the email follows the token, and a missing name or avatar is filled in from it
+(Apple sends the name only on the first sign-in, and the app saves it to Supabase afterwards);
+a name the user has set is never overwritten.
+
+```json
+{
+  "id": "6f1c2a9e-5b7d-4c1e-9f3a-2d8b7e6c5a41",
+  "email": "user@example.com",
+  "display_name": "Rares",
+  "avatar_url": null,
+  "plan": "basic",
+  "plan_expires_at": null,
+  "targets": {"kcal": 2000.0, "protein_g": 150.0, "carbs_g": 220.0, "fat_g": 70.0, "fiber_g": 28.0}
+}
+```
+
+- `id` is the Supabase user id (the token's `sub`).
+- `plan` is `basic` or `premium`: the plan in force, so a premium plan whose `plan_expires_at`
+  has passed reads `basic`. `plan_expires_at` is `null` for a plan that doesn't expire (every
+  plan, until payments exist; `scripts/set_plan.py` sets plans by hand).
+- `targets` are daily: calories, then grams of protein, carbs, fat and fibre. Defaults 2000 /
+  150 / 220 / 70 / 28. Numbers are JSON numbers.
+
+`PATCH` takes any subset, and keeps whatever isn't sent:
+
+```json
+{"display_name": "Rares", "targets": {"kcal": 2400, "protein_g": 180}}
+```
+
+- `display_name`: 1–100 characters once trimmed. It can be changed, not removed.
+- `targets`: `kcal` 500–10000, `protein_g`, `carbs_g` and `fat_g` 0–1000, `fiber_g` 0–200.
+- Anything else — an unknown field (`plan`, `kcals`), a value out of range — is `422`.
+
+`DELETE` removes the user's Supabase user first (Supabase's admin API, with
+`SUPABASE_SECRET_KEY`), then their profile and whole food log. If Supabase doesn't confirm
+(an error, or unreachable), nothing is deleted and the answer is `502`: the user could still
+sign in, so their data must still be there. A Supabase user that is already gone counts as
+deleted, so a retry always finishes the job. Without `SUPABASE_SECRET_KEY` it is `503`. After a
+`204` the app should sign out at once: the access token stays valid until it expires (about
+an hour), and a request with it would create an empty profile again.
 
 ### `GET /api/v1/foods?q=milk&limit=20`
 
 - **Tag:** Foods
 - **Summary:** Search foods
 - **Response model:** `list[FoodSearchResult]` (`app/schemas/food.py`)
+- **Needs** an access token, like every endpoint but health: it also keeps the food database
+  from being scraped.
 
 Foods whose name matches `q`, best match first. Built for search as you type:
 
@@ -85,6 +152,7 @@ by trigram similarity, exact name first. The response is the same either way.
 - **Tag:** Foods
 - **Summary:** Get a food's full nutrition
 - **Response model:** `FoodDetail` (`app/schemas/food.py`); logic in `app/services/food_details.py`.
+- **Needs** an access token.
 
 One food with its whole nutrient profile, per 100g, for the app's food details screen. Search
 keeps sending only calories and macros; the app asks for this when a food is opened.
@@ -118,15 +186,18 @@ missing food is a 404.
 - **Schemas:** `FoodLogEntryCreate`, `FoodLogEntryUpdate`, `FoodLogEntryRead`, `CopyDayRequest`
   (`app/schemas/meal.py`); logic in `app/services/food_log.py`.
 
-A **single shared log** for now: there are no user accounts yet, so every caller sees the same
-entries. Once authentication exists, entries gain a `user_id` and every query filters on it.
+Each user has their **own log**: every query filters on the signed-in user, and new entries are
+theirs. Another user's entry answers exactly like a missing one (`404`), so entry ids reveal
+nothing. Copying a day copies only the user's own entries. Entries from the shared log that
+predates accounts belong to no one until `scripts/claim_shared_log.py` assigns them (see
+[database.md](database.md)).
 
 | Method | Path | Does |
 |---|---|---|
 | `GET` | `/api/v1/meals/entries?date=YYYY-MM-DD` | That day's entries in the order eaten (`logged_at`). `date` defaults to today. |
 | `POST` | `/api/v1/meals/entries` | Log a food. `201` with the new entry. |
-| `PATCH` | `/api/v1/meals/entries/{id}` | Change `amount`, `unit`, `grams`, `logged_at` or `meal`. Omitted fields are kept. `404` if missing. |
-| `DELETE` | `/api/v1/meals/entries/{id}` | Remove an entry. `204`, or `404` if missing. |
+| `PATCH` | `/api/v1/meals/entries/{id}` | Change `amount`, `unit`, `grams`, `logged_at` or `meal`. Omitted fields are kept. `404` if missing or not the user's. |
+| `DELETE` | `/api/v1/meals/entries/{id}` | Remove an entry. `204`, or `404` if missing or not the user's. |
 | `POST` | `/api/v1/meals/entries/copy` | `{"from_date", "to_date"}`: copy a whole day, keeping each entry's time of day. `201` with the new entries. |
 
 Logging a food — either a database food:
@@ -169,9 +240,10 @@ Every entry is returned as:
 
 ## Placeholder route groups (planned, not implemented)
 
-`auth`, `users`, `barcodes`, and `nutrition` each currently expose a single
-`GET` on their base path that returns `501 Not Implemented`, documented in Swagger under their
-tag with a summary/description explaining what's planned. This keeps the URL structure and tag
+`barcodes` and `nutrition` each currently expose a single `GET` on their base path that
+returns `501 Not Implemented` (to a signed-in caller; without a token it is `401`, like every
+other endpoint), documented in Swagger under their tag with a summary/description explaining
+what's planned. This keeps the URL structure and tag
 grouping stable while each feature is built out. There is no real request/response schema for
 these yet, so none is documented here — see each route module's docstring for what it will
 eventually cover.
@@ -253,7 +325,8 @@ def get_food(food_id: int, db: Session = Depends(get_db)) -> FoodResponse:
   FastAPI already documents `422` automatically for any endpoint with request validation
   (query params, path params, or a request body) — you don't need to add it yourself. Add the
   ones specific to the endpoint's logic: `404` when a lookup can fail, `400` for a rejected
-  input the validator wouldn't catch, `401` once auth exists, etc.
+  input the validator wouldn't catch, etc. A protected router passes
+  `responses=AUTH_RESPONSES` (`app/services/auth.py`), which documents its `401` and `503`.
 
 Standard FastAPI validation behavior (automatic `422` on bad input) is enough for now — no
 custom exception handlers are needed until a real endpoint has an error case that standard
@@ -261,7 +334,28 @@ validation doesn't cover.
 
 ## Authentication
 
-Not implemented yet. The plan is a Bearer JWT scheme once `auth` is built — at that point,
-protected routes will take a `Depends(...)` that validates the token and Swagger will show the
-"Authorize" lock automatically from that dependency's security scheme. There is no fake/lock
-icon in Swagger today, on purpose — it would document a capability that doesn't exist.
+Sign-in is **Supabase Auth** (Google and Apple). The app signs in with supabase-js and sends
+the session's access token with every request:
+
+```
+Authorization: Bearer <Supabase access token>
+```
+
+**Every endpoint except `GET /api/v1/health` needs it.** This API only verifies tokens; it
+never sees passwords or refresh tokens. How tokens are checked, and how a token becomes a
+`users` row, is in [architecture.md](architecture.md#authentication). In Swagger, the
+**Authorize** button takes a token (see [development.md](development.md) for getting one).
+
+| Status | When |
+|---|---|
+| `401` | No token, a non-Bearer `Authorization`, or a token that is invalid: expired, badly signed, `HS256`, from another Supabase project (`iss`), not for signed-in users (`aud`/`role`), or anonymous. Always with `WWW-Authenticate: Bearer`, and a `detail` naming the reason. The app refreshes its session once and retries; if that fails it signs out. |
+| `403` | The user's plan is too low for the endpoint (`require_plan("premium")`). No endpoint needs premium yet. |
+| `404` | As for any missing resource; also an entry that belongs to another user. |
+| `502` | `DELETE /api/v1/users/me` only: Supabase didn't delete the sign-in account, so nothing was deleted. |
+| `503` | Sign-in is not configured on this server (`SUPABASE_URL` unset): **every** protected endpoint refuses, there is no anonymous fallback. Also when Supabase's signing keys can't be fetched (a 401 would sign the user out over a network blip), and for `DELETE /api/v1/users/me` without `SUPABASE_SECRET_KEY`. |
+
+To protect a new route: take `user: User = Depends(get_current_user)` in the handler, or add
+`dependencies=[Depends(get_current_user)]` to its router. A route that needs a plan uses
+`Depends(require_plan("premium"))`. `tests/test_auth.py` checks that every endpoint in the
+OpenAPI spec except health answers `401` without a token, so a new endpoint can't be left open
+by accident.

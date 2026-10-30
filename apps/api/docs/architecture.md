@@ -3,13 +3,13 @@
 ## Overall architecture
 
 ```
-Expo Mobile App
+Expo Mobile App ---- sign in, refresh tokens ----> Supabase Auth (Google, Apple)
+       |                                                 |
+       | HTTPS + Supabase access token                   | public signing keys (JWKS)
+       v                                                 |
+    FastAPI  <-------------------------------------------+
        |
-       | HTTPS
-       v
-    FastAPI
-       |
-       +---- PostgreSQL       (source of truth)
+       +---- PostgreSQL       (source of truth: users, food log, foods)
        |
        +---- Elasticsearch    (food search index, derived from PostgreSQL)
        |
@@ -42,10 +42,10 @@ input, call the DB, return a schema."
 - **`app/api/router.py`** — combines every route module in `app/api/routes/` under the
   `/api/v1` prefix. This is the only place that needs to change when a new route group is
   added.
-- **`app/api/routes/`** — one file per route group (`health.py`, `auth.py`, `users.py`,
-  `foods.py`, `barcodes.py`, `meals.py`, `nutrition.py`). Only `health.py` is fully
-  implemented; the rest are placeholders (see [api.md](api.md)). Route handlers should stay
-  focused on HTTP concerns: parsing input, calling a service or the DB, returning a schema.
+- **`app/api/routes/`** — one file per route group (`health.py`, `users.py`, `foods.py`,
+  `barcodes.py`, `meals.py`, `nutrition.py`). `barcodes.py` and `nutrition.py` are still
+  placeholders (see [api.md](api.md)). Route handlers should stay focused on HTTP concerns:
+  parsing input, calling a service or the DB, returning a schema.
 - **`app/core/config.py`** — a single `Settings` object (pydantic-settings) loaded from
   environment variables / `.env`. Anything configurable (database URL, CORS origins, secrets)
   goes here, not scattered `os.environ` calls.
@@ -53,15 +53,16 @@ input, call the DB, return a schema."
   from.
 - **`app/db/session.py`** — `get_db()`, a FastAPI dependency that yields a `Session` per
   request and closes it afterwards.
-- **`app/db/models/`** — empty right now. Future SQLAlchemy models (`User`, `Food`, `Meal`,
-  etc.) go here, one file per model, imported into `models/__init__.py` so Alembic's
-  autogenerate can find them.
-- **`app/schemas/`** — empty right now. Future Pydantic request/response schemas go here.
-  Schemas are kept separate from SQLAlchemy models on purpose — a database row and an API
-  response are different shapes with different concerns (e.g. hiding a password hash).
+- **`app/db/models/`** — SQLAlchemy models (`User`, `Food`, `FoodLogEntry`, …), one file per
+  model, imported into `models/__init__.py` so Alembic's autogenerate can find them. See
+  [database.md](database.md).
+- **`app/schemas/`** — Pydantic request/response schemas. Schemas are kept separate from
+  SQLAlchemy models on purpose — a database row and an API response are different shapes with
+  different concerns (e.g. never sending internal columns).
 - **`app/services/`** — business logic that doesn't fit cleanly in a route handler
-  (multi-step operations, calls to external APIs, orchestration): the food log, food search
-  and its index, the ingestion pipeline, scraping.
+  (multi-step operations, calls to external APIs, orchestration): sign-in (`auth.py`), users
+  and plans, the Supabase admin client, the food log, food search and its index, the
+  ingestion pipeline, scraping.
 - **`tests/`** — pytest tests using FastAPI's `TestClient`.
 - **`alembic/`** — the Alembic migration environment, pointed at `app.db.database.Base`.
 
@@ -85,6 +86,46 @@ input, call the DB, return a schema."
   macros per 100 g. Synonyms (`app/services/food_synonyms.py`) are applied while indexing, so
   editing them needs a rebuild.
 
+## Authentication
+
+Signing in is **Supabase Auth**, with Google and Apple. Supabase runs the sign-in flows, issues
+and refreshes tokens and keeps the sign-in records (`auth.users`, in Supabase's database). This
+API only **verifies** the access tokens; everything about the person as a Nora user — profile,
+plan, daily targets, food log — is in our PostgreSQL. Supabase's database is not used for app
+data. The decisions behind this are in [plans/auth-and-user-profiles.md](plans/auth-and-user-profiles.md).
+
+- **One id.** The Supabase user id (the token's `sub`) **is** `users.id`. There is no foreign
+  key to `auth.users`; the two live in different databases.
+- **Token verification** (`app/services/auth.py`, dependency `get_current_user`): the
+  `Authorization: Bearer` token is checked with PyJWT against the project's public keys,
+  fetched from `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` by one `PyJWKClient` per
+  process, which caches them and refetches on expiry or when a token names an unknown key
+  (rotation). Only `ES256` and `RS256` are accepted — never `HS256`, the legacy shared secret.
+  The token must have `iss` = `<SUPABASE_URL>/auth/v1`, `aud` = `authenticated`, an unexpired
+  `exp` (30 s of clock skew allowed), `role` = `authenticated`, a UUID `sub`, and must not be
+  an anonymous session (`is_anonymous`). Any failure is `401`. No Supabase secret is needed to
+  verify; the API only needs `SUPABASE_URL` and internet access to fetch the keys once.
+- **Fail closed.** Without `SUPABASE_URL`, `get_current_user` answers `503` to every request;
+  there is no anonymous mode. If the keys can't be fetched it is also `503` rather than `401`,
+  which would sign the user out over a network blip.
+- **The user row is created on first sight** (`app/services/users.py`, `get_or_create`).
+  There is no sign-up step: the first valid token for a new `sub` creates the row from the
+  token's email, name and avatar (`INSERT … ON CONFLICT DO NOTHING`, since the app's first
+  requests arrive together). Afterwards it writes only when something changed — the email in
+  the token, a name or avatar the row lacks — or when `last_seen_at` is over an hour old, so
+  most requests are one primary-key `SELECT`.
+- **Plans.** `users.plan` is `basic` (default) or `premium`, kept in our database next to the
+  data it unlocks; payments will set it later (`plan_expires_at` is reserved for that). A
+  plan past its `plan_expires_at` counts as `basic`. `require_plan("premium")` is the
+  dependency for gated endpoints (`403` otherwise); nothing uses it yet. Until payments exist,
+  `scripts/set_plan.py` sets a plan by hand.
+- **Account deletion** (`DELETE /api/v1/users/me`) calls Supabase's admin API
+  (`app/services/supabase_admin.py`, with `SUPABASE_SECRET_KEY`) to delete the Supabase user
+  first, then deletes the `users` row; the food log goes with it (`ON DELETE CASCADE`). If
+  Supabase fails, nothing is deleted.
+- **Tests never call Supabase.** They make an ES256 key pair, override `get_token_verifier`
+  with its public key and a test issuer, and sign their own tokens (`tests/auth_tokens.py`).
+
 ## Where future integrations should live
 
 - **External APIs** (e.g. a barcode/nutrition database lookup) — a small client module under
@@ -104,19 +145,29 @@ input, call the DB, return a schema."
 - SQLAlchemy models and Alembic migrations (see [database.md](database.md))
 - Food database, filled by the ingestion pipeline (`scripts/ingest_foods.py`)
 - Food search (`GET /api/v1/foods`) on Elasticsearch, with PostgreSQL as fallback
-- Food logging (`/api/v1/meals/entries`)
-- Placeholder routers for auth/users/barcodes/nutrition (each returns `501 Not Implemented`)
+- Food logging (`/api/v1/meals/entries`), one log per user
+- Authentication: Supabase Auth access tokens, required by every endpoint except health (see
+  [Authentication](#authentication))
+- User profiles (`/api/v1/users/me`): name, avatar, daily targets, basic/premium plan, and
+  account deletion
+- Placeholder routers for barcodes/nutrition (each returns `501 Not Implemented`)
 
 **Not implemented yet (planned):**
 
-- Authentication
-- User profiles
+- From [plans/auth-and-user-profiles.md](plans/auth-and-user-profiles.md): making
+  `food_log_entries.user_id` NOT NULL once the shared log is claimed everywhere (see
+  [database.md](database.md)); Apple token revocation on account deletion, if Supabase doesn't
+  do it; payments that set the plan
 - Barcode lookup
 - Calorie and macronutrient tracking
 - Daily nutrition summaries
 - Food photo uploads
 - AI food recognition
 - AI nutrition estimation
+- An AI-built nutrition plan from the user's answers about their goals, proposed in
+  [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md)
+- A Valkey cache of the foods in front of PostgreSQL. Decided, with the steps written down, in
+  [plans/food-cache.md](plans/food-cache.md)
 
 Do not assume any of the "planned" items exist in the code — check `app/api/routes/` and
 `app/db/models/` for what's actually there.
