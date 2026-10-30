@@ -34,7 +34,7 @@ function redirectParams(url: string): URLSearchParams {
  * builds, exp://<Metro host>/--/auth/callback in Expo Go. It must be listed under Supabase →
  * Authentication → URL Configuration → Redirect URLs, or Supabase falls back to its Site URL.
  */
-export function googleRedirectUrl(): string {
+function googleRedirectUrl(): string {
   return Linking.createURL('auth/callback');
 }
 

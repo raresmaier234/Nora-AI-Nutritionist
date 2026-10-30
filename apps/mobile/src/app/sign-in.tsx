@@ -10,7 +10,7 @@ import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { LegalLink } from '@/components/common/legal-link';
 import { AlertIcon } from '@/components/log/icons';
 import { LEGAL_LINKS, useAuth } from '@/features/auth';
-import { SignInError, googleRedirectUrl, isAppleSignInAvailable } from '@/services/auth';
+import { SignInError, isAppleSignInAvailable } from '@/services/auth';
 import { Palette, fontFamily, fontSize, gradientAngle, radius, spacing, trackTight, useStyles, useTheme } from '@/theme';
 
 type Provider = 'google' | 'apple';
@@ -76,6 +76,12 @@ export default function SignInScreen() {
         </View>
 
         <View style={styles.actions}>
+          <View style={styles.header}>
+            <Text style={styles.heading} accessibilityRole="header">
+              Authentication
+            </Text>
+            <Text style={styles.subheading}>Sign in, or create your account the first time.</Text>
+          </View>
           {configured ? (
             <>
               {appleAvailable ? (
@@ -96,12 +102,6 @@ export default function SignInScreen() {
                 </View>
               ) : null}
               <GoogleSignInButton onPress={() => signIn('google')} busy={busy === 'google'} disabled={anyBusy} />
-              {__DEV__ ? (
-                // Must be in Supabase's Redirect URLs, or Google sign-in ends on the Site URL.
-                <Text selectable style={styles.devNote}>
-                  Dev · Google returns to {googleRedirectUrl()}
-                </Text>
-              ) : null}
               <View style={styles.divider} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>or</Text>
@@ -188,12 +188,14 @@ const makeStyles = (colors: Palette) =>
       maxWidth: 300,
     },
     actions: { gap: spacing.md },
+    header: { alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
+    heading: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, letterSpacing: trackTight(fontSize.h1), color: colors.textPrimary },
+    subheading: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textSecondary, textAlign: 'center' },
     appleButton: { width: '100%', height: 50 },
     divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.xs },
     dividerLine: { flex: 1, height: 1, backgroundColor: colors.borderSubtle },
     dividerText: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, color: colors.textTertiary },
     dimmed: { opacity: 0.6 },
-    devNote: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, textAlign: 'center' },
     notice: {
       padding: spacing.lg,
       borderRadius: radius.lg,
