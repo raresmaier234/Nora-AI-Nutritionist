@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
-  ApiError,
   FoodLogEntry,
   FoodLogEntryCreate,
   createEntry,
   deleteEntry,
+  describeError,
   listEntries,
   updateEntry as patchEntry,
 } from '@/services/api';
-import { Entry, Food, Macro, TARGETS, entryMacros, sumMacros, toGrams } from '@/features/food/data/mock-data';
+import { Entry, Food, Macro, entryMacros, sumMacros, toGrams } from '@/features/food/data/mock-data';
+import { useTargets } from '@/features/food/hooks/use-targets';
 import { byTime, timeOf, toLoggedAt } from '@/features/food/time';
 
 export type NotifyKind = 'success' | 'info';
@@ -55,16 +56,6 @@ export function toDateString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** A user-facing sentence for a failed request. */
-export function describeError(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.kind === 'network' || err.kind === 'timeout') return "Can't reach the server. Is the backend running?";
-    const detail = err.message.split(': ').slice(1).join(': ');
-    return detail || `The server returned an error (${err.status ?? 'unknown'}).`;
-  }
-  return 'Something went wrong.';
-}
-
 /**
  * Owns the food log for one day, backed by the API: every add, edit and delete goes to the
  * server, and what the server returns is what the screen shows. The day is one timeline —
@@ -103,10 +94,11 @@ export function useFoodLog(date: string, onNotify?: Notify) {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
+  const targets = useTargets();
   const totals = useMemo(() => sumMacros(entries), [entries]);
-  const remaining = Math.max(0, TARGETS.kcal - totals.kcal);
-  const pct = Math.min(100, (totals.kcal / TARGETS.kcal) * 100);
-  const over = totals.kcal > TARGETS.kcal;
+  const remaining = Math.max(0, targets.kcal - totals.kcal);
+  const pct = Math.min(100, (totals.kcal / targets.kcal) * 100);
+  const over = totals.kcal > targets.kcal;
 
   /** Create entries on the server and add whatever it accepted to the day. */
   const create = useCallback(

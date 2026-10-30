@@ -7,7 +7,8 @@ import { ChevronRightIcon } from '@/components/log/icons';
 import { MacroBar } from '@/components/log/macro-bar';
 import { GlassCard } from '@/components/ui/card';
 import { Palette, fontFamily, fontSize, gradientAngle, motion, radius, spacing, trackTight, useColors, useStyles } from '@/theme';
-import { Macro, TARGETS } from '@/features/food/data/mock-data';
+import { Macro } from '@/features/food/data/mock-data';
+import { useTargets } from '@/features/food/hooks/use-targets';
 
 type CalorieSummaryCardProps = {
   totals: Macro;
@@ -22,6 +23,7 @@ type CalorieSummaryCardProps = {
 export function CalorieSummaryCard({ totals, remaining, pct, over, onPress }: CalorieSummaryCardProps) {
   const colors = useColors();
   const styles = useStyles(makeStyles);
+  const targets = useTargets();
   const width = useSharedValue(0);
   useEffect(() => {
     width.value = withTiming(pct, { duration: motion.slow });
@@ -39,10 +41,10 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onPress }: Ca
           <View>
             <View style={styles.totalRow}>
               <Text style={styles.total}>{totals.kcal.toLocaleString()}</Text>
-              <Text style={styles.target}>/ {TARGETS.kcal.toLocaleString()} kcal</Text>
+              <Text style={styles.target}>/ {targets.kcal.toLocaleString()} kcal</Text>
             </View>
             <Text style={[styles.remaining, { color: over ? colors.errorText : colors.greenText }]}>
-              {over ? `${(totals.kcal - TARGETS.kcal).toLocaleString()} kcal over` : `${remaining.toLocaleString()} kcal remaining`}
+              {over ? `${(totals.kcal - targets.kcal).toLocaleString()} kcal over` : `${remaining.toLocaleString()} kcal remaining`}
             </Text>
           </View>
         </View>
@@ -61,9 +63,9 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onPress }: Ca
         </View>
 
         <View style={styles.macroRow}>
-          <MacroBar tone="protein" label="Protein" current={totals.protein} target={TARGETS.protein} unit="g" />
-          <MacroBar tone="carbs" label="Carbs" current={totals.carbs} target={TARGETS.carbs} unit="g" />
-          <MacroBar tone="fat" label="Fat" current={totals.fat} target={TARGETS.fat} unit="g" />
+          <MacroBar tone="protein" label="Protein" current={totals.protein} target={targets.protein} unit="g" />
+          <MacroBar tone="carbs" label="Carbs" current={totals.carbs} target={targets.carbs} unit="g" />
+          <MacroBar tone="fat" label="Fat" current={totals.fat} target={targets.fat} unit="g" />
         </View>
 
         <View style={styles.more}>

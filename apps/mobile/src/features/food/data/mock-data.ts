@@ -1,9 +1,10 @@
 /**
  * Types and helpers for the Log Food screen, plus the mock data its not-yet-real flows still use.
  *
- * The day's log and food search come from the API (see `useFoodLog` and `searchFoods`). What is
- * still mocked here: the calorie targets, saved recipes, the barcode lookup, serving sizes, and the
- * foods the recipe builder and photo estimate offer — each marked as a swap point below.
+ * The day's log and food search come from the API (see `useFoodLog` and `searchFoods`), and the
+ * daily targets from the user's profile (`useTargets`). What is still mocked here: saved recipes,
+ * the barcode lookup, serving sizes, and the foods the recipe builder and photo estimate offer —
+ * each marked as a swap point below.
  */
 
 export type Macro = { kcal: number; protein: number; carbs: number; fat: number };
@@ -25,7 +26,14 @@ export type RecipeItem = {
 export type Recipe = { id: string; name: string; servings: number; source?: string | null; steps?: string[]; items: RecipeItem[] };
 export type Barcode = { code: string; name: string; per100: Macro; amount: number; unit: string };
 
-export const TARGETS: Macro = { kcal: 2000, protein: 150, carbs: 220, fat: 70 };
+/** Daily targets: calories, and grams of protein, carbs, fat and fibre. */
+export type Targets = Macro & { fiber: number };
+
+/**
+ * Default daily targets — what a new account starts with on the API too. Only a fallback, shown
+ * until the signed-in user's profile has loaded: read the user's own with `useTargets()`.
+ */
+export const TARGETS: Targets = { kcal: 2000, protein: 150, carbs: 220, fat: 70, fiber: 28 };
 
 export const UNITS: Unit[] = [
   { label: 'g', grams: 1 },

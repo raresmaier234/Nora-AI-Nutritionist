@@ -5,9 +5,10 @@ import { CloseIcon } from '@/components/log/icons';
 import { Fill, MacroTargetBar, NutrientSectionCard, fmt } from '@/components/log/nutrition-parts';
 import { Palette, Scheme, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { foodColors, useFoodColors } from '@/features/food/theme';
-import { Entry, Macro, TARGETS } from '@/features/food/data/mock-data';
+import { Entry, Macro } from '@/features/food/data/mock-data';
 import { useDayNutrients } from '@/features/food/hooks/use-day-nutrients';
-import { NUTRIENT_SECTIONS, NUTRIENT_TARGETS, NutrientSectionId } from '@/features/food/nutrients';
+import { useTargets } from '@/features/food/hooks/use-targets';
+import { NUTRIENT_SECTIONS, NutrientSectionId } from '@/features/food/nutrients';
 
 type DayNutritionScreenProps = {
   /** "Today", "Yesterday", a weekday. */
@@ -34,11 +35,12 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const targets = useTargets();
   const day = useDayNutrients(entries);
   const v = day.values;
 
   const kcal = Math.round(totals.kcal);
-  const kcalLeft = TARGETS.kcal - kcal;
+  const kcalLeft = targets.kcal - kcal;
   const summaries: Partial<Record<NutrientSectionId, string>> = {
     macros: `${fmt(v.protein ?? 0)} g protein · ${fmt(v.carbs ?? 0)} g carbs · ${fmt(v.fat ?? 0)} g fat`,
     sugars: v.sugar != null ? `${fmt(v.sugar)} g total sugars` : undefined,
@@ -70,20 +72,20 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
           <Text style={styles.overline}>Eaten</Text>
           <View style={styles.kcalRow}>
             <Text style={styles.kcalTotal}>{kcal.toLocaleString()}</Text>
-            <Text style={styles.kcalTarget}>/ {TARGETS.kcal.toLocaleString()} kcal</Text>
+            <Text style={styles.kcalTarget}>/ {targets.kcal.toLocaleString()} kcal</Text>
           </View>
           <Text style={[styles.kcalLeft, kcalLeft < 0 && styles.kcalOver]}>
             {kcalLeft >= 0 ? `${kcalLeft.toLocaleString()} kcal left` : `${(-kcalLeft).toLocaleString()} kcal over`}
           </Text>
           <View style={[styles.kcalTrack, { backgroundColor: nu.kcal.tint }]}>
-            <Fill pct={(kcal / TARGETS.kcal) * 100} color={kcalLeft < 0 ? colors.errorText : nu.kcal.base} />
+            <Fill pct={(kcal / targets.kcal) * 100} color={kcalLeft < 0 ? colors.errorText : nu.kcal.base} />
           </View>
           <View style={styles.rule} />
           <View style={styles.macroBars}>
-            <MacroTargetBar family="protein" label="Protein" add={v.protein ?? 0} before={null} goal={TARGETS.protein} />
-            <MacroTargetBar family="carbs" label="Carbs" add={v.carbs ?? 0} before={null} goal={TARGETS.carbs} />
-            <MacroTargetBar family="fat" label="Fat" add={v.fat ?? 0} before={null} goal={TARGETS.fat} />
-            {v.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={v.fiber} before={null} goal={NUTRIENT_TARGETS.fiber.value} /> : null}
+            <MacroTargetBar family="protein" label="Protein" add={v.protein ?? 0} before={null} goal={targets.protein} />
+            <MacroTargetBar family="carbs" label="Carbs" add={v.carbs ?? 0} before={null} goal={targets.carbs} />
+            <MacroTargetBar family="fat" label="Fat" add={v.fat ?? 0} before={null} goal={targets.fat} />
+            {v.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={v.fiber} before={null} goal={targets.fiber} /> : null}
           </View>
         </View>
 

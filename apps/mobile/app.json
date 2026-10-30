@@ -13,8 +13,12 @@
     "updates": {
       "url": "https://u.expo.dev/3b090adf-b317-49fd-b80a-1037073cc3ed"
     },
-    "ios": {},
+    "ios": {
+      "bundleIdentifier": "com.raresmaier.nora",
+      "usesAppleSignIn": true
+    },
     "android": {
+      "package": "com.raresmaier.nora",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
       },
@@ -40,7 +44,9 @@
       "expo-font",
       "expo-image",
       "expo-web-browser",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

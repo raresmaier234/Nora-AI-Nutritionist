@@ -7,9 +7,8 @@ import { BarcodeIcon, CameraIcon, CheckIcon, CloseIcon, PlusIcon, RecipeIcon, Se
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { Entry, Food } from '@/features/food/data/mock-data';
-import { describeError } from '@/features/food/hooks/use-food-log';
 import { useFoodColors } from '@/features/food/theme';
-import { searchFoods } from '@/services/api';
+import { describeError, searchFoods } from '@/services/api';
 
 /** Wait this long after the last keystroke before searching, so typing "milk" is one request. */
 const SEARCH_DEBOUNCE_MS = 300;

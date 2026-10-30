@@ -12,11 +12,11 @@ import { Fill, GoodSourceTile, MacroTargetBar, NutrientSectionCard, fmt } from '
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, Scheme, fontFamily, fontSize, gradientAngle, radius, spacing, trackTight, trackWide, useColors, useStyles, useTheme } from '@/theme';
 import { NutrientFamily, foodColors, useFoodColors } from '@/features/food/theme';
-import { Food, Macro, TARGETS } from '@/features/food/data/mock-data';
+import { Food, Macro } from '@/features/food/data/mock-data';
 import { useFoodNutrients } from '@/features/food/hooks/use-food-nutrients';
+import { useTargets } from '@/features/food/hooks/use-targets';
 import {
   NUTRIENT_SECTIONS,
-  NUTRIENT_TARGETS,
   NutrientSectionId,
   NutrientValues,
   goodSources,
@@ -77,6 +77,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const targets = useTargets();
   const servings = useMemo<Serving[]>(() => [['g', 1], ['100 g', 100], ...(extra ?? [])], [extra]);
   const startIdx = initialGrams || !extra?.length ? 0 : 2;
   const [servingIdx, setServingIdx] = useState(startIdx);
@@ -101,7 +102,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const kcal = Math.round(values.kcal);
   const beforeKcal = Math.max(0, Math.round(consumed.kcal));
   const afterKcal = beforeKcal + kcal;
-  const kcalLeft = TARGETS.kcal - afterKcal;
+  const kcalLeft = targets.kcal - afterKcal;
   const pK = values.protein * 4;
   const cK = values.carbs * 4;
   const fK = values.fat * 9;
@@ -183,7 +184,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
           {/* Calories ring + where the energy comes from + macro bars */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryTop}>
-              <CalorieRing kcal={kcal} beforePct={(beforeKcal / TARGETS.kcal) * 100} addPct={(kcal / TARGETS.kcal) * 100} />
+              <CalorieRing kcal={kcal} beforePct={(beforeKcal / targets.kcal) * 100} addPct={(kcal / targets.kcal) * 100} />
               <View style={styles.summaryText}>
                 <Text style={styles.overline}>Your day</Text>
                 <View style={styles.dayRow}>
@@ -192,7 +193,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
                   <Text style={styles.dayAfter}>{afterKcal.toLocaleString()}</Text>
                 </View>
                 <Text style={styles.dayOf}>
-                  of {TARGETS.kcal.toLocaleString()} kcal ·{' '}
+                  of {targets.kcal.toLocaleString()} kcal ·{' '}
                   {kcalLeft >= 0 ? (
                     <Text style={styles.dayLeft}>{kcalLeft.toLocaleString()} left</Text>
                   ) : (
@@ -226,11 +227,11 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
               <Text style={[styles.legendText, styles.legendEnd]}>Full bar = goal</Text>
             </View>
             <View style={styles.macroBars}>
-              <MacroTargetBar family="protein" label="Protein" add={values.protein} before={consumed.protein} goal={TARGETS.protein} />
-              <MacroTargetBar family="carbs" label="Carbs" add={values.carbs} before={consumed.carbs} goal={TARGETS.carbs} />
-              <MacroTargetBar family="fat" label="Fat" add={values.fat} before={consumed.fat} goal={TARGETS.fat} />
+              <MacroTargetBar family="protein" label="Protein" add={values.protein} before={consumed.protein} goal={targets.protein} />
+              <MacroTargetBar family="carbs" label="Carbs" add={values.carbs} before={consumed.carbs} goal={targets.carbs} />
+              <MacroTargetBar family="fat" label="Fat" add={values.fat} before={consumed.fat} goal={targets.fat} />
               {/* The log doesn't count fibre eaten yet, so this bar shows the portion alone. */}
-              {all.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={all.fiber} before={null} goal={NUTRIENT_TARGETS.fiber.value} /> : null}
+              {all.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={all.fiber} before={null} goal={targets.fiber} /> : null}
             </View>
           </View>
 
@@ -287,10 +288,10 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
           <View style={styles.impactCard}>
             <Text style={styles.impactTitle}>Impact on your day</Text>
             <View style={styles.impactBars}>
-              <ImpactBar family="kcal" label="Calories" unit="kcal" eaten={consumed.kcal} add={values.kcal} target={TARGETS.kcal} />
-              <ImpactBar family="protein" label="Protein" unit="g" eaten={consumed.protein} add={values.protein} target={TARGETS.protein} />
-              <ImpactBar family="carbs" label="Carbs" unit="g" eaten={consumed.carbs} add={values.carbs} target={TARGETS.carbs} />
-              <ImpactBar family="fat" label="Fat" unit="g" eaten={consumed.fat} add={values.fat} target={TARGETS.fat} />
+              <ImpactBar family="kcal" label="Calories" unit="kcal" eaten={consumed.kcal} add={values.kcal} target={targets.kcal} />
+              <ImpactBar family="protein" label="Protein" unit="g" eaten={consumed.protein} add={values.protein} target={targets.protein} />
+              <ImpactBar family="carbs" label="Carbs" unit="g" eaten={consumed.carbs} add={values.carbs} target={targets.carbs} />
+              <ImpactBar family="fat" label="Fat" unit="g" eaten={consumed.fat} add={values.fat} target={targets.fat} />
             </View>
           </View>
 

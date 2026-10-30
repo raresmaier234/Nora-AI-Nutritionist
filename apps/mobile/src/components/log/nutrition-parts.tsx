@@ -5,7 +5,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { ChevronRightIcon, NutrientSectionIcon } from '@/components/log/icons';
 import { Palette, Scheme, fontFamily, fontSize, motion, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
 import { NutrientFamily, foodColors, useFoodColors } from '@/features/food/theme';
-import { NUTRIENT_TARGETS, NutrientRow, NutrientSection, NutrientSectionId, NutrientValues } from '@/features/food/nutrients';
+import { useTargets } from '@/features/food/hooks/use-targets';
+import { NutrientRow, NutrientSection, NutrientSectionId, NutrientValues, nutrientTarget } from '@/features/food/nutrients';
 
 /*
  * Nutrition building blocks shared by Food Details (one portion) and Day Nutrition (the whole
@@ -156,7 +157,8 @@ function NutrientRowView({ row, value, family, first }: { row: NutrientRow; valu
   const { nu } = useFoodColors();
   const colors = useColors();
   const styles = useStyles(makeStyles);
-  const target = NUTRIENT_TARGETS[row.key];
+  const targets = useTargets();
+  const target = nutrientTarget(row.key, targets);
   const label = <Text style={[styles.rowLabel, row.sub && styles.rowLabelSub]}>{row.label}</Text>;
   if (!target) {
     return (

@@ -4,13 +4,14 @@ How Nora AI Nutrition's codebase is organized, and where new code should go.
 
 ## Stack
 
-- **Expo** (SDK 57) + **React Native** 0.86, new architecture (the only one since SDK 55)
+- **Expo** (SDK 58) + **React Native** 0.88, new architecture (the only one since SDK 55)
 - **Expo Router** (file-based routing, typed routes enabled). Since SDK 56 it no longer depends on
   React Navigation: import navigation themes and types from `expo-router/react-navigation`, not
   `@react-navigation/*`.
 - **TypeScript**, strict mode
 - **react-native-reanimated** for animation, **expo-linear-gradient** for gradients (RN's `experimental_backgroundImage` does not render on web — see `src/components/ui/button.tsx` for the pattern)
 - **react-native-svg** for the remote food-icon illustrations
+- **Supabase Auth** (supabase-js) for sign-in with Google and Apple — see [api-integration.md](./api-integration.md#authentication)
 
 ## Top-level layout
 
@@ -37,11 +38,21 @@ Expo Router maps this directory to routes. Today:
 
 ```text
 src/app/
-├── _layout.tsx           # root layout: theme provider, splash overlay, root Stack
+├── _layout.tsx           # root layout: theme, fonts, AuthProvider, splash overlay, guarded root Stack
+├── sign-in.tsx           # the only screen while signed out
+├── auth/callback.tsx     # Google sign-in's redirect when it arrives as a deep link (Android)
+├── camera/               # full-screen barcode / photo capture
+├── dev/api-health.tsx    # dev-only connectivity check
 └── (tabs)/
     ├── _layout.tsx       # tab navigator (NativeTabs / expo-router/ui Tabs)
-    └── index.tsx         # Home tab — renders the Log Food screen
+    ├── index.tsx         # Home tab — renders the Log Food screen
+    └── profile.tsx       # Profile tab — the nutrition plan (read-only targets, Change plan); account section: account card with Basic/Premium, sign out, delete
 ```
+
+The root `Stack` uses protected routes: `Stack.Protected guard={!signedIn}` around `sign-in`
+and `guard={signedIn}` around the tabs and camera screens, so a signed-out user only ever sees
+sign-in and a signed-in user never does. While the saved session is restored at startup the
+root layout shows a plain loading screen instead of the Stack.
 
 `(tabs)` is a route group: the parentheses mean the segment doesn't appear in the URL, so `index.tsx` inside it is still just `/`. It exists so the tab navigator has its own layout, separate from the root `Stack` — the root `Stack` is what lets a future screen (e.g. a settings modal) be pushed on top of the tabs without restructuring routing again.
 
@@ -54,6 +65,8 @@ components/
 ├── common/         # app-shell-level, not tied to any feature (splash overlay, external-link)
 ├── navigation/      # the tab bar shell (app-tabs.tsx + .web.tsx)
 ├── ui/              # generic primitives: Button, Card, Field, Pill, Sheet, Toast, typography
+├── auth/            # sign-in screen parts (GoogleSignInButton)
+├── nutrition-plan/  # Profile tab parts (PlanCard, ChangePlanSheet, AccountCard)
 └── log/             # components specific to the Log Food screen, incl. log/panels/
     └── panels/       # one file per bottom-sheet flow (add food, scan, recipes, ...)
 ```
@@ -64,13 +77,18 @@ Rule of thumb: if a component has no idea what "food" or "macros" means, it belo
 
 ```text
 features/
+├── auth/
+│   ├── auth-provider.tsx    # AuthProvider: the Supabase session + our profile (GET /users/me) + sign-in/out actions
+│   ├── hooks/use-auth.ts    # useAuth()
+│   └── legal-links.ts       # Privacy Policy / Terms URLs
 └── food/
-    ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES, seed() — swap points for real APIs
+    ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES, default TARGETS — swap points for real APIs
     ├── hooks/use-food-log.ts # the day's timeline of entries + the mutation surface (addEntry, changeEntry, ...)
+    ├── hooks/use-targets.ts  # the signed-in user's daily targets (defaults until the profile loads)
     └── time.ts               # "HH:MM" helpers, eating moments, and the local-offset logged_at sent to the API
 ```
 
-This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. Only `food/` exists today because it's the only feature with real code to hold; `nutrition/`, `meals/`, `dashboard/`, `profile/` are not created until they have something to contain.
+This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. `auth/` (who is signed in, their profile) and `food/` exist today; `nutrition/`, `meals/`, `dashboard/` are not created until they have something to contain.
 
 A feature folder grows its own `components/`, `hooks/`, `services/`, `types/`, `utils/` subfolders only as needed — `food/` currently only needs `data/` and `hooks/`.
 
@@ -91,9 +109,10 @@ Cross-feature reusable hooks only. Feature-specific hooks (like `useFoodLog`) li
 ```text
 services/api/
 ├── config.ts     API_BASE_URL (from EXPO_PUBLIC_API_URL), API_VERSION_PREFIX
-├── client.ts     ApiError, apiRequest<T>(path, options) — fetch + timeout + JSON handling
-├── types.ts      ApiErrorKind, HealthResponse, ...
+├── client.ts     ApiError, apiRequest<T>(path, options) — fetch + bearer token + refresh-on-401 + timeout + JSON
+├── types.ts      ApiErrorKind, HealthResponse, UserProfile, ...
 ├── health.ts     getHealth()
+├── foods.ts, meals.ts, users.ts   endpoint wrappers
 └── index.ts      barrel export
 ```
 
@@ -105,6 +124,14 @@ setup, and how to add a new endpoint wrapper. `src/features/food/data/mock-data.
 documents the exact swap points for the mock arrays this client will eventually replace
 (`FOOD_DB` → food search, `BARCODES` → barcode lookup, `RECIPES` → user recipes, `seed()` →
 `GET /diary/{date}`) — those endpoints don't exist on the backend yet.
+
+## `src/services/auth/` — sign-in
+
+The supabase-js client (`supabase.ts`), the encrypted session storage it uses, the Google and
+Apple sign-in flows (`sign-in.ts`), and the session helpers `apiRequest` calls (`session.ts`).
+This is the one network client besides `apiRequest`, and it's for auth only — see `AGENTS.md`
+and [`api-integration.md`](./api-integration.md#authentication). UI reaches it through
+`useAuth()` (`src/features/auth/`), not directly.
 
 ## Where things go next
 

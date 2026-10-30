@@ -1,10 +1,3 @@
-import { useFonts } from 'expo-font';
-import {
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from '@expo-google-fonts/plus-jakarta-sans';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -27,8 +20,9 @@ import { FullScreen, FullScreenLayer } from '@/components/ui/full-screen';
 import { Sheet } from '@/components/ui/sheet';
 import { ToastOverlay, useToastHost } from '@/components/ui/toast';
 import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
-import { Entry, Food, Macro, RECIPES, Recipe, TARGETS, entryMacros, toGrams } from '@/features/food/data/mock-data';
+import { Entry, Food, Macro, RECIPES, Recipe, entryMacros, toGrams } from '@/features/food/data/mock-data';
 import { shiftDate, toDateString, useFoodLog } from '@/features/food/hooks/use-food-log';
+import { useTargets } from '@/features/food/hooks/use-targets';
 import { recipeFood } from '@/features/food/recipes';
 import { nowHHMM } from '@/features/food/time';
 import type { BarcodeScanResult, PhotoCaptureResult } from '@/features/camera';
@@ -46,12 +40,6 @@ const minus = (a: Macro, b: Macro): Macro => ({
 export default function LogScreen() {
   const colors = useColors();
   const styles = useStyles(makeStyles);
-  const [fontsLoaded] = useFonts({
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-  });
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -67,6 +55,7 @@ export default function LogScreen() {
   const [dayOffset, setDayOffset] = useState(0);
   const date = shiftDate(toDateString(today), dayOffset);
   const foodLog = useFoodLog(date, notify);
+  const targets = useTargets();
   /** Entry being edited in Food Details. */
   const [detail, setDetail] = useState<Entry | null>(null);
   /** The day's full nutrition, opened from the summary card. */
@@ -124,14 +113,6 @@ export default function LogScreen() {
       router.setParams({ capturedPhotoUri: '' });
     }
   }, [params.scannedBarcodeData, params.scannedBarcodeType, params.capturedPhotoUri, router]);
-
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.brandPrimary} />
-      </View>
-    );
-  }
 
   // Search's Photo / Barcode / Recipes / Custom tiles: close search, then open that flow at the
   // time search was logging at. Not straight away: iOS can't present a sheet or push the camera
@@ -268,7 +249,7 @@ export default function LogScreen() {
             time={adding}
             onTimeChange={setAdding}
             entries={foodLog.entries}
-            remainingKcal={TARGETS.kcal - foodLog.totals.kcal}
+            remainingKcal={targets.kcal - foodLog.totals.kcal}
             onOpenFood={(food) => setFoodView({ food, time: adding })}
             onQuickAdd={(food, grams) => foodLog.addEntry(adding, food, grams, 'g')}
             onMode={openFlow}
@@ -408,12 +389,6 @@ export default function LogScreen() {
 const makeStyles = (colors: Palette) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.bgApp,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: colors.bgApp,
   },
   content: {

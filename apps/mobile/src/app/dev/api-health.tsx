@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { SectionLabel, SheetSubtitle, SheetTitle } from '@/components/ui/typography';
 import { Palette, fontFamily, fontSize, spacing, useColors, useStyles } from '@/theme';
-import { API_BASE_URL, API_VERSION_PREFIX, ApiError, apiRequest, getHealth } from '@/services/api';
+import { API_BASE_URL, API_VERSION_PREFIX, ApiError, getHealth, getMe } from '@/services/api';
 
 type CheckState =
   | { status: 'idle' }
@@ -51,9 +51,9 @@ export default function ApiHealthDevScreen() {
       <View style={styles.actions}>
         <Button label="Check /health" onPress={() => run(getHealth)} disabled={state.status === 'loading'} />
         <Button
-          label="Trigger /auth (expect 501)"
+          label="Check /users/me (401 when signed out)"
           variant="secondary"
-          onPress={() => run(() => apiRequest('/auth'))}
+          onPress={() => run(getMe)}
           disabled={state.status === 'loading'}
         />
       </View>

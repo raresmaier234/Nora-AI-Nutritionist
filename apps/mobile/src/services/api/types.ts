@@ -89,3 +89,40 @@ export interface FoodLogEntryUpdate {
   unit?: string;
   grams?: number;
 }
+
+export type Plan = 'basic' | 'premium';
+
+/** The user's daily targets: calories, then grams of each macro and of fibre. */
+export interface DailyTargets {
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+}
+
+/**
+ * GET /users/me — the signed-in user's profile. The API creates it on the first request with a
+ * new user's token, from the name, email and picture Google or Apple gave.
+ */
+export interface UserProfile {
+  /** The Supabase user id. */
+  id: string;
+  /** May be an Apple private-relay address. */
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  plan: Plan;
+  /** ISO 8601; null means no expiry. */
+  plan_expires_at: string | null;
+  targets: DailyTargets;
+}
+
+/**
+ * PATCH /users/me — omitted fields are left unchanged. Targets outside kcal 500–10000,
+ * protein/carbs/fat 0–1000 g or fibre 0–200 g answer 422.
+ */
+export interface UserProfileUpdate {
+  display_name?: string;
+  targets?: Partial<DailyTargets>;
+}

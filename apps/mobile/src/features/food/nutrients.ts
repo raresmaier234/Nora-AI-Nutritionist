@@ -6,7 +6,7 @@
 
 import type { NutrientAmount } from '@/services/api';
 
-import type { Macro } from './data/mock-data';
+import type { Macro, Targets } from './data/mock-data';
 import type { NutrientFamily } from './theme';
 
 /** Nutrient key → amount, in the unit its row states. Missing = no data, never zero. */
@@ -167,7 +167,8 @@ export type NutrientTarget = { value: number; kind: 'goal' | 'limit' };
 /**
  * Only nutrients with an established reference value get a bar: 'goal' to reach, 'limit' to stay
  * under. FDA Daily Values, IOM Adequate Intakes (omega-3/6, ALA), WHO essential amino-acid needs
- * at 70 kg. Everything else shows its value only.
+ * at 70 kg. Everything else shows its value only. Fibre's entry is only the reference value: the
+ * user sets their own fibre goal — see `nutrientTarget`.
  */
 export const NUTRIENT_TARGETS: Record<string, NutrientTarget> = {
   ...Object.fromEntries(Object.entries(DAILY_VALUES).map(([k, v]) => [k, { value: v, kind: 'goal' as const }])),
@@ -187,6 +188,11 @@ export const NUTRIENT_TARGETS: Record<string, NutrientTarget> = {
   tryptophan: { value: 0.28, kind: 'goal' },
   valine: { value: 1.82, kind: 'goal' },
 };
+
+/** A nutrient's daily target: the user's own fibre goal, otherwise the reference value. */
+export function nutrientTarget(key: string, targets: Targets): NutrientTarget | undefined {
+  return key === 'fiber' ? { value: targets.fiber, kind: 'goal' } : NUTRIENT_TARGETS[key];
+}
 
 const VITAMINS = ['vitamin_a', 'vitamin_c', 'vitamin_d', 'vitamin_e', 'vitamin_k', 'thiamin', 'riboflavin', 'niacin', 'vitamin_b6', 'folate', 'vitamin_b12', 'choline', 'pantothenic_acid'];
 const MINERALS = ['calcium', 'iron', 'magnesium', 'phosphorus', 'potassium', 'zinc', 'copper', 'manganese', 'selenium'];

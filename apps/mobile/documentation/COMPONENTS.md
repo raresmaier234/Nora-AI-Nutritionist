@@ -9,7 +9,9 @@ src/components/
 ├── common/      # app-shell infrastructure — not reusable UI in the design-system sense
 ├── ui/          # generic, design-system primitives — no domain knowledge
 ├── navigation/  # the tab bar shell
-└── log/         # everything specific to the Log Food screen's vocabulary
+├── log/         # everything specific to the Log Food screen's vocabulary
+├── auth/        # parts of the sign-in screen
+└── nutrition-plan/ # parts of the Profile tab
 ```
 
 **`ui/`** — a component belongs here if you could drop it into an entirely different app and it would still make sense: `Button`, `Card`, `Field`, `Pill`, `Sheet`, `Toast`, the shared text styles in `typography.tsx`. These take generic props (`label`, `variant`, `children`) and know nothing about food, meals, or macros. They pull their values from `src/constants/log-theme.ts` but don't hardcode feature concepts.
@@ -18,7 +20,11 @@ src/components/
 
 **`navigation/`** — the tab bar shell (`app-tabs.tsx` for native, `app-tabs.web.tsx` for web — Expo Router picks the right one per platform automatically via the `.web.tsx` suffix). Add new tab triggers here as real features land; don't put screen content in this folder.
 
-**`common/`** — things every screen might need that aren't part of the visual design system: `splash-overlay.tsx` (drives the native splash-screen dismiss animation, mounted once at the root layout) and `external-link.tsx` (opens a URL in an in-app browser on native, a normal link on web — not currently used anywhere, kept because every app eventually needs it for things like a privacy policy or help link).
+**`common/`** — things every screen might need that aren't part of the visual design system: `splash-overlay.tsx` (drives the native splash-screen dismiss animation, mounted once at the root layout), `external-link.tsx` (opens a URL in an in-app browser on native, a normal link on web) and `legal-link.tsx` (the Privacy Policy / Terms inline in a sentence — a link once its URL is set in `src/features/auth/legal-links.ts`, plain text until then; used on the sign-in screen and the Profile tab).
+
+**`auth/`** — `google-sign-in-button.tsx`: "Continue with Google" in Google's own button branding (the colour G, Google's light/dark colours), sized to match Apple's native `AppleAuthenticationButton`, which the sign-in screen (`src/app/sign-in.tsx`) uses as is.
+
+**`nutrition-plan/`** — the Profile tab's parts: `plan-card.tsx` (the nutrition plan's daily calories and macros, read-only — plans change only by answering questions again) and `change-plan-sheet.tsx` (what "Change plan" opens; until the plan builder in `apps/api/docs/plans/ai-nutrition-plan.md` exists, it explains what's coming), and for the account section at its foot, `account-card.tsx` (avatar or initials, name, email, the Basic / Premium badge, how they signed in) (the only account information shown; there's nothing to edit). The tab itself is `src/app/(tabs)/profile.tsx`.
 
 ## When something outgrows `components/log/`
 

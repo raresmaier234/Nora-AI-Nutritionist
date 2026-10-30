@@ -5,7 +5,11 @@
 #
 # Needs in GitHub:
 #   secret   EXPO_TOKEN — an Expo access token (expo.dev → Account settings → Access tokens)
-#   variable API_URL    — in each environment, that environment's public API base URL
+#   variables, in each environment (development, production):
+#     API_URL                  — that environment's public API base URL
+#     SUPABASE_URL             — that environment's Supabase project URL (https://<ref>.supabase.co)
+#     SUPABASE_PUBLISHABLE_KEY — that project's publishable key (sb_publishable_…; public by design,
+#                                never the secret key)
 name: Mobile
 
 on:
@@ -58,4 +62,6 @@ jobs:
         env:
           EAS_BRANCH: ${{ github.ref_name == 'main' && 'production' || 'development' }}
           EXPO_PUBLIC_API_URL: ${{ vars.API_URL }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
