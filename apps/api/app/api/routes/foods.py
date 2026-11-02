@@ -26,7 +26,8 @@ router = APIRouter(
     response_model=list[FoodSearchResult],
     summary="Search foods",
     description=(
-        "Foods whose name matches the query, best match first. Built for search as you type: "
+        "Foods whose name, brand or store matches the query, best match first; a match on the "
+        "food's own name ranks above one on its brand. Built for search as you type: "
         "a partial last word matches ('alm' finds almonds), small typos are forgiven "
         "('chiken'), case and accents are ignored, and English and Romanian names find each "
         "other ('chicken' finds 'piept de pui'). Only foods with calories, protein, carbs and "
@@ -43,6 +44,8 @@ def search(
         FoodSearchResult(
             id=food.id,
             name=food.name,
+            brand=food.brand,
+            store=food.store,
             per_100g=Per100g(
                 kcal=float(food.calories_per_100g),
                 protein=float(food.protein_per_100g),

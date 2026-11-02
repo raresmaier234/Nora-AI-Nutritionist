@@ -74,7 +74,13 @@ def build_query(query: str) -> dict[str, Any]:
                             {
                                 "multi_match": {
                                     **words,
-                                    "fields": ["name^3", "name.ro^2", "name.en^2", "name.syn"],
+                                    "fields": [
+                                        "name^3",
+                                        "name.ro^2",
+                                        "name.en^2",
+                                        "name.syn",
+                                        "full_name",
+                                    ],
                                     "boost": 3,
                                 }
                             },
@@ -88,13 +94,19 @@ def build_query(query: str) -> dict[str, Any]:
                                     }
                                 }
                             },
+                            # The same across brand and store: "alpro lap".
+                            {
+                                "match": {
+                                    "full_name.autocomplete": {"query": query, "operator": "and"}
+                                }
+                            },
                             # Typos: no edits up to 3 letters, one up to 7, two after that, and
                             # the first letter must be right — looser than that and "chick"
                             # finds "thick".
                             {
                                 "multi_match": {
                                     **words,
-                                    "fields": ["name", "name.syn"],
+                                    "fields": ["name", "name.syn", "full_name"],
                                     "fuzziness": "AUTO:4,8",
                                     "prefix_length": 1,
                                 }

@@ -34,4 +34,11 @@ def get_food_detail(db: Session, food_id: int) -> FoodDetail | None:
         for nutrient in (*LABEL_NUTRIENTS, *EXTRA_NUTRIENTS)
         if (value := getattr(food, nutrient.column)) is not None
     ]
-    return FoodDetail(id=food.id, name=food.name, per_100g=per_100g, nutrients=nutrients)
+    return FoodDetail(
+        id=food.id,
+        name=food.name,
+        brand=food.brand,
+        store=food.store,
+        per_100g=per_100g,
+        nutrients=nutrients,
+    )

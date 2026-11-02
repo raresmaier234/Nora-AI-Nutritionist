@@ -15,7 +15,7 @@ import logging
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 
-from app.utils.naming import normalize_name
+from app.utils.naming import clean_display_name, food_key
 from app.services.ingest.measures import (
     GRAM,
     KCAL,
@@ -71,6 +71,9 @@ class NormalizedFood:
     sodium_mg_per_100g: Decimal | None
     # The rest of the profile, keyed by `foods` column: {"leucine_per_100g": Decimal(...)}.
     extra: dict[str, Decimal] = field(default_factory=dict)
+    # Who makes it and where it is sold, when the source says.
+    brand: str | None = None
+    store: str | None = None
 
 
 def atwater_kcal(
@@ -181,9 +184,11 @@ def normalize_food(raw: dict) -> NormalizedFood:
     Raises NormalizationError when the food cannot be trusted — no name, a per-serving
     basis with no serving weight to rebase from, or energy that contradicts the macros.
     """
-    name = (raw.get("name") or "").strip()
+    name = clean_display_name((raw.get("name") or "").strip())
     if not name:
         raise NormalizationError("extraction has no food name")
+    brand = clean_display_name(str(raw.get("brand") or "").strip()) or None
+    store = str(raw.get("store") or "").strip() or None
 
     basis = raw.get("basis") or PER_100G
     if basis not in (PER_100G, PER_SERVING):
@@ -263,7 +268,7 @@ def normalize_food(raw: dict) -> NormalizedFood:
 
     return NormalizedFood(
         name=name,
-        name_normalized=normalize_name(name),
+        name_normalized=food_key(name, brand, store),
         calories_per_100g=calories,
         protein_per_100g=protein,
         fat_per_100g=fat,
@@ -273,6 +278,8 @@ def normalize_food(raw: dict) -> NormalizedFood:
         saturated_fat_per_100g=saturated_fat,
         sodium_mg_per_100g=sodium_mg,
         extra=extra,
+        brand=brand,
+        store=store,
     )
 
 

@@ -8,7 +8,23 @@
  */
 
 export type Macro = { kcal: number; protein: number; carbs: number; fat: number };
-export type Food = { id: string; name: string; per100: Macro };
+/** `brand` and `store` tell apart foods with the same name ("Lapte" from Napolact and from Pilos). */
+export type Food = { id: string; name: string; per100: Macro; brand?: string | null; store?: string | null };
+
+/** Lowercase, accents and punctuation dropped: "PRÉSIDENT" and "president" compare equal. */
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * The brand and store to show next to a food's name — each left out when the name already
+ * says it ("Lapte Olympus" from Olympus), so nothing reads twice.
+ */
+export function brandAndStore(food: Pick<Food, 'name' | 'brand' | 'store'>): { brand: string | null; store: string | null } {
+  const name = ` ${fold(food.name)} `;
+  const shown = (part: string | null | undefined) => (part && !name.includes(` ${fold(part)} `) ? part : null);
+  const brand = shown(food.brand);
+  const store = shown(food.store);
+  return { brand, store: store && fold(store) !== fold(brand ?? '') ? store : null };
+}
 export type Unit = { label: string; grams: number };
 /** One logged food. `time` is when it was eaten, "HH:MM" in local time. */
 export type Entry = Food & { uid: number; amount: number; unit: string; time: string };

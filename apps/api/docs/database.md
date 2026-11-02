@@ -30,7 +30,7 @@
 
 | Table | Model | Holds |
 |---|---|---|
-| `foods` | `Food` | The food database, per 100g: the core label (calories, protein, fat, carbs, fibre, sugar, saturated fat, sodium) plus 70 optional full-profile columns (carbohydrate/fat/protein breakdowns, vitamins, minerals, water, alcohol, caffeine). Filled by the ingestion pipeline. `name_normalized` is unique (the dedup key) and has a trigram index for search. |
+| `foods` | `Food` | The food database, per 100g: the core label (calories, protein, fat, carbs, fibre, sugar, saturated fat, sodium) plus 70 optional full-profile columns (carbohydrate/fat/protein breakdowns, vitamins, minerals, water, alcohol, caffeine). Filled by the ingestion pipeline. `name` is what the product is, without brand or store ("Lapte de soia"); `brand` and `store` hold those when the source says ("Alpro", "Lidl"). Names are stored with Romanian letters repaired and a capital first letter (`clean_display_name` in `app/utils/naming.py`). `name_normalized` folds name, brand and store together; it is unique (the dedup key, so the same food from two brands is two rows) and has a trigram index for search. |
 | `ingest_jobs` | `IngestJob` | The crawl queue: one row per page to ingest, with its site (`source`), status (`pending`/`done`/`failed`) and last error. |
 | `users` | `User` | One row per person using Nora; see "Users" below. |
 | `food_log_entries` | `FoodLogEntry` | The food log behind the app's Log Food screen: one row per food logged to a meal on a day, owned by a user (`user_id`). Keeps its own copy of the food's name and per-100g macros. |

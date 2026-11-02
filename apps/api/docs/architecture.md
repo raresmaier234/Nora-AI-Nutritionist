@@ -82,9 +82,10 @@ input, call the DB, return a schema."
 - **Optional.** Without `ELASTICSEARCH_URL`, or when the index doesn't answer, search runs on
   PostgreSQL (trigram matching) with the same response, so nothing else depends on it.
 - **One document per food:** its name, analyzed several ways (as written, Romanian and
-  English word forms, synonyms in the other language, prefixes for as-you-type), and its
-  macros per 100 g. Synonyms (`app/services/food_synonyms.py`) are applied while indexing, so
-  editing them needs a rebuild.
+  English word forms, synonyms in the other language, prefixes for as-you-type); its name,
+  brand and store together (`full_name`, weighted below the name, so "alpro lapte" matches);
+  and its macros per 100 g. Synonyms (`app/services/food_synonyms.py`) are applied while
+  indexing, so editing them needs a rebuild.
 
 ## Authentication
 
@@ -192,7 +193,9 @@ module that reads a plan's `baseline` and proposes a new draft (`reason: review`
 - `GET /api/v1/health`
 - FastAPI app with CORS
 - SQLAlchemy models and Alembic migrations (see [database.md](database.md))
-- Food database, filled by the ingestion pipeline (`scripts/ingest_foods.py`)
+- Food database, filled by the Open Food Facts import (`scripts/import_openfoodfacts.py`,
+  ODbL — needs attribution) and the USDA import (`scripts/import_usda.py`); the crawler
+  (`scripts/ingest_foods.py`) can add the sites in `sites.toml`
 - Food search (`GET /api/v1/foods`) on Elasticsearch, with PostgreSQL as fallback
 - Food logging (`/api/v1/meals/entries`), one log per user
 - Authentication: Supabase Auth access tokens, required by every endpoint except health (see

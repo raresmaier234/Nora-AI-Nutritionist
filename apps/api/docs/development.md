@@ -131,6 +131,42 @@ editing the synonyms in `app/services/food_synonyms.py` or the analyzers in
 `app/services/food_index.py`. New foods from `scripts/ingest_foods.py run` are indexed as
 they're saved.
 
+### Open Food Facts
+
+Products sold in Romania (~50,000) come from the Open Food Facts bulk export rather than a
+crawl; Open Food Facts asks that bulk use go through its exports, not its API.
+
+```bash
+python scripts/import_openfoodfacts.py download          # streams ~1.5 GB, keeps Romania's rows
+python scripts/import_openfoodfacts.py import --dry-run  # what would be saved
+python scripts/import_openfoodfacts.py import
+python scripts/index_foods.py
+```
+
+The download is saved to `data/openfoodfacts-romania.tsv` (git-ignored). Products go through
+the same normalizer, checks and dedup as the crawler's pages; brand and store come from Open Food
+Facts' own fields. Only names in English, Romanian, Spanish, Italian or German are kept: a name
+with letters none of them use (Cyrillic, Greek, French "œ", Czech "ř") is skipped, and a
+bilingual one keeps its supported half (`supported_language_name` in
+`app/services/ingest/sources/openfoodfacts.py`). The data is ODbL: showing it publicly needs the attribution "Contains data
+from Open Food Facts, available under the Open Database License", and an adapted database
+used publicly must be shared under the ODbL too.
+
+### USDA generic foods
+
+Generic foods in English with the full nutrient profile ("Bananas, raw", ~8,000) come from
+USDA FoodData Central: Foundation Foods and SR Legacy, both public domain.
+
+```bash
+python scripts/import_usda.py download          # ~25 MB, into data/usda/
+python scripts/import_usda.py import --dry-run
+python scripts/import_usda.py import
+python scripts/index_foods.py
+```
+
+Romanian searches find them through the synonyms in `app/services/food_synonyms.py`
+("banana" / "banane", "lapte" / "milk").
+
 ## Running tests
 
 ```bash

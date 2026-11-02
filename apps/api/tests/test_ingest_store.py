@@ -7,7 +7,8 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models.food import Food
-from app.services.ingest.normalizer import NormalizedFood, normalize_name
+from app.services.ingest.normalizer import NormalizedFood
+from app.utils.naming import normalize_name
 from app.services.ingest.store import find_similar, upsert_food
 
 
@@ -30,11 +31,13 @@ def make_food(name: str, **overrides) -> NormalizedFood:
 
 
 def test_inserts_a_new_food(db_session) -> None:
-    result = upsert_food(db_session, make_food("Zqx Plain White Flour"))
+    # No real words: the database is shared, and a real one ("flour") would find genuine
+    # near-duplicates and flag the food for review.
+    result = upsert_food(db_session, make_food("Zqxv Wbrlk Fnorp"))
 
     assert result.created is True
     assert result.food.id is not None
-    assert result.food.name_normalized == "zqx plain white flour"
+    assert result.food.name_normalized == "zqxv wbrlk fnorp"
     assert result.food.needs_review is False
 
 

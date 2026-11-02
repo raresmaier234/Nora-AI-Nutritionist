@@ -336,7 +336,8 @@ that isn't the user's; `409` `not_a_draft` (already active or archived) or `targ
 - **Needs** an access token, like every endpoint but health: it also keeps the food database
   from being scraped.
 
-Foods whose name matches `q`, best match first. Built for search as you type:
+Foods whose name, brand or store matches `q`, best match first; a match on the food's own name
+ranks above one on its brand ("alpro lapte" finds Alpro's soy milk). Built for search as you type:
 
 - **Unfinished words:** "alm" finds almond butter; "piept d" finds "piept de pui".
 - **Typos:** one wrong letter in words of 4–7 letters, two from 8 ("granloa", "almnds"). The
@@ -359,9 +360,13 @@ by trigram similarity, exact name first. The response is the same either way.
 
 ```json
 [
-  {"id": 812, "name": "Whole milk", "per_100g": {"kcal": 61.0, "protein": 3.15, "carbs": 4.8, "fat": 3.25}}
+  {"id": 812, "name": "Whole milk", "brand": null, "store": null, "per_100g": {"kcal": 61.0, "protein": 3.15, "carbs": 4.8, "fat": 3.25}},
+  {"id": 920, "name": "Lapte de soya no sugars", "brand": "Alpro", "store": null, "per_100g": {"kcal": 33.0, "protein": 3.3, "carbs": 0.0, "fat": 1.8}}
 ]
 ```
+
+`name` is what the food is, without its brand or store; `brand` and `store` are `null` when
+unknown. Show them under the name ("Alpro · Lidl").
 
 ### `GET /api/v1/foods/{id}`
 
@@ -386,6 +391,8 @@ missing food is a 404.
 {
   "id": 1755,
   "name": "Butter, salted",
+  "brand": null,
+  "store": null,
   "per_100g": {"kcal": 717.0, "protein": 0.85, "carbs": 0.06, "fat": 81.11},
   "nutrients": [
     {"key": "fiber", "unit": "g", "amount": 0.0},

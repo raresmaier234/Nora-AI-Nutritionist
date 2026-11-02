@@ -12,3 +12,5 @@ dist/
 .env
 .env.*
 !.env.example
+# Downloaded data (scripts/import_openfoodfacts.py)
+data/

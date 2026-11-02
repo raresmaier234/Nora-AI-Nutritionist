@@ -37,6 +37,8 @@ def test_returns_macros_and_every_nutrient_with_its_unit(client, db_session) -> 
     assert response.json() == {
         "id": food.id,
         "name": "Qzvwx Banana",
+        "brand": None,
+        "store": None,
         "per_100g": {"kcal": 89.0, "protein": 1.09, "carbs": 22.8, "fat": 0.33},
         # Label nutrients first, then the full profile in its group order.
         "nutrients": [

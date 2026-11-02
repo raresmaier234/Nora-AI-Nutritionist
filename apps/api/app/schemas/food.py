@@ -88,7 +88,11 @@ class FoodSearchResult(BaseModel):
     """A food from the database, as listed by search."""
 
     id: int
-    name: str
+    name: str = Field(description="What the food is, without its brand or store.")
+    brand: str | None = Field(default=None, description="Who makes it, when known, e.g. 'Alpro'.")
+    store: str | None = Field(
+        default=None, description="The store that sells it, when known, e.g. 'Lidl'."
+    )
     per_100g: Per100g
 
 
@@ -104,7 +108,11 @@ class FoodDetail(BaseModel):
     """A food with its full nutrient profile, per 100g. Nutrients without data are left out."""
 
     id: int
-    name: str
+    name: str = Field(description="What the food is, without its brand or store.")
+    brand: str | None = Field(default=None, description="Who makes it, when known, e.g. 'Alpro'.")
+    store: str | None = Field(
+        default=None, description="The store that sells it, when known, e.g. 'Lidl'."
+    )
     per_100g: Per100g | None = Field(
         description="Null when the food lacks calories, protein, carbs or fat."
     )

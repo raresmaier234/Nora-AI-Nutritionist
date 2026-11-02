@@ -143,7 +143,20 @@ INDEX_MAPPINGS: dict[str, Any] = {
                 },
             },
         },
-        # The same normalized name PostgreSQL stores (app/utils/naming.py), for exact-name and
+        # Name, brand and store together ("Lapte de soia Alpro Lidl"), so a search can mix
+        # them ("alpro lapte"). Weighted below `name`, so the food's own words count most.
+        "full_name": {
+            "type": "text",
+            "analyzer": "food_name",
+            "fields": {
+                "autocomplete": {
+                    "type": "text",
+                    "analyzer": "food_name_autocomplete",
+                    "search_analyzer": "food_name",
+                },
+            },
+        },
+        # The same dedup key PostgreSQL stores (app/utils/naming.py), for exact-name and
         # starts-with boosts.
         "name_normalized": {"type": "keyword"},
         # Per 100 g. Search only returns foods with all four: one without calories or a
@@ -190,6 +203,7 @@ def _number(value: Decimal | None) -> float | None:
 def to_document(food: Food) -> dict[str, Any]:
     return {
         "name": food.name,
+        "full_name": " ".join(part for part in (food.name, food.brand, food.store) if part),
         "name_normalized": food.name_normalized,
         "kcal": _number(food.calories_per_100g),
         "protein": _number(food.protein_per_100g),

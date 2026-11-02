@@ -95,12 +95,19 @@ def _is_richer(candidate: Decimal | None, existing: Decimal | None) -> bool:
     return existing is None and candidate is not None
 
 
+def _barcode_taken(db: Session, barcode: str) -> bool:
+    """Whether another food already has this barcode. Sources do repeat one, so the first
+    food to claim it keeps it rather than the insert failing on the unique constraint."""
+    return db.execute(select(Food.id).where(Food.barcode == barcode)).first() is not None
+
+
 def upsert_food(
     db: Session,
     normalized: NormalizedFood,
     *,
     source_url: str | None = None,
     raw_extraction: dict[str, Any] | None = None,
+    barcode: str | None = None,
     check_similar: bool = True,
 ) -> UpsertResult:
     """Insert `normalized`, or enrich the existing row with the same normalized name.
@@ -138,6 +145,8 @@ def upsert_food(
             existing.source_url = source_url
         if existing.raw_extraction is None and raw_extraction is not None:
             existing.raw_extraction = raw_extraction
+        if existing.barcode is None and barcode is not None and not _barcode_taken(db, barcode):
+            existing.barcode = barcode
 
         if gained:
             logger.debug("enriched existing food %s", existing.name_normalized)
@@ -148,6 +157,8 @@ def upsert_food(
 
     food = Food(
         name=normalized.name,
+        brand=normalized.brand,
+        store=normalized.store,
         name_normalized=normalized.name_normalized,
         calories_per_100g=normalized.calories_per_100g,
         protein_per_100g=normalized.protein_per_100g,
@@ -160,6 +171,7 @@ def upsert_food(
         **normalized.extra,
         source_url=source_url,
         raw_extraction=raw_extraction,
+        barcode=barcode if barcode is None or not _barcode_taken(db, barcode) else None,
         # Flagged rather than dropped: a near-duplicate is usually a real food with a name
         # worth reconciling, and deciding that automatically is how databases get polluted.
         needs_review=bool(similar),

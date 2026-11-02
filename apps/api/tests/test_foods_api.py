@@ -32,9 +32,28 @@ def test_finds_a_food_by_part_of_its_name(client, db_session) -> None:
         {
             "id": food.id,
             "name": "Qzvwx Whole Milk",
+            "brand": None,
+            "store": None,
             "per_100g": {"kcal": 61.0, "protein": 3.2, "carbs": 4.8, "fat": 3.3},
         }
     ]
+
+
+def test_finds_a_food_by_its_brand_and_returns_brand_and_store(client, db_session) -> None:
+    add_food(db_session, "Qzvwx lapte de soia", brand="Wvxzq", store="Lidl")
+
+    [found] = client.get("/api/v1/foods", params={"q": "wvxzq"}).json()
+
+    assert (found["name"], found["brand"], found["store"]) == ("Qzvwx lapte de soia", "Wvxzq", "Lidl")
+
+
+def test_same_name_from_two_brands_is_two_foods(client, db_session) -> None:
+    add_food(db_session, "Qzvwx afine congelate", brand="Hortex")
+    add_food(db_session, "Qzvwx afine congelate", brand="Ecofruct")
+
+    results = client.get("/api/v1/foods", params={"q": "qzvwx afine"}).json()
+
+    assert {f["brand"] for f in results} >= {"Hortex", "Ecofruct"}
 
 
 def test_ignores_case_accents_and_punctuation(client, db_session) -> None:

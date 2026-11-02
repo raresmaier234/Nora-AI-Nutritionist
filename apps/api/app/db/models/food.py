@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
-from app.utils.naming import normalize_name
+from app.utils.naming import food_key
 
 if TYPE_CHECKING:
     from app.db.models.recipe_ingredient import RecipeIngredient
@@ -19,16 +19,30 @@ class Food(Base):
     __tablename__ = "foods"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # What the product is, without its brand or store: "Lapte de soia", not "Alpro Lapte de
+    # soia - Kaufland". Search ranks names that start with the query first, so this is what
+    # has to carry the food.
     name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    # Who makes it and where it is sold, when the source says. Searchable, but weighted below
+    # `name`; shown under it ("Alpro · Lidl").
+    brand: Mapped[str | None] = mapped_column(Text, nullable=True)
+    store: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The product's EAN/UPC (8–14 digits, as printed), for looking a product up by scanning
+    # it. Unique: one barcode is one product. Null for generic foods and unknown codes.
+    barcode: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
 
-    # Case/accent/punctuation-folded name. Unique, so duplicate foods cannot be inserted
-    # even if a dedup check upstream misses one. Derived from `name` when not supplied, so
-    # no call site can accidentally create a food without its dedup key.
+    # Name, brand and store, case/accent/punctuation-folded (app/utils/naming.py). Unique,
+    # so duplicate foods cannot be inserted even if a dedup check upstream misses one.
+    # Derived when not supplied, so no call site can create a food without its dedup key.
     name_normalized: Mapped[str] = mapped_column(
         Text,
         nullable=False,
         unique=True,
-        default=lambda context: normalize_name(context.get_current_parameters()["name"]),
+        default=lambda context: food_key(
+            context.get_current_parameters()["name"],
+            context.get_current_parameters().get("brand"),
+            context.get_current_parameters().get("store"),
+        ),
     )
 
     calories_per_100g: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)

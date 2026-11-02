@@ -12,7 +12,7 @@ import { Fill, GoodSourceTile, MacroTargetBar, NutrientSectionCard, fmt } from '
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, Scheme, fontFamily, fontSize, gradientAngle, radius, spacing, trackTight, trackWide, useColors, useStyles, useTheme } from '@/theme';
 import { NutrientFamily, foodColors, useFoodColors } from '@/features/food/theme';
-import { Food, Macro } from '@/features/food/data/mock-data';
+import { Food, Macro, brandAndStore } from '@/features/food/data/mock-data';
 import { useFoodNutrients } from '@/features/food/hooks/use-food-nutrients';
 import { useTargets } from '@/features/food/hooks/use-targets';
 import {
@@ -91,6 +91,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const [pickingIcon, setPickingIcon] = useState(false);
 
   const art = foodIllustration(food.name);
+  const { brand, store } = brandAndStore(food);
   const hero = HERO[scheme][art.tint];
   const [servingLabel, servingGrams] = servings[servingIdx];
   const isGrams = servingIdx === 0;
@@ -178,8 +179,11 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
               </View>
             </Pressable>
             <View style={styles.heroText}>
-              <Text style={styles.heroName}>{food.name}</Text>
-              <Text style={styles.heroQty}>{qtyLabel}</Text>
+              <Text style={styles.heroName}>
+                {food.name}
+                {brand ? <Text style={styles.heroBrand}> {brand}</Text> : null}
+              </Text>
+              <Text style={styles.heroQty}>{[store, qtyLabel].filter(Boolean).join(' · ')}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -527,6 +531,7 @@ const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   },
   heroText: { flex: 1, minWidth: 0 },
   heroName: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, lineHeight: 25, color: colors.textPrimary, letterSpacing: trackTight(fontSize.h1) },
+  heroBrand: { fontFamily: fontFamily.medium, color: colors.textSecondary, letterSpacing: 0 },
   heroQty: { fontFamily: fontFamily.semibold, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 6 },
   body: { paddingHorizontal: 18, marginTop: -30, gap: spacing.lg },
   summaryCard: {

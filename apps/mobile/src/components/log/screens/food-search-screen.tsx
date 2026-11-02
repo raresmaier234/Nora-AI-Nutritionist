@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputInstance, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputInstance, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FoodIcon } from '@/components/log/food-icon';
 import { BarcodeIcon, CameraIcon, CheckIcon, CloseIcon, PlusIcon, RecipeIcon, SearchIcon } from '@/components/log/icons';
 import { WhenPicker } from '@/components/log/when-picker';
 import { Palette, fontFamily, fontSize, radius, spacing, trackTight, trackWide, useColors, useStyles } from '@/theme';
-import { Entry, Food } from '@/features/food/data/mock-data';
+import { Entry, Food, brandAndStore } from '@/features/food/data/mock-data';
 import { useFoodColors } from '@/features/food/theme';
 import { describeError, searchFoods } from '@/services/api';
 
@@ -55,6 +55,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
   const [results, setResults] = useState<Food[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 240);
@@ -74,7 +75,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
     const timer = setTimeout(() => {
       searchFoods(q)
         .then((found) => {
-          if (!cancelled) setResults(found.map((f) => ({ id: String(f.id), name: f.name, per100: f.per_100g })));
+          if (!cancelled) setResults(found.map((f) => ({ id: String(f.id), name: f.name, brand: f.brand, store: f.store, per100: f.per_100g })));
         })
         .catch((err: unknown) => {
           if (cancelled) return;
@@ -145,16 +146,28 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
         </View>
         {/* When — every item lands on the timeline at this time */}
         <WhenPicker value={time} onChange={onTimeChange} label="Eaten at" compact />
-        <View style={styles.field}>
-          <SearchIcon size={20} color={colors.textTertiary} strokeWidth={2.2} />
+        <View style={[styles.field, focused && styles.fieldFocused]}>
+          {searching ? (
+            <ActivityIndicator size="small" color={colors.brandPrimary} style={styles.fieldIcon} accessibilityLabel="Searching" />
+          ) : (
+            <SearchIcon size={20} color={focused ? colors.brandPrimary : colors.textTertiary} strokeWidth={2.2} />
+          )}
           <TextInput
             ref={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search foods"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Search foods or brands"
             placeholderTextColor={colors.textTertiary}
-            accessibilityLabel="Search foods"
+            accessibilityLabel="Search foods or brands"
             returnKeyType="search"
+            // Food and brand names are not dictionary words: autocorrect turns "lapte" into "latte".
+            autoCorrect={false}
+            autoCapitalize="none"
+            autoComplete="off"
+            spellCheck={false}
+            selectionColor={colors.brandPrimary}
             style={styles.input}
           />
           {query ? (
@@ -175,7 +188,13 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
       </View>
 
       {/* Scrolling body */}
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom) }}>
+      {/* Scrolling hides the keyboard, and on iOS the list scrolls clear of it, so the last
+          results are never stuck underneath. A tap on a result still lands with it open. */}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom) }}>
         {!q ? (
           <View style={styles.actions}>
             {actions(colors).map((a) => (
@@ -211,7 +230,7 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
           )}
         </View>
 
-        {searching ? (
+        {searching && results.length === 0 ? (
           <ActivityIndicator color={colors.brandPrimary} style={styles.spinner} accessibilityLabel="Searching" />
         ) : searchError ? (
           <Text style={styles.message}>{searchError}</Text>
@@ -234,7 +253,16 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
         ) : (
           list.map((f, i) => (
             <View key={f.id} style={i < list.length - 1 && styles.rowDivider}>
-              <SearchRow food={f} query={q} onOpen={() => onOpenFood(f)} onQuickAdd={() => onQuickAdd(f, DEFAULT_GRAMS)} />
+              <SearchRow
+                food={f}
+                query={q}
+                onOpen={() => {
+                  // Details has its own amount field; the search keyboard would sit over it.
+                  Keyboard.dismiss();
+                  onOpenFood(f);
+                }}
+                onQuickAdd={() => onQuickAdd(f, DEFAULT_GRAMS)}
+              />
             </View>
           ))
         )}
@@ -245,7 +273,10 @@ export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remai
 
 function Highlight({ text, query }: { text: string; query: string }) {
   const colors = useColors();
-  const i = query ? text.toLowerCase().indexOf(query.toLowerCase()) : -1;
+  // Folded one character at a time ("â" -> "a"), so a match's position is the same in the
+  // original text and "smantana" highlights "Smântână".
+  const fold = (s: string) => s.split('').map((c) => c.normalize('NFD')[0].toLowerCase()).join('');
+  const i = query ? fold(text).indexOf(fold(query)) : -1;
   if (i < 0) return <>{text}</>;
   return (
     <>
@@ -264,6 +295,8 @@ function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: str
   const styles = useStyles(makeStyles);
   const f = DEFAULT_GRAMS / 100;
   const kcal = Math.round(food.per100.kcal * f);
+  const { brand, store } = brandAndStore(food);
+  const label = brand ? `${food.name}, ${brand}` : food.name;
   const [added, setAdded] = useState(false);
   useEffect(() => {
     if (!added) return;
@@ -279,10 +312,18 @@ function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: str
     <Pressable onPress={onOpen} accessibilityRole="button" style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <FoodIcon name={food.name} size={48} />
       <View style={styles.rowText}>
-        <Text style={styles.rowName}>
+        <Text style={styles.rowName} numberOfLines={2}>
           <Highlight text={food.name} query={query} />
+          {brand ? (
+            <Text style={styles.rowBrand}>
+              {' '}
+              <Highlight text={brand} query={query} />
+            </Text>
+          ) : null}
         </Text>
-        <Text style={styles.rowServing}>{DEFAULT_GRAMS} g</Text>
+        <Text style={styles.rowServing} numberOfLines={1}>
+          {[store, `${DEFAULT_GRAMS} g`].filter(Boolean).join(' · ')}
+        </Text>
         <View style={styles.rowMacros}>
           {macros.map(([k, v, c]) => (
             <View key={k} style={styles.rowMacro}>
@@ -305,7 +346,7 @@ function SearchRow({ food, query, onOpen, onQuickAdd }: { food: Food; query: str
           onQuickAdd();
         }}
         accessibilityRole="button"
-        accessibilityLabel={added ? `${food.name} added` : `Quick add ${food.name}`}
+        accessibilityLabel={added ? `${label} added` : `Quick add ${label}`}
         style={[styles.quickAdd, added && styles.quickAdded]}>
         {added ? <CheckIcon size={18} color={colors.white} /> : <PlusIcon size={18} color={colors.brandPrimary} strokeWidth={2.6} />}
       </Pressable>
@@ -342,6 +383,8 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     borderColor: colors.borderSubtle,
     backgroundColor: colors.bgApp,
   },
+  fieldFocused: { borderColor: colors.brandPrimary, backgroundColor: colors.bgSurfaceSolid },
+  fieldIcon: { width: 20, height: 20 },
   input: { flex: 1, minWidth: 0, fontFamily: fontFamily.medium, fontSize: 16, color: colors.textPrimary, padding: 0 },
   clear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   clearDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.slate300, alignItems: 'center', justifyContent: 'center' },
@@ -397,6 +440,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: spacing.xl, minHeight: 76 },
   rowText: { flex: 1, minWidth: 0 },
   rowName: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
+  rowBrand: { fontFamily: fontFamily.medium, color: colors.textSecondary },
   rowServing: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 3 },
   rowMacros: { flexDirection: 'row', gap: spacing.md, marginTop: 6 },
   rowMacro: { flexDirection: 'row', alignItems: 'center', gap: 5 },

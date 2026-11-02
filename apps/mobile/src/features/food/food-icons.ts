@@ -2,11 +2,15 @@
  * Food → illustrated icon resolution, ported from the design system's FoodIcon.jsx
  * (documentation/design-reference/log/FoodIcon.jsx): ≈175 specific foods across 10 categories,
  * each a Noto Emoji illustration. Resolution order: specific food item → explicit category →
- * category keyword → generic fork & knife.
+ * category keyword → generic fork & knife. Names in Romanian, Spanish, Italian and German are
+ * read through food-icon-translations.ts first, so "Pâine" finds the bread.
  *
- * The table below is the design's, unchanged except one fix: the generic Chicken pattern had a
- * double-escaped `\\b` around "tenders", so it never matched.
+ * The table below is the design's, unchanged except two fixes: the generic Chicken pattern had a
+ * double-escaped `\\b` around "tenders", so it never matched; and Burger comes before the meats,
+ * so "Beef burger" (and "Burger de vită") shows a burger rather than a steak.
  */
+
+import { foodWordsInEnglish } from './food-icon-translations';
 
 export type FoodTint = 'indigo' | 'green' | 'amber' | 'neutral';
 export type FoodCategoryId = 'baked' | 'meat' | 'veg' | 'seafood' | 'fruit' | 'nuts' | 'dairy' | 'drinks' | 'sweets' | 'other';
@@ -63,6 +67,7 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     ['Flour & Grains', '1f33e', /flour|wheat|whole grain|semolina|barley|spelt/i],
   ]),
   cat('meat', 'Meats', '1f969', 'neutral', /meat|beef|steak|pork|lamb|ham|bacon|sausage|turkey|veal|mince|burger|jerky|chicken|duck/i, [
+    ['Burger', '1f354', /burger|hamburger|patty/i],
     // Poultry
     ['Chicken Breast', '1f414', /chicken breast|chicken fillet|chicken cutlet|chicken schnitzel|grilled chicken|chicken escalope/i],
     ['Chicken Leg', '1f357', /chicken leg|drumstick|chicken thigh|leg quarter/i],
@@ -98,7 +103,6 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
     ['Venison', '1f98c', /venison|deer|elk|game meat/i],
     ['Rabbit', '1f407', /rabbit/i],
     ['Goat', '1f410', /\bgoat\b(?! cheese|'s cheese| milk)/i],
-    ['Burger', '1f354', /burger|hamburger|patty/i],
     ['Hot Dog', '1f32d', /hot ?dog|sausage|frankfurter|bratwurst|chorizo|salami|pepperoni/i],
     ['Gyro', '1f959', /gyro|kebab|doner|shawarma|souvlaki/i],
     ['Skewer', '1f362', /skewer|satay|yakitori/i],
@@ -269,20 +273,28 @@ const findCategory = (idOrLabel?: string) =>
     ? FOOD_CATEGORIES.find((c) => c.id === idOrLabel || c.label.toLowerCase() === String(idOrLabel).toLowerCase())
     : undefined;
 
+/** The name, plus its food words in English when it has any: "Pâine albă | bread alba". */
+const matchText = (name: string) => {
+  const english = foodWordsInEnglish(name);
+  return english ? `${name} | ${english}` : name;
+};
+
 export function categorizeFood(name?: string): FoodCategory {
   if (!name) return OTHER;
-  const item = ITEMS.find((it) => it.match.test(name));
+  const text = matchText(name);
+  const item = ITEMS.find((it) => it.match.test(text));
   if (item) return findCategory(item.category)!;
-  return FOOD_CATEGORIES.find((c) => c.keywords && c.keywords.test(name)) ?? OTHER;
+  return FOOD_CATEGORIES.find((c) => c.keywords && c.keywords.test(text)) ?? OTHER;
 }
 
 export type FoodIllustration = { src: string; tint: FoodTint; category: FoodCategoryId; fallback: string };
 
 /** The icon for a food: its own illustration if one matches, else its category's, else generic. */
 export function foodIllustration(name?: string, category?: string): FoodIllustration {
-  const item = name ? ITEMS.find((it) => it.match.test(name)) : undefined;
+  const text = name ? matchText(name) : undefined;
+  const item = text ? ITEMS.find((it) => it.match.test(text)) : undefined;
   const explicit = findCategory(category);
-  const keyword = name ? FOOD_CATEGORIES.find((c) => c.keywords && c.keywords.test(name)) : undefined;
+  const keyword = text ? FOOD_CATEGORIES.find((c) => c.keywords && c.keywords.test(text)) : undefined;
   const c = explicit ?? (item ? findCategory(item.category)! : keyword) ?? OTHER;
   // Nothing recognised and no category given → neutral fork & knife, not the bento.
   const src = item ? item.src : explicit || keyword ? c.src : GENERIC_FOOD_ICON;

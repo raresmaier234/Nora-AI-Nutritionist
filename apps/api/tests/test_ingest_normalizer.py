@@ -23,8 +23,8 @@ from app.services.ingest.normalizer import (
     NormalizationError,
     check_atwater,
     normalize_food,
-    normalize_name,
 )
+from app.utils.naming import normalize_name
 
 
 # --- measurement parsing: every dialect seen on real labels ------------------------

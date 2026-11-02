@@ -20,7 +20,12 @@ export interface Per100g {
 /** GET /foods?q= — one food from the database. */
 export interface FoodSearchResult {
   id: number;
+  /** What the food is, without its brand or store: "Lapte". */
   name: string;
+  /** Who makes it, e.g. "Napolact"; null when unknown. */
+  brand: string | null;
+  /** The store that sells it, e.g. "Lidl"; null when unknown. */
+  store: string | null;
   per_100g: Per100g;
 }
 
@@ -38,6 +43,8 @@ export interface NutrientAmount {
 export interface FoodDetail {
   id: number;
   name: string;
+  brand: string | null;
+  store: string | null;
   per_100g: Per100g | null;
   nutrients: NutrientAmount[];
 }
