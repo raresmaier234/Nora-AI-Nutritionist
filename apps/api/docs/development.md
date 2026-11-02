@@ -89,6 +89,28 @@ python scripts/set_plan.py you@example.com basic
 Each refuses, changing nothing, an email no user has or one that more than one user has (the
 error lists their ids).
 
+### Trying the nutrition plan (premium)
+
+The nutrition plan endpoints (`/api/v1/users/me/goals`, `/api/v1/users/me/nutrition-plans…`,
+see [api.md](api.md#nutrition-plan-premium)) answer `403` to basic users. To try them locally:
+
+1. `alembic upgrade head` (migration `5c9e2f7a1d43` adds the tables).
+2. Sign in to the app against the development project once, so your `users` row exists.
+3. `python scripts/set_plan.py you@example.com premium`.
+4. Answer the questionnaire in the app, or call the endpoints from Swagger (`/docs`,
+   **Authorize** with your access token): `POST …/nutrition-plans/preview` with
+   `{"answers": {...}}` to see the gate and the paces, `POST …/goals` to save the answers,
+   `POST …/nutrition-plans` with the goal's id for a draft, then `POST
+   …/nutrition-plans/{id}/activate`. `GET /api/v1/users/me` then shows `targets_mode: "plan"`
+   and the plan's targets.
+
+`python scripts/set_plan.py you@example.com basic` shows what a lapsed subscriber sees: the
+default targets, with the plan kept for when they're premium again.
+
+The plan texts are in `app/services/nutrition_plan/patterns/en.json`. After editing them, run
+`pytest tests/test_nutrition_plan_texts.py`: it checks every pattern key renders, that every
+placeholder is known, and that no text hard-codes a number.
+
 ## Food search (Elasticsearch)
 
 Food search runs on Elasticsearch when it's configured, and on PostgreSQL otherwise — so this

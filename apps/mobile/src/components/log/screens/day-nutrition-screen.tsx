@@ -28,7 +28,8 @@ const OPEN_SECTIONS = new Set<NutrientSectionId>(['macros', 'vitamins', 'mineral
  * Everything eaten in one day, opened from the calorie summary card: calories and macros against
  * their goals, then fibre, vitamins, minerals and the rest, each with what's left of its daily
  * target. Micronutrients come from the logged database foods' profiles; custom foods, scans and
- * recipes add calories and macros only, and the screen says how many were left out.
+ * recipes add calories and macros only, and the screen says how many were left out. Without
+ * targets ("log without targets") it's plain totals: no goals, bars or "left".
  */
 export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClose }: DayNutritionScreenProps) {
   const { nu } = useFoodColors();
@@ -40,7 +41,7 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
   const v = day.values;
 
   const kcal = Math.round(totals.kcal);
-  const kcalLeft = targets.kcal - kcal;
+  const kcalLeft = targets ? targets.kcal - kcal : 0;
   const summaries: Partial<Record<NutrientSectionId, string>> = {
     macros: `${fmt(v.protein ?? 0)} g protein · ${fmt(v.carbs ?? 0)} g carbs · ${fmt(v.fat ?? 0)} g fat`,
     sugars: v.sugar != null ? `${fmt(v.sugar)} g total sugars` : undefined,
@@ -72,20 +73,24 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
           <Text style={styles.overline}>Eaten</Text>
           <View style={styles.kcalRow}>
             <Text style={styles.kcalTotal}>{kcal.toLocaleString()}</Text>
-            <Text style={styles.kcalTarget}>/ {targets.kcal.toLocaleString()} kcal</Text>
+            <Text style={styles.kcalTarget}>{targets ? `/ ${targets.kcal.toLocaleString()} kcal` : 'kcal'}</Text>
           </View>
-          <Text style={[styles.kcalLeft, kcalLeft < 0 && styles.kcalOver]}>
-            {kcalLeft >= 0 ? `${kcalLeft.toLocaleString()} kcal left` : `${(-kcalLeft).toLocaleString()} kcal over`}
-          </Text>
-          <View style={[styles.kcalTrack, { backgroundColor: nu.kcal.tint }]}>
-            <Fill pct={(kcal / targets.kcal) * 100} color={kcalLeft < 0 ? colors.errorText : nu.kcal.base} />
-          </View>
+          {targets ? (
+            <>
+              <Text style={[styles.kcalLeft, kcalLeft < 0 && styles.kcalOver]}>
+                {kcalLeft >= 0 ? `${kcalLeft.toLocaleString()} kcal left` : `${(-kcalLeft).toLocaleString()} kcal over`}
+              </Text>
+              <View style={[styles.kcalTrack, { backgroundColor: nu.kcal.tint }]}>
+                <Fill pct={(kcal / targets.kcal) * 100} color={kcalLeft < 0 ? colors.errorText : nu.kcal.base} />
+              </View>
+            </>
+          ) : null}
           <View style={styles.rule} />
           <View style={styles.macroBars}>
-            <MacroTargetBar family="protein" label="Protein" add={v.protein ?? 0} before={null} goal={targets.protein} />
-            <MacroTargetBar family="carbs" label="Carbs" add={v.carbs ?? 0} before={null} goal={targets.carbs} />
-            <MacroTargetBar family="fat" label="Fat" add={v.fat ?? 0} before={null} goal={targets.fat} />
-            {v.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={v.fiber} before={null} goal={targets.fiber} /> : null}
+            <MacroTargetBar family="protein" label="Protein" add={v.protein ?? 0} before={null} goal={targets?.protein ?? null} />
+            <MacroTargetBar family="carbs" label="Carbs" add={v.carbs ?? 0} before={null} goal={targets?.carbs ?? null} />
+            <MacroTargetBar family="fat" label="Fat" add={v.fat ?? 0} before={null} goal={targets?.fat ?? null} />
+            {v.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={v.fiber} before={null} goal={targets?.fiber ?? null} /> : null}
           </View>
         </View>
 
@@ -112,7 +117,7 @@ export function DayNutritionScreen({ dayLabel, dateLabel, entries, totals, onClo
               {day.withoutProfile > 0
                 ? `Vitamins and minerals count ${entries.length - day.withoutProfile} of ${entries.length} foods: custom foods, scans and recipes only have calories and macros. `
                 : ''}
-              Targets are daily values for a 2,000 kcal diet. Nutrients without data are not shown.
+              {targets ? 'Targets are daily values for a 2,000 kcal diet. ' : ''}Nutrients without data are not shown.
             </Text>
           </View>
         )}

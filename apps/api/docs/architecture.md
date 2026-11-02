@@ -42,8 +42,8 @@ input, call the DB, return a schema."
 - **`app/api/router.py`** — combines every route module in `app/api/routes/` under the
   `/api/v1` prefix. This is the only place that needs to change when a new route group is
   added.
-- **`app/api/routes/`** — one file per route group (`health.py`, `users.py`, `foods.py`,
-  `barcodes.py`, `meals.py`, `nutrition.py`). `barcodes.py` and `nutrition.py` are still
+- **`app/api/routes/`** — one file per route group (`health.py`, `users.py`,
+  `nutrition_plans.py`, `foods.py`, `barcodes.py`, `meals.py`, `nutrition.py`). `barcodes.py` and `nutrition.py` are still
   placeholders (see [api.md](api.md)). Route handlers should stay focused on HTTP concerns:
   parsing input, calling a service or the DB, returning a schema.
 - **`app/core/config.py`** — a single `Settings` object (pydantic-settings) loaded from
@@ -62,7 +62,7 @@ input, call the DB, return a schema."
 - **`app/services/`** — business logic that doesn't fit cleanly in a route handler
   (multi-step operations, calls to external APIs, orchestration): sign-in (`auth.py`), users
   and plans, the Supabase admin client, the food log, food search and its index, the
-  ingestion pipeline, scraping.
+  ingestion pipeline, scraping, and the nutrition plan (`nutrition_plan/`, see below).
 - **`tests/`** — pytest tests using FastAPI's `TestClient`.
 - **`alembic/`** — the Alembic migration environment, pointed at `app.db.database.Base`.
 
@@ -117,14 +117,63 @@ data. The decisions behind this are in [plans/auth-and-user-profiles.md](plans/a
 - **Plans.** `users.plan` is `basic` (default) or `premium`, kept in our database next to the
   data it unlocks; payments will set it later (`plan_expires_at` is reserved for that). A
   plan past its `plan_expires_at` counts as `basic`. `require_plan("premium")` is the
-  dependency for gated endpoints (`403` otherwise); nothing uses it yet. Until payments exist,
-  `scripts/set_plan.py` sets a plan by hand.
+  dependency for gated endpoints (`403` otherwise, with an optional custom `detail`); the
+  nutrition plan endpoints use it. Until payments exist, `scripts/set_plan.py` sets a plan by
+  hand.
 - **Account deletion** (`DELETE /api/v1/users/me`) calls Supabase's admin API
   (`app/services/supabase_admin.py`, with `SUPABASE_SECRET_KEY`) to delete the Supabase user
-  first, then deletes the `users` row; the food log goes with it (`ON DELETE CASCADE`). If
-  Supabase fails, nothing is deleted.
+  first, then deletes the `users` row; the food log, goals and nutrition plans go with it
+  (`ON DELETE CASCADE`). If Supabase fails, nothing is deleted.
 - **Tests never call Supabase.** They make an ES256 key pair, override `get_token_verifier`
   with its public key and a test issuer, and sign their own tokens (`tests/auth_tokens.py`).
+
+## Adaptive nutrition plan
+
+A **premium** feature, specified in [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md)
+(v3; the reasons behind its numbers are in
+[plans/ai-nutrition-plan-expert-review.md](plans/ai-nutrition-plan-expert-review.md)).
+**Phase 1 is implemented:** the questionnaire (v2), the safety gates, the algorithm,
+hand-written English texts, goals and plans, and `targets_mode`. Weekly check-ins, weigh-ins,
+reviews and adaptive TDEE (phase 3), the generated pattern library (phase 4) and the rest are
+not.
+
+**Only the algorithm decides numbers.** No AI runs per request, and no user data goes to an AI
+provider. The code is in `app/services/nutrition_plan/`; everything there but `plans.py` is pure
+(no database, no clock: callers pass `today`), so every rule is unit-tested directly.
+
+| Module | Does |
+|---|---|
+| `person.py` | The person behind a set of answers: age (the youngest possible from birth month and year), BMI, protein weight (`min(weight, 25 × height_m²)`), health flags. Any answer may be missing, for previews |
+| `gates.py` | The safety gates for the four goals (Lose fat, Lose fat and build muscle = `recomp`, Build muscle, Maintain): stop (under 16, pregnancy, a current eating disorder, kidney disease, weight-loss surgery, BMI < 17.5, and an eating disorder in the past unless the user asks for targets), maintain only (16–17, breastfeeding, an eating disorder in the past with targets), goals ruled out (the loss goals below BMI 18.5, with no room above the BMI 20 target floor, from 65 below BMI 25, or with hypo-risk diabetes until the user agrees to check with their team; Build muscle from BMI 30; the muscle goals with under 2 strength days and no intent to train) and notes. Target validation |
+| `algorithm.py` | Energy (Mifflin–St Jeor; activity base + 0.025 per strength day + 0.035 per cardio day, capped at 2.0; +400 kcal breastfeeding), paces and the personal max loss rate (no Faster for `recomp`, nor when the limits make it no faster than Steady), calories (25% / 30% deficit cap, sex floors, with a hypo risk a floor that fits 130 g of carbs, no BMR floor, 5–15% surplus), the effective rate and the goal date from it, macros (protein → fat → carbs; protein at most 35% of kcal; the carb floor's allocation order), fibre, display rounding |
+| `texts.py`, `patterns/en.json` | The pattern library (plan texts per `goal.pace.training.phase`, add-ons, notices, gate reasons, stop screens) and its renderer. No hard-coded numbers in the texts; Romanian falls back to English until `ro.json` exists |
+| `plans.py` | Goals and plans in the database, and previews; what `app/api/routes/nutrition_plans.py` calls |
+
+**Clamp first, then the date.** The requested rate (from a pace, or a custom date) is clamped
+to the user's max only on the unsafe side; calories are then set within the deficit cap and
+the floors; the **effective rate** is worked out from those calories, and the goal date from
+the effective rate. So a date shown is always one the calories can reach.
+
+**Flow.** The app previews as the questionnaire is answered (`POST
+/users/me/nutrition-plans/preview`: gate, pace options with real dates; nothing stored), saves
+the answers with consent (`POST /users/me/goals`), builds a draft (`POST
+/users/me/nutrition-plans`) and activates it, which copies its targets to the user's
+`*_target` columns. The gates are re-run from a goal's stored answers each time it is read or
+used, so the age is always today's. A plan keeps its unrounded working (`baseline`: BMR, TDEE,
+protein weight, rates, rules applied, inputs) for the weekly reviews to come; its texts are
+rendered when it is read.
+
+**`users.targets_mode`** says which targets the app shows: `default` (the defaults), `plan` (the
+active plan's, copied to the `*_target` columns) or `none` (log without targets: a gate stopped
+the plan; `GET /users/me` sends `targets: null`). A stop also archives the active plan, and no
+plan can be built or activated until new answers no longer stop. **Going back to basic** is
+handled when reading, not by changing data: `GET /users/me` reports `default` and the default
+targets while the user isn't premium, and the plan stays active in the database, so premium
+again restores it (the premium-only endpoints are `403` meanwhile).
+
+Phase 3 slots in beside this: `weight_entries`, `check_ins` and `plan_reviews` tables, a review
+module that reads a plan's `baseline` and proposes a new draft (`reason: review`), and
+`check_in_due` computed from `users.timezone`.
 
 ## Where future integrations should live
 
@@ -148,8 +197,11 @@ data. The decisions behind this are in [plans/auth-and-user-profiles.md](plans/a
 - Food logging (`/api/v1/meals/entries`), one log per user
 - Authentication: Supabase Auth access tokens, required by every endpoint except health (see
   [Authentication](#authentication))
-- User profiles (`/api/v1/users/me`): name, avatar, daily targets, basic/premium plan, and
-  account deletion
+- User profiles (`/api/v1/users/me`): name, avatar, time zone, daily targets and where they
+  come from (`targets_mode`), basic/premium plan, and account deletion
+- The premium nutrition plan, phase 1 (`/api/v1/users/me/goals`,
+  `/api/v1/users/me/nutrition-plans`): questionnaire, safety gates, algorithm, plans (see
+  [Adaptive nutrition plan](#adaptive-nutrition-plan))
 - Placeholder routers for barcodes/nutrition (each returns `501 Not Implemented`)
 
 **Not implemented yet (planned):**
@@ -164,8 +216,11 @@ data. The decisions behind this are in [plans/auth-and-user-profiles.md](plans/a
 - Food photo uploads
 - AI food recognition
 - AI nutrition estimation
-- An AI-built nutrition plan from the user's answers about their goals, proposed in
-  [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md)
+- The rest of the premium adaptive nutrition plan, specified in
+  [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md): weekly Monday check-ins on a 28-day
+  trend, weigh-ins, proposed updates and adaptive TDEE (phase 3); the pattern library written
+  once with AI, in English and Romanian (phase 4); push reminders and the move to maintenance
+  (phase 5). Phase 1 is implemented (above)
 - A Valkey cache of the foods in front of PostgreSQL. Decided, with the steps written down, in
   [plans/food-cache.md](plans/food-cache.md)
 

@@ -34,6 +34,8 @@
 | `ingest_jobs` | `IngestJob` | The crawl queue: one row per page to ingest, with its site (`source`), status (`pending`/`done`/`failed`) and last error. |
 | `users` | `User` | One row per person using Nora; see "Users" below. |
 | `food_log_entries` | `FoodLogEntry` | The food log behind the app's Log Food screen: one row per food logged to a meal on a day, owned by a user (`user_id`). Keeps its own copy of the food's name and per-100g macros. |
+| `nutrition_goals` | `NutritionGoal` | Each set of nutrition plan questionnaire answers a user saved, with their consent; see "Nutrition plans" below. |
+| `nutrition_plans` | `NutritionPlan` | Plans built from those answers: drafts, the one active plan, and archived ones; see "Nutrition plans" below. |
 | `recipes`, `recipe_ingredients` | `Recipe`, `RecipeIngredient` | Scraped recipes and their ingredient lines, optionally matched to a `Food`. |
 
 The full-profile nutrient columns are listed once, in `app/services/ingest/nutrients.py`; the
@@ -54,7 +56,9 @@ token the first time the API sees a user (see [architecture.md](architecture.md#
 | `avatar_url` | text, nullable | Google picture |
 | `plan` | text, not null, default `basic` | `basic` or `premium` (check constraint `ck_users_plan`) |
 | `plan_expires_at` | timestamptz, nullable | Reserved for subscriptions; `null` = no expiry. A plan past it counts as `basic` |
-| `kcal_target`, `protein_target_g`, `carbs_target_g`, `fat_target_g`, `fiber_target_g` | numeric, not null | Daily targets; defaults 2000 / 150 / 220 / 70 / 28 |
+| `kcal_target`, `protein_target_g`, `carbs_target_g`, `fat_target_g`, `fiber_target_g` | numeric, not null | Daily targets; defaults 2000 / 150 / 220 / 70 / 28. Activating a nutrition plan copies its targets here; they only count in `plan` mode |
+| `targets_mode` | text, not null, default `default` | `default` (the defaults are shown), `plan` (the columns above, from the active plan) or `none` (log without targets: no targets at all). Check constraint `ck_users_targets_mode`. A user who isn't premium is shown `default` in place of `plan`, without this column changing |
+| `timezone` | text, nullable | The user's IANA time zone, sent by the app; `null` means UTC |
 | `created_at`, `updated_at` | timestamptz | |
 | `last_seen_at` | timestamptz | Last request, to the hour: only written when an hour old |
 
@@ -78,6 +82,46 @@ three steps:
 3. **Only then**, a follow-up migration makes `user_id` NOT NULL (and the model's
    `nullable=True` goes). It must not be merged before step 2 has run in every environment:
    deploys run `alembic upgrade head` first, and it would fail on the unclaimed entries.
+
+## Nutrition plans
+
+The premium nutrition plan (see [architecture.md](architecture.md#adaptive-nutrition-plan)).
+Both tables belong to a user and are deleted with them (`ON DELETE CASCADE`). Migration
+`5c9e2f7a1d43` creates them and adds `users.targets_mode` and `users.timezone`.
+
+**`nutrition_goals`** — one row per set of questionnaire answers saved. Never written for
+under-16s.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer, primary key | |
+| `user_id` | UUID, FK `users.id` on delete cascade, indexed | |
+| `questionnaire_version` | integer | `2` |
+| `answers` | JSONB | Every answer, as validated (`GoalAnswers` in `app/schemas/nutrition_plan.py`), missing ones as `null` |
+| `language` | text | `en` or `ro`: plans built from it are written in it |
+| `consent_version`, `consented_at` | text, timestamptz | The consent text version the user agreed to, and when (GDPR Art. 9) |
+| `created_at` | timestamptz | The latest is the goal in force |
+
+**`nutrition_plans`** — plans built from a goal.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | integer, primary key | |
+| `user_id` | UUID, FK `users.id` on delete cascade, indexed | |
+| `goal_id` | integer, FK `nutrition_goals.id` on delete cascade, indexed | The answers it was built from |
+| `status` | text, default `draft` | `draft`, `active` or `archived` (`ck_nutrition_plans_status`). **At most one active per user:** partial unique index `uq_nutrition_plans_one_active_per_user` on `user_id` where `status = 'active'` |
+| `reason` | text | `initial`, `change`, and later `review` and `maintenance_transition` (`ck_nutrition_plans_reason`) |
+| `previous_plan_id` | integer, FK `nutrition_plans.id` on delete set null | The plan that was active when this one replaced it |
+| `goal`, `pace` | text | `lose_fat` / `build_muscle` / `maintain` (`ck_nutrition_plans_goal`); the pace asked for, `null` for Maintain |
+| `pattern_key` | text | `goal.pace band.training.phase`: which texts of the pattern library it uses |
+| `language` | text | The texts' language; they are rendered when the plan is read, not stored |
+| `targets` | JSONB | `{"kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"}`, rounded for display |
+| `rate` | JSONB | `{"requested_kg_week", "effective_kg_week", "clamped"}` |
+| `notices` | JSONB | `[{"code", "template", "params"}]`, rendered into messages when read |
+| `baseline` | JSONB | The unrounded working: age, BMI, BMR, activity multiplier, TDEE, protein weight, rates, macros, the carb floor, rules applied, add-on texts, and the inputs |
+| `start_weight_kg`, `target_weight_kg` | numeric | Target `null` for Maintain, and for Build muscle with no target |
+| `goal_date`, `weeks` | date, integer, nullable | From the effective rate; `null` for Maintain or when no deficit is possible |
+| `created_at`, `activated_at` | timestamptz | `activated_at` is set when it becomes active |
 
 ## Connection string
 

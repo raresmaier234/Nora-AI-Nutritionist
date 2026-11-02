@@ -137,11 +137,12 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:8000
 src/services/api/
 ├── config.ts   API_BASE_URL, API_VERSION_PREFIX
 ├── client.ts   ApiError, apiRequest<T>(path, options), describeError(err)
-├── types.ts    ApiErrorKind, HealthResponse, FoodDetail, FoodLogEntry, UserProfile, ...
+├── types.ts    ApiErrorKind, HealthResponse, FoodDetail, FoodLogEntry, UserProfile, GoalAnswers, NutritionPlan, ...
 ├── health.ts   getHealth()
 ├── foods.ts    searchFoods(), getFood()
 ├── meals.ts    listEntries(), createEntry(), updateEntry(), deleteEntry(), copyDay()
 ├── users.ts    getMe(), updateMe(), deleteMe()
+├── nutrition-plan.ts  previewPlan(), saveGoals(), getLatestGoals(), createPlanDraft(), getActivePlan(), activatePlan(), gateFromError()
 └── index.ts    barrel export — import from '@/services/api'
 ```
 
@@ -246,9 +247,18 @@ protected routes: `Stack.Protected guard={!signedIn}` around `sign-in`, `guard={
 the tabs and camera screens. While the saved session is restored at startup it shows a plain
 loading screen (after the animated splash).
 
-**Targets.** The profile's daily targets replace the old hard-coded `TARGETS`: read them with
-`useTargets()` (`src/features/food/hooks/use-targets.ts`), which falls back to the defaults in
-`mock-data.ts` until the profile has loaded.
+**Targets.** Read the profile's daily targets with `useTargets()`
+(`src/features/food/hooks/use-targets.ts`). It returns **null** when there are none to show —
+`targets_mode: "none"` ("log without targets", below) — and while the profile loads, so a
+stopped user never sees a target flash by. Every screen that shows targets handles null: the
+calorie summary card, Food Details, Day Nutrition, the nutrient rows in `nutrition-parts.tsx`
+and search's "kcal left" hide every target bar, "remaining", "% of goal" (including % Daily
+Value) and goal ring, and show plain totals; logging and nutrients work as usual.
+
+**Time zone.** Weekly check-ins fall due on Mondays in the user's time zone. After sign-in,
+`AuthProvider` sends the phone's IANA zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`)
+with `PATCH /users/me {timezone}` once per session, when it differs from the profile's
+`timezone`.
 
 **Supabase dashboard setup** (per project; the full checklist is in the plan):
 - Authentication → URL Configuration → Redirect URLs: `noraainutrition://**`, and in the
@@ -257,6 +267,41 @@ loading screen (after the animated splash).
 - Authentication → Providers → Google: the Google Cloud web client's id and secret.
 - Authentication → Providers → Apple → Client IDs: `com.raresmaier.nora`, and in the
   development project also Expo Go's `host.exp.Exponent`.
+
+## Nutrition plan
+
+The plan is built from a questionnaire; the spec is `apps/api/docs/plans/ai-nutrition-plan.md`
+(v3), with its wording in `ai-nutrition-plan-expert-review.md` §1–§4. **Every endpoint below is
+premium** (403 for basic); `profile.plan` is already expiry-aware.
+
+| Call | Wrapper | Used for |
+| --- | --- | --- |
+| `POST /users/me/nutrition-plans/preview` `{answers, language}` | `previewPlan(partial, language)` | Nothing stored; missing answers are fine. The gate (`ok` · `maintain_only` · `stop`, `allowed_goals`, `reasons`, `stop{title,body}`) and the pace options (`pace_options` with real `effective_rate_kg_week`, `weeks`, `goal_date`; `custom_date_range`; `max_rate_kg_week`; `notices`). Called after the birth screen (age alone: an under-16 stop), on leaving the body and health screens (gate screens), and on entering the pace screen |
+| `POST /users/me/goals` | `saveGoals()` | Saves every answer (`questionnaire_version: 2`, `consent: true`, `consent_version`, `language`). Resolves with the goal and its gate, or `{id: null, gate}` for under-16s (nothing stored); 422 if the goal isn't allowed — `gateFromError(err)` reads the gate from the error's `detail` |
+| `GET /users/me/goals` | `getLatestGoals()` | The latest answers, to prefill the questionnaire; `null` on 404 (and then the consent screen is shown) |
+| `POST /users/me/nutrition-plans` `{goal_id}` | `createPlanDraft()` | A draft plan, instantly: targets, rate (`clamped`), goal date and weeks, `notices`, rendered `texts` |
+| `GET /users/me/nutrition-plans/active` | `getActivePlan()` | The Profile tab's plan; `null` on 404 |
+| `POST /users/me/nutrition-plans/{id}/activate` | `activatePlan()` | "Use this plan": the API copies the targets to the user; the app then reloads the profile |
+
+`GET /users/me` carries `targets_mode` (`default` · `plan` · `none`) and `check_in_due` (weekly
+check-ins come in the next phase); `targets` is `null` in `none`. `PATCH /users/me` no longer
+takes `targets` — they change only by building a plan.
+
+**Answers.** `GoalAnswers` in `types.ts` is the v2 shape, always metric (`units` only records
+how the user entered height and weight; the app converts ft/in and lb before sending). The
+app's own copy is English; `language` is `ro` on a phone whose locale starts with `ro`, else
+`en`, and the API renders plan texts in it. Goals: `lose_fat`, `recomp` ("Lose fat and build
+muscle"), `build_muscle` (shown as "Gain muscle") and `maintain`. A preview never sends an empty
+`health` list (the API needs at least one answer): it's left out until answered.
+
+**Stops.** When a preview's gate is `stop`, the app shows the stop screen and also saves the
+answers given so far with `saveGoals()` — that's what lets the API switch the account to "log
+without targets" (it keeps nothing for under-16s). Those answers can be partial (the stop may
+come before the activity questions): the API stores a stop however few answers there are (goal
+and birth are always there). If the save fails, the stop screen still shows. A later re-screen
+("Something changed?") that no longer stops puts the account back on the default targets.
+An eating disorder in the past asks "How would you like to use Nora?" (`targets_wanted`, false
+by default): log without targets is the `targets_declined` stop, handled like any other.
 
 ## Handling errors
 
@@ -272,7 +317,9 @@ loading screen (after the animated splash).
 
 `ApiError` also carries `status` (when applicable) and a `message` that already includes the
 backend's `detail` field (FastAPI's standard error shape, `{"detail": "..."}"`) when present —
-for a 422 validation error, each field and its message (`kcal: Input should be …`).
+for a 422 validation error, each field and its message (`kcal: Input should be …`); for an
+object detail, its `message`. The raw `detail` is kept as `err.detail`, for errors that carry
+data (a refused goal's gate).
 
 For a sentence to show the user, `describeError(err)` (from `@/services/api`) turns any error
 into one: "Can't reach the server…", "Your session has ended…" for a 401, or the backend's detail.

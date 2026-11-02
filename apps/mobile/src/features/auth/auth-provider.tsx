@@ -1,5 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
-import { ReactNode, createContext, useEffect, useState } from 'react';
+import { ReactNode, createContext, useEffect, useRef, useState } from 'react';
 
 import { UserProfile, UserProfileUpdate, deleteMe, describeError, getMe, updateMe } from '@/services/api';
 import {
@@ -21,7 +21,10 @@ export type AuthContextValue = {
   configured: boolean;
   /** Who is signed in, per Supabase: id, email, the provider used. Null when signed out. */
   user: User | null;
-  /** Our profile (GET /users/me): name, plan, daily targets. Null while it loads or if it failed. */
+  /**
+   * Our profile (GET /users/me): name, plan, daily targets and `targets_mode`. Null while it
+   * loads or if it failed.
+   */
   profile: UserProfile | null;
   /** Why the profile failed to load, for the user. */
   profileError: string | null;
@@ -36,7 +39,7 @@ export type AuthContextValue = {
   signOut: () => Promise<void>;
   /** Deletes the account and all its data, then signs out. Throws ApiError if it failed. */
   deleteAccount: () => Promise<void>;
-  /** PATCH /users/me; resolves with the saved profile. Throws ApiError (422 for invalid targets). */
+  /** PATCH /users/me; resolves with the saved profile. Throws ApiError. */
   updateProfile: (changes: UserProfileUpdate) => Promise<UserProfile>;
   reloadProfile: () => void;
 };
@@ -45,6 +48,15 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** The last profile response, and whose it was — it only counts while that user is signed in. */
 type LoadedProfile = { userId: string; profile: UserProfile | null; error: string | null };
+
+/** The phone's IANA time zone, e.g. 'Europe/Bucharest'; null if the runtime can't tell. */
+function deviceTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Who is signed in, and their profile. The session comes from supabase-js, which restores it
@@ -91,6 +103,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId, reloadKey]);
 
   const current = loaded && loaded.userId === userId ? loaded : null;
+
+  // Weekly check-ins fall due on Mondays in the user's own time zone: tell the API the phone's
+  // zone once per sign-in, when it differs from the one on the profile.
+  const timezoneSentFor = useRef<string | null>(null);
+  const loadedProfile = current?.profile ?? null;
+  useEffect(() => {
+    if (!loadedProfile || timezoneSentFor.current === loadedProfile.id) return;
+    const zone = deviceTimeZone();
+    if (!zone || loadedProfile.timezone === zone) return;
+    timezoneSentFor.current = loadedProfile.id;
+    const id = loadedProfile.id;
+    updateMe({ timezone: zone })
+      .then((saved) => setLoaded((prev) => (prev?.userId === id ? { userId: id, profile: saved, error: null } : prev)))
+      .catch(() => {
+        // Not critical: it's tried again at the next start.
+      });
+  }, [loadedProfile]);
 
   const signInWithApple = async () => {
     const result = await appleSignIn();

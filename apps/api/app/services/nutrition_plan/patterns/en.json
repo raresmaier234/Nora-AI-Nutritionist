@@ -1,0 +1,618 @@
+{
+  "language": "en",
+  "number_format": {
+    "decimal": ".",
+    "thousands": ","
+  },
+  "date_format": "{day} {month} {year}",
+  "months": [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  "and": "and",
+  "disclaimer": "General guidance, not medical advice.",
+  "plans": {
+    "lose_fat.gentle.none.start": {
+      "summary": "A gentle fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high for fat loss: it keeps you full and helps you keep your muscle while you lose fat.",
+        "A gentle pace leaves room for normal life: meals out, celebrations and the odd off day won't undo your progress.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Strength training two or three times a week, even at home with your own body weight, helps more of the weight you lose come from fat rather than muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.gentle.beginner.start": {
+      "summary": "A gentle fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: together they help you keep, and even build, muscle while you lose fat.",
+        "A gentle pace leaves room for normal life: meals out, celebrations and the odd off day won't undo your progress.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep up your strength training, and try to add a little weight or a rep or two over time: it tells your body to hold on to its muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.gentle.trained.start": {
+      "summary": "A gentle fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: it helps you keep your hard-earned muscle while you lose fat.",
+        "A gentle pace leaves room for normal life: meals out, celebrations and the odd off day won't undo your progress.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep training hard and aim to hold your strength. It's normal for progress in the gym to slow a little while you're in a deficit.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.steady.none.start": {
+      "summary": "A steady fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high for fat loss: it keeps you full and helps you keep your muscle while you lose fat.",
+        "A steady pace balances progress you can see with a plan you can keep up for months.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Strength training two or three times a week, even at home with your own body weight, helps more of the weight you lose come from fat rather than muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.steady.beginner.start": {
+      "summary": "A steady fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: together they help you keep, and even build, muscle while you lose fat.",
+        "A steady pace balances progress you can see with a plan you can keep up for months.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep up your strength training, and try to add a little weight or a rep or two over time: it tells your body to hold on to its muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.steady.trained.start": {
+      "summary": "A steady fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: it helps you keep your hard-earned muscle while you lose fat.",
+        "A steady pace balances progress you can see with a plan you can keep up for months.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep training hard and aim to hold your strength. It's normal for progress in the gym to slow a little while you're in a deficit.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "lose_fat.faster.none.start": {
+      "summary": "A faster fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high for fat loss: it keeps you full and helps you keep your muscle while you lose fat.",
+        "A faster pace means a bigger deficit, so you may notice hunger more. It's the quickest pace we plan for you, and it stays within the limits we use for safety.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Strength training two or three times a week, even at home with your own body weight, helps more of the weight you lose come from fat rather than muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor.",
+        "If your energy, sleep or mood suffer at this pace, switching to Steady is always fine."
+      ]
+    },
+    "lose_fat.faster.beginner.start": {
+      "summary": "A faster fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: together they help you keep, and even build, muscle while you lose fat.",
+        "A faster pace means a bigger deficit, so you may notice hunger more. It's the quickest pace we plan for you, and it stays within the limits we use for safety.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep up your strength training, and try to add a little weight or a rep or two over time: it tells your body to hold on to its muscle.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor.",
+        "If your energy, sleep or mood suffer at this pace, switching to Steady is always fine."
+      ]
+    },
+    "lose_fat.faster.trained.start": {
+      "summary": "A faster fat-loss plan: ~{kcal} kcal a day, for a loss of ~{rate_kg_week} kg a week. At this pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a deficit, which your body makes up mostly from stored fat.",
+        "Protein (~{protein_g} g) is set high because you strength train: it helps you keep your hard-earned muscle while you lose fat.",
+        "A faster pace means a bigger deficit, so you may notice hunger more. It's the quickest pace we plan for you, and it stays within the limits we use for safety.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Keep training hard and aim to hold your strength. It's normal for progress in the gym to slow a little while you're in a deficit.",
+        "Walking more is one of the easiest ways to support fat loss: a few thousand extra steps a day add up.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor.",
+        "If your energy, sleep or mood suffer at this pace, switching to Steady is always fine."
+      ]
+    },
+    "recomp.gentle.beginner.start": {
+      "summary": "A gentle plan to lose fat and build muscle: ~{kcal} kcal a day, a small deficit for a loss of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a small deficit, so you lose fat slowly while your training gives your muscles a reason to grow.",
+        "Protein (~{protein_g} g) is set high: together with strength training, it's what lets you build muscle while eating a little less.",
+        "A small deficit is what makes this work: eat much less, and building muscle gets much harder.",
+        "As someone newer to strength training, you're likely to build muscle well, even while you lose fat.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. That's the signal that builds muscle, even while you lose fat.",
+        "If you're new to lifting, a few sessions with a qualified coach can help you learn good technique and a simple programme.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "The scale may move slowly, because the muscle you build makes up for some of the fat you lose. Weigh yourself three or more times a week and watch the trend, and check your waist and your lifts too."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "recomp.gentle.trained.start": {
+      "summary": "A gentle plan to lose fat and build muscle: ~{kcal} kcal a day, a small deficit for a loss of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a small deficit, so you lose fat slowly while your training gives your muscles a reason to grow.",
+        "Protein (~{protein_g} g) is set high: together with strength training, it's what lets you build muscle while eating a little less.",
+        "A small deficit is what makes this work: eat much less, and building muscle gets much harder.",
+        "With some training behind you, muscle comes more slowly while you lose fat, so aim to keep your strength and expect gradual change.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Train each muscle group at least twice a week and keep pushing your main lifts. If they hold or climb while you lose fat, the plan is working.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "The scale may move slowly, because the muscle you build makes up for some of the fat you lose. Weigh yourself three or more times a week and watch the trend, and check your waist and your lifts too."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "recomp.steady.beginner.start": {
+      "summary": "A steady plan to lose fat and build muscle: ~{kcal} kcal a day, a moderate deficit for a loss of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a small deficit, so you lose fat slowly while your training gives your muscles a reason to grow.",
+        "Protein (~{protein_g} g) is set high: together with strength training, it's what lets you build muscle while eating a little less.",
+        "A moderate deficit balances losing fat with having the energy to train well and build muscle.",
+        "As someone newer to strength training, you're likely to build muscle well, even while you lose fat.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. That's the signal that builds muscle, even while you lose fat.",
+        "If you're new to lifting, a few sessions with a qualified coach can help you learn good technique and a simple programme.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "The scale may move slowly, because the muscle you build makes up for some of the fat you lose. Weigh yourself three or more times a week and watch the trend, and check your waist and your lifts too."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "recomp.steady.trained.start": {
+      "summary": "A steady plan to lose fat and build muscle: ~{kcal} kcal a day, a moderate deficit for a loss of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal creates a small deficit, so you lose fat slowly while your training gives your muscles a reason to grow.",
+        "Protein (~{protein_g} g) is set high: together with strength training, it's what lets you build muscle while eating a little less.",
+        "A moderate deficit balances losing fat with having the energy to train well and build muscle.",
+        "With some training behind you, muscle comes more slowly while you lose fat, so aim to keep your strength and expect gradual change.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build each meal around a protein food (eggs, yogurt, fish, chicken, beans or tofu), then add vegetables and a portion of carbs.",
+        "Train each muscle group at least twice a week and keep pushing your main lifts. If they hold or climb while you lose fat, the plan is working.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "The scale may move slowly, because the muscle you build makes up for some of the fat you lose. Weigh yourself three or more times a week and watch the trend, and check your waist and your lifts too."
+      ],
+      "cautions": [
+        "Losing fat shouldn't mean feeling unwell. If you're often dizzy, very tired or always hungry, eat a little more and choose a gentler pace in Change plan. If it's severe or doesn't settle within a few days, talk to your doctor."
+      ]
+    },
+    "build_muscle.gentle.beginner.start": {
+      "summary": "A gentle muscle-building plan: ~{kcal} kcal a day, a small surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A gentle surplus keeps fat gain low. Muscle comes slowly, so slow and steady is what works.",
+        "As someone newer to strength training, you can build muscle faster than experienced lifters, so your surplus is set to match.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "If you're new to lifting, a few sessions with a qualified coach can help you learn good technique and a simple programme.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "build_muscle.gentle.trained.start": {
+      "summary": "A gentle muscle-building plan: ~{kcal} kcal a day, a small surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A gentle surplus keeps fat gain low. Muscle comes slowly, so slow and steady is what works.",
+        "With some training behind you, muscle comes more slowly, so your surplus is kept small to limit fat gain.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "Track your main lifts: if they're climbing, the plan is working, whatever the scale says from day to day.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "build_muscle.steady.beginner.start": {
+      "summary": "A steady muscle-building plan: ~{kcal} kcal a day, a moderate surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A steady surplus is the usual sweet spot: enough to build with, without adding much fat.",
+        "As someone newer to strength training, you can build muscle faster than experienced lifters, so your surplus is set to match.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "If you're new to lifting, a few sessions with a qualified coach can help you learn good technique and a simple programme.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "build_muscle.steady.trained.start": {
+      "summary": "A steady muscle-building plan: ~{kcal} kcal a day, a moderate surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A steady surplus is the usual sweet spot: enough to build with, without adding much fat.",
+        "With some training behind you, muscle comes more slowly, so your surplus is kept small to limit fat gain.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "Track your main lifts: if they're climbing, the plan is working, whatever the scale says from day to day.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "build_muscle.faster.beginner.start": {
+      "summary": "A faster muscle-building plan: ~{kcal} kcal a day, a larger surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A faster surplus gives you the most room to build, and some fat gain comes with it. It suits people who train hard and recover well.",
+        "As someone newer to strength training, you can build muscle faster than experienced lifters, so your surplus is set to match.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "If you're new to lifting, a few sessions with a qualified coach can help you learn good technique and a simple programme.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "build_muscle.faster.trained.start": {
+      "summary": "A faster muscle-building plan: ~{kcal} kcal a day, a larger surplus for a gain of ~{rate_kg_week} kg a week, through {goal_date} (~{weeks} weeks).",
+      "why": [
+        "Your body uses an estimated ~{maintenance_kcal} kcal a day. Eating ~{kcal} kcal gives it a little extra to build muscle with.",
+        "Protein (~{protein_g} g) supports muscle repair and growth, and carbs (~{carbs_g} g) fuel your training.",
+        "A faster surplus gives you the most room to build, and some fat gain comes with it. It suits people who train hard and recover well.",
+        "With some training behind you, muscle comes more slowly, so even at this pace your surplus is kept moderate to limit fat gain.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Train each muscle group at least twice a week, and add a little weight or a rep or two over time. The extra food only builds muscle when training gives it a reason to.",
+        "Track your main lifts: if they're climbing, the plan is working, whatever the scale says from day to day.",
+        "Have a meal or snack with protein in the few hours after training.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do.",
+        "Weigh yourself three or more times a week, in the morning after the toilet and before eating. The trend over weeks matters, not any single day."
+      ],
+      "cautions": [
+        "If your weight climbs much faster than planned over a few weeks, choose a gentler pace in Change plan."
+      ]
+    },
+    "maintain.steady.none.start": {
+      "summary": "A plan to keep your weight steady: ~{kcal} kcal a day, with ~{protein_g} g of protein, ~{carbs_g} g of carbs and ~{fat_g} g of fat.",
+      "why": [
+        "~{kcal} kcal is our estimate of the energy your body uses in a day, so eating about this much should keep your weight about where it is.",
+        "Protein (~{protein_g} g) is set at a comfortable everyday level. If you start strength training, update your plan and we'll raise it.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build meals around protein, vegetables and whole grains, and enjoy the foods you love in sensible portions.",
+        "Moving more helps your health at any weight: regular walks, and some strength exercises twice a week, are a great start.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do."
+      ],
+      "cautions": []
+    },
+    "maintain.steady.beginner.start": {
+      "summary": "A plan to keep your weight steady: ~{kcal} kcal a day, with ~{protein_g} g of protein, ~{carbs_g} g of carbs and ~{fat_g} g of fat.",
+      "why": [
+        "~{kcal} kcal is our estimate of the energy your body uses in a day, so eating about this much should keep your weight about where it is.",
+        "Protein (~{protein_g} g) is set higher because you strength train: it helps your muscles recover and grow stronger.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build meals around protein, vegetables and whole grains, and enjoy the foods you love in sensible portions.",
+        "Keep up your training. Eating enough around your sessions helps you recover and get stronger.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do."
+      ],
+      "cautions": []
+    },
+    "maintain.steady.trained.start": {
+      "summary": "A plan to keep your weight steady: ~{kcal} kcal a day, with ~{protein_g} g of protein, ~{carbs_g} g of carbs and ~{fat_g} g of fat.",
+      "why": [
+        "~{kcal} kcal is our estimate of the energy your body uses in a day, so eating about this much should keep your weight about where it is.",
+        "Protein (~{protein_g} g) is set higher because you strength train: it helps your muscles recover between sessions.",
+        "These numbers are estimates: every body is a little different, so watch how your weight trends over a few weeks."
+      ],
+      "guidance": [
+        "Build meals around protein, vegetables and whole grains, and enjoy the foods you love in sensible portions.",
+        "Keep up your training. Eating enough around your sessions helps you recover and perform at your best.",
+        "Aim for ~{fiber_g} g of fibre a day from vegetables, fruit, beans and whole grains. Increase it gradually, and drink plenty of water as you do."
+      ],
+      "cautions": []
+    }
+  },
+  "summary_without_date": {
+    "lose_fat": "A fat-loss plan at ~{kcal} kcal a day. For now, food alone can only make a very small difference for you, so we can't promise a date for reaching ~{target_weight_kg} kg.",
+    "recomp": "A plan to lose fat and build muscle at ~{kcal} kcal a day. For now, food alone can only make a very small difference to your weight, so we can't promise a date for reaching ~{target_weight_kg} kg."
+  },
+  "common": {
+    "guidance": [
+      "Spread your protein over your {meals_per_day} meals: about {protein_per_meal_g} g at each."
+    ]
+  },
+  "addons": {
+    "vegan": {
+      "guidance": [
+        "Plant proteins can get you to ~{protein_g} g: tofu, tempeh, seitan, beans, lentils, soy milk and soy yogurt. Mixing different ones through the day helps.",
+        "Take a vitamin B12 supplement, and ask your doctor or pharmacist about vitamin D, iodine and omega-3."
+      ]
+    },
+    "vegetarian": {
+      "guidance": [
+        "Eggs, Greek yogurt, cottage cheese, tofu, beans and lentils are great ways to reach ~{protein_g} g of protein."
+      ]
+    },
+    "pescatarian": {
+      "guidance": [
+        "Fish and seafood, eggs, dairy, beans and lentils make ~{protein_g} g of protein easy. Try to have oily fish, such as salmon or sardines, once or twice a week."
+      ]
+    },
+    "religious_fasting": {
+      "guidance": [
+        "During fasting periods, lean on protein your fast allows (beans, lentils, tofu, and fish or eggs when they're allowed) so your protein doesn't drop. If you fast from dawn to sunset, split your protein between the meal before dawn and the evening meal. Your targets stay the same; follow your practice as it suits you."
+      ]
+    },
+    "allergies": {
+      "guidance": [
+        "You told us to avoid {allergies}. Check labels, and swap in other foods from the same group to keep your protein and fibre up."
+      ]
+    },
+    "low_kcal": {
+      "cautions": [
+        "At ~{kcal} kcal a day, it's harder to get enough iron, calcium and other nutrients. Choose varied, nutrient-rich foods, and ask your doctor or pharmacist whether a multivitamin suits you."
+      ]
+    },
+    "maintain_only_minor": {
+      "cautions": [
+        "You're still growing, so this plan is about fuelling your body well rather than changing your weight. Regular meals and snacks matter, especially around sport."
+      ]
+    },
+    "age_65": {
+      "cautions": [
+        "As we get older, protein matters even more for keeping muscle and strength: include some at every meal. Strength and balance exercises twice a week help too, and any weight loss is kept gentle."
+      ]
+    },
+    "breastfeeding": {
+      "cautions": [
+        "Breastfeeding uses extra energy, and that's already added to your plan. Eat to appetite and drink to thirst. If your milk supply or energy drops, eat more and talk to your midwife or doctor."
+      ]
+    },
+    "ed_past": {
+      "cautions": [
+        "This plan is about eating regularly and well. If eating starts to feel hard again, please reach out to your doctor or a specialist: you deserve support."
+      ]
+    },
+    "bmi_40": {
+      "cautions": [
+        "A doctor can offer extra support for weight loss, alongside this plan."
+      ]
+    },
+    "diabetes_hypo_risk": {
+      "cautions": [
+        "Because your diabetes medicine can cause hypos, spread your carbs (~{carbs_g} g) evenly across the day, check your glucose as your diabetes team advises, and talk to them before you eat less."
+      ]
+    },
+    "religious_fasting_hypo": {
+      "cautions": [
+        "If you fast and take insulin or tablets that can cause hypos, talk to your diabetes team before each fasting period: your doses may need to change."
+      ]
+    },
+    "diabetes": {
+      "cautions": [
+        "Please check this plan with your doctor or diabetes team, especially before you change how many carbs you eat."
+      ]
+    },
+    "glp1": {
+      "cautions": [
+        "With a weight-loss medicine, treat ~{kcal} kcal as an upper limit, not a number you must reach. Put protein first at every meal and keep up strength training to protect your muscle. Tell your prescriber if you're struggling to eat enough."
+      ]
+    },
+    "other_diet_condition": {
+      "cautions": [
+        "As your doctor manages a condition with diet, please check this plan with them before you start."
+      ]
+    },
+    "prefer_not": {
+      "cautions": [
+        "As you preferred not to share health details, this plan assumes no condition affects it and is kept cautious. If something does apply to you, please check the plan with your doctor."
+      ]
+    }
+  },
+  "allergy_names": {
+    "milk": "milk and lactose",
+    "gluten": "gluten",
+    "eggs": "eggs",
+    "peanuts": "peanuts",
+    "tree_nuts": "tree nuts",
+    "soy": "soy",
+    "fish": "fish",
+    "shellfish": "shellfish",
+    "sesame": "sesame"
+  },
+  "notices": {
+    "pace_clamped": "To keep your calories at a safe level, this pace works out at ~{rate_kg_week} kg a week: you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+    "pace_clamped_custom": "{requested_weeks} weeks is faster than we recommend. At a safe pace you'd reach ~{target_weight_kg} kg around {goal_date} (~{weeks} weeks).",
+    "pace_clamped_no_target": "To keep your surplus moderate, this pace works out at ~{rate_kg_week} kg a week.",
+    "pace_clamped_block": "To keep your calories at a safe level, this pace works out at ~{rate_kg_week} kg a week.",
+    "calorie_floor": "Your calories are at the lowest level we plan for (~{kcal} kcal a day), so the pace is slower. Moving more each day is the safest way to speed it up.",
+    "tiny_deficit": "To be honest, food alone can't safely create a meaningful deficit for you right now: this is very close to the calories you use. More daily steps can make the difference, or you could choose Maintain and focus on eating well.",
+    "gain_block": "With no target weight, this is a {weeks}-week block, until around {goal_date}. Then we'll ask what you'd like to do next.",
+    "recomp_block": "With no target weight, this is a {weeks}-week block, until around {goal_date}. Then we'll ask what you'd like to do next.",
+    "gain_target_high": "That target is on the high side for your height. Muscle comes slowly, so a nearer target that you review later may suit you better."
+  },
+  "reasons": {
+    "age_16_17": "You're still growing, so Nora won't plan weight loss or gain for you yet. We'll build a plan that keeps your weight steady and fuels you well.",
+    "age_65": "As we get older, keeping muscle matters more, so we keep any weight loss gentle and protein a little higher.",
+    "age_65_loss": "As we get older, keeping muscle and strength matters more than losing weight, so we only plan weight loss from a higher weight for your height. Keeping your weight steady, with strength training, suits you better.",
+    "breastfeeding": "While you're breastfeeding, your body needs extra energy to make milk, so we'll plan to keep your weight steady, with that energy added in.",
+    "bmi_17_5_18_5": "For your height and weight, losing weight isn't something we can plan safely. You can keep your weight steady, or build muscle with a small surplus. If you've lost weight without trying, or eating feels hard, please talk to your doctor.",
+    "no_room_to_lose": "For your height, there isn't room to lose weight safely. You can keep your weight steady, or build muscle instead.",
+    "bmi_40": "A doctor can offer extra support for weight loss, alongside this plan.",
+    "ed_past": "Because of what you've been through, we'll focus on eating regularly and well and keeping your weight steady, rather than on weight goals.",
+    "diabetes_team_check": "Some diabetes medicines can cause low blood sugar (hypos) when you eat less. To plan fat loss, please first confirm \"I'll check with my diabetes team\".",
+    "diabetes_hypo_risk": "Because your diabetes medicine can cause hypos, we'll keep any loss gentle, keep your carbs steady and leave out the Faster pace.",
+    "diabetes": "Please check your plan with your doctor or diabetes team.",
+    "glp1": "With a weight-loss medicine, we'll treat calories as an upper limit and focus on protein and strength training. We won't offer the Faster pace.",
+    "other_diet_condition": "As your doctor manages a condition with diet, please check your plan with them. We won't offer the Faster pace.",
+    "prefer_not": "As we don't know about your health, we'll keep your plan cautious: a gentler top pace, and no Faster option.",
+    "no_strength_training": "Muscle is built by strength training: without it, extra food mostly adds fat, and eating less loses muscle too. Will you train at least two days a week?",
+    "bmi_30_build": "For you, building muscle works best while losing fat slowly (Lose fat and build muscle) or keeping your weight steady, alongside strength training. We won't plan a calorie surplus."
+  },
+  "stops": {
+    "under_16": {
+      "title": "Let's hold off on a plan for now",
+      "body": "Nora's personal plans are for people a little older than you, because growing bodies need more care than a calorie target can give. You can still use Nora to log your food and learn about what you eat. If you have questions about eating or your weight, a parent, your doctor or your school nurse is a great person to ask."
+    },
+    "pregnancy": {
+      "title": "Your body's needs are changing",
+      "body": "During pregnancy, what your body needs changes from week to week, so a calorie plan from an app isn't right for you. Your midwife or doctor can guide you on eating well. You can keep logging your food in Nora, and we won't show you any targets."
+    },
+    "ed_current": {
+      "title": "We want to support you well",
+      "body": "When eating has been hard, calorie targets and weight goals can make things harder. Please talk to your doctor or an eating disorder specialist about the support that's right for you. You can still log your food in Nora if it helps, and we won't show you any targets."
+    },
+    "kidney": {
+      "title": "Your kidney team should set your plan",
+      "body": "With kidney disease, the right amount of protein and some minerals depends on your tests and treatment, so your kidney team or a kidney dietitian should set your targets. You can keep logging your food in Nora, and we won't show you any targets."
+    },
+    "bariatric": {
+      "title": "Your surgery team knows best",
+      "body": "After weight-loss surgery, eating follows your surgery team's stages and advice, so a plan from an app isn't right for you yet. Please ask them or their dietitian about your targets. You can keep logging your food in Nora, and we won't show you any targets."
+    },
+    "bmi_low": {
+      "title": "Let's put your health first",
+      "body": "From your height and weight, a calorie plan from an app isn't the right next step. Please talk to your doctor, who can check what your body needs. You can keep logging your food in Nora, and we won't show you any targets."
+    },
+    "targets_declined": {
+      "title": "Logging without targets",
+      "body": "You chose to log your food without calorie or macro targets, and that's a great way to use Nora: see what you eat and its nutrients, with no numbers to hit. If eating starts to feel hard again, your doctor or an eating disorder specialist can help. If you'd like a plan with targets later, choose \"Something changed?\" on your Profile."
+    }
+  },
+  "errors": {
+    "target_not_below": "Choose a target of {max_kg} kg or less.",
+    "target_too_low": "The lowest target we can set for you is {min_kg} kg.",
+    "target_not_above": "Choose a target of {min_kg} kg or more, or no target.",
+    "target_date_out_of_range": "Choose a date between {min_date} and {max_date}.",
+    "pace_not_available": "That pace isn't available for you. Choose Gentle or Steady."
+  }
+}

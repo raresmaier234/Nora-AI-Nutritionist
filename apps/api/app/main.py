@@ -17,6 +17,13 @@ tags_metadata = [
         ),
     },
     {
+        "name": "Nutrition plan",
+        "description": (
+            "Premium: the questionnaire (goals), its safety gates, and personal nutrition plans "
+            "built from it by a deterministic algorithm. Basic users get 403."
+        ),
+    },
+    {
         "name": "Foods",
         "description": "Food database search. Values are per 100g.",
     },

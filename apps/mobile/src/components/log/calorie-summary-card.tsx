@@ -12,14 +12,19 @@ import { useTargets } from '@/features/food/hooks/use-targets';
 
 type CalorieSummaryCardProps = {
   totals: Macro;
-  remaining: number;
+  /** Null without targets. */
+  remaining: number | null;
   pct: number;
   over: boolean;
   /** Opens the day's full nutrition. */
   onPress: () => void;
 };
 
-/** The day's calories and macros; tapping it opens the full nutrition for the day. */
+/**
+ * The day's calories and macros; tapping it opens the full nutrition for the day. Without
+ * targets ("log without targets", or while the profile loads) it shows plain totals: no target,
+ * no "remaining", no bars.
+ */
 export function CalorieSummaryCard({ totals, remaining, pct, over, onPress }: CalorieSummaryCardProps) {
   const colors = useColors();
   const styles = useStyles(makeStyles);
@@ -41,31 +46,35 @@ export function CalorieSummaryCard({ totals, remaining, pct, over, onPress }: Ca
           <View>
             <View style={styles.totalRow}>
               <Text style={styles.total}>{totals.kcal.toLocaleString()}</Text>
-              <Text style={styles.target}>/ {targets.kcal.toLocaleString()} kcal</Text>
+              <Text style={styles.target}>{targets ? `/ ${targets.kcal.toLocaleString()} kcal` : 'kcal eaten'}</Text>
             </View>
-            <Text style={[styles.remaining, { color: over ? colors.errorText : colors.greenText }]}>
-              {over ? `${(totals.kcal - targets.kcal).toLocaleString()} kcal over` : `${remaining.toLocaleString()} kcal remaining`}
-            </Text>
+            {targets && remaining !== null ? (
+              <Text style={[styles.remaining, { color: over ? colors.errorText : colors.greenText }]}>
+                {over ? `${(totals.kcal - targets.kcal).toLocaleString()} kcal over` : `${remaining.toLocaleString()} kcal remaining`}
+              </Text>
+            ) : null}
           </View>
         </View>
 
-        <View style={styles.track}>
-          <Animated.View style={[styles.fill, over && { backgroundColor: colors.stateError }, fillStyle]}>
-            {!over && (
-              <LinearGradient
-                colors={colors.gradSuccess}
-                start={gradientAngle.start}
-                end={gradientAngle.end}
-                style={StyleSheet.absoluteFill}
-              />
-            )}
-          </Animated.View>
-        </View>
+        {targets ? (
+          <View style={styles.track}>
+            <Animated.View style={[styles.fill, over && { backgroundColor: colors.stateError }, fillStyle]}>
+              {!over && (
+                <LinearGradient
+                  colors={colors.gradSuccess}
+                  start={gradientAngle.start}
+                  end={gradientAngle.end}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
+            </Animated.View>
+          </View>
+        ) : null}
 
         <View style={styles.macroRow}>
-          <MacroBar tone="protein" label="Protein" current={totals.protein} target={targets.protein} unit="g" />
-          <MacroBar tone="carbs" label="Carbs" current={totals.carbs} target={targets.carbs} unit="g" />
-          <MacroBar tone="fat" label="Fat" current={totals.fat} target={targets.fat} unit="g" />
+          <MacroBar tone="protein" label="Protein" current={totals.protein} target={targets?.protein ?? null} unit="g" />
+          <MacroBar tone="carbs" label="Carbs" current={totals.carbs} target={targets?.carbs ?? null} unit="g" />
+          <MacroBar tone="fat" label="Fat" current={totals.fat} target={targets?.fat ?? null} unit="g" />
         </View>
 
         <View style={styles.more}>

@@ -12,25 +12,37 @@ const MACROS: { key: Exclude<keyof DailyTargets, 'kcal'>; label: string; family:
   { key: 'fiber_g', label: 'Fiber', family: 'fiber' },
 ];
 
+type PlanCardProps = {
+  targets: DailyTargets;
+  /** A built plan's numbers are estimates: shown with "~" (check-ins refine them). */
+  approximate?: boolean;
+  overline?: string;
+};
+
 /**
- * The user's nutrition plan, read-only: the daily calories and the grams of each macro the
- * whole app measures against. Plans are changed by answering questions again ("Change plan"),
- * never by typing numbers in.
+ * The user's daily targets, read-only: the calories and the grams of each macro the whole app
+ * measures against. They change only by building a plan (or, later, accepting a proposed
+ * update) — never by typing numbers in.
  */
-export function PlanCard({ targets }: { targets: DailyTargets }) {
+export function PlanCard({ targets, approximate, overline = 'Every day' }: PlanCardProps) {
   const { nu } = useFoodColors();
   const styles = useStyles(makeStyles);
+  const about = approximate ? '~' : '';
   return (
     <Card padding={18}>
-      <Text style={styles.overline}>Every day</Text>
+      <Text style={styles.overline}>{overline}</Text>
       <View style={styles.kcalRow}>
-        <Text style={[styles.kcal, { color: nu.kcal.ink }]}>{Math.round(targets.kcal).toLocaleString()}</Text>
+        <Text style={[styles.kcal, { color: nu.kcal.ink }]}>
+          {about}
+          {Math.round(targets.kcal).toLocaleString()}
+        </Text>
         <Text style={styles.kcalUnit}>kcal</Text>
       </View>
       <View style={styles.macros}>
         {MACROS.map(({ key, label, family }) => (
           <View key={key} style={[styles.macro, { backgroundColor: nu[family].tint }]}>
             <Text style={[styles.macroValue, { color: nu[family].ink }]}>
+              {about}
               {Math.round(targets[key])}
               <Text style={styles.macroUnit}> g</Text>
             </Text>

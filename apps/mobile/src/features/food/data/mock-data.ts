@@ -26,14 +26,11 @@ export type RecipeItem = {
 export type Recipe = { id: string; name: string; servings: number; source?: string | null; steps?: string[]; items: RecipeItem[] };
 export type Barcode = { code: string; name: string; per100: Macro; amount: number; unit: string };
 
-/** Daily targets: calories, and grams of protein, carbs, fat and fibre. */
-export type Targets = Macro & { fiber: number };
-
 /**
- * Default daily targets — what a new account starts with on the API too. Only a fallback, shown
- * until the signed-in user's profile has loaded: read the user's own with `useTargets()`.
+ * Daily targets: calories, and grams of protein, carbs, fat and fibre. Read the user's own with
+ * `useTargets()` — null when there are none to show.
  */
-export const TARGETS: Targets = { kcal: 2000, protein: 150, carbs: 220, fat: 70, fiber: 28 };
+export type Targets = Macro & { fiber: number };
 
 export const UNITS: Unit[] = [
   { label: 'g', grams: 1 },

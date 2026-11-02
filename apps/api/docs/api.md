@@ -18,6 +18,7 @@ Each resource gets its own module in `app/api/routes/` and its own Swagger tag:
 | ------------------------------- | -------------------- | ---------------- |
 | `app/api/routes/health.py`     | `/api/v1/health`    | `Health`         |
 | `app/api/routes/users.py`      | `/api/v1/users`     | `Users`          |
+| `app/api/routes/nutrition_plans.py` | `/api/v1/users/me` | `Nutrition plan` |
 | `app/api/routes/foods.py`      | `/api/v1/foods`     | `Foods`          |
 | `app/api/routes/barcodes.py`   | `/api/v1/barcodes`  | `Barcodes`       |
 | `app/api/routes/meals.py`      | `/api/v1/meals`     | `Meals`          |
@@ -56,7 +57,7 @@ token.
 ### Users — `/api/v1/users/me`
 
 - **Tag:** Users
-- **Schemas:** `UserRead`, `UserUpdate`, `TargetsUpdate` (`app/schemas/user.py`); logic in
+- **Schemas:** `UserRead`, `UserUpdate` (`app/schemas/user.py`); logic in
   `app/services/users.py`.
 
 The signed-in user's own profile. Every user only ever sees and changes their own; there is no
@@ -65,7 +66,7 @@ way to address another user.
 | Method | Path | Does |
 |---|---|---|
 | `GET` | `/api/v1/users/me` | The profile. `200`. |
-| `PATCH` | `/api/v1/users/me` | Change `display_name` and/or any of the `targets`. `200` with the updated profile. |
+| `PATCH` | `/api/v1/users/me` | Change `display_name` and/or `timezone`. `200` with the updated profile. |
 | `DELETE` | `/api/v1/users/me` | Delete the account and all its data. `204`; `502` or `503`, see below. |
 
 There is no sign-up endpoint. The first request with a new user's access token creates their
@@ -83,7 +84,10 @@ a name the user has set is never overwritten.
   "avatar_url": null,
   "plan": "basic",
   "plan_expires_at": null,
-  "targets": {"kcal": 2000.0, "protein_g": 150.0, "carbs_g": 220.0, "fat_g": 70.0, "fiber_g": 28.0}
+  "timezone": "Europe/Bucharest",
+  "targets_mode": "default",
+  "targets": {"kcal": 2000.0, "protein_g": 150.0, "carbs_g": 220.0, "fat_g": 70.0, "fiber_g": 28.0},
+  "check_in_due": false
 }
 ```
 
@@ -91,18 +95,33 @@ a name the user has set is never overwritten.
 - `plan` is `basic` or `premium`: the plan in force, so a premium plan whose `plan_expires_at`
   has passed reads `basic`. `plan_expires_at` is `null` for a plan that doesn't expire (every
   plan, until payments exist; `scripts/set_plan.py` sets plans by hand).
-- `targets` are daily: calories, then grams of protein, carbs, fat and fibre. Defaults 2000 /
-  150 / 220 / 70 / 28. Numbers are JSON numbers.
+- `timezone` is the user's IANA time zone, sent by the app; `null` means UTC. It will decide
+  when the Monday check-in is due.
+- `targets` are daily: calories, then grams of protein, carbs, fat and fibre. Numbers are JSON
+  numbers. **Targets are never typed in by hand**; where they come from is `targets_mode`:
+  - `default`: the defaults, 2000 / 150 / 220 / 70 / 28. Every basic user, and premium users
+    without an active nutrition plan.
+  - `plan`: the active [nutrition plan](#nutrition-plan-premium)'s targets.
+  - `none`: **log without targets**. A safety gate stopped the user's plan (pregnancy, kidney
+    disease, …): `targets` is `null`, and the app shows no target, "remaining" or % of goal
+    anywhere, only plain totals. Food logging works as usual. Leaving `none` takes a new
+    questionnaire whose gates no longer stop.
+- **Going back to basic** (a premium plan expired or set to basic): `targets_mode` reads
+  `default` and `targets` the defaults, but nothing is deleted or changed in the database: the
+  plan stays as it was, so becoming premium again brings it back. A `none` user stays `none`.
+- `check_in_due` is always `false` until weekly check-ins exist (spec phase 3).
 
 `PATCH` takes any subset, and keeps whatever isn't sent:
 
 ```json
-{"display_name": "Rares", "targets": {"kcal": 2400, "protein_g": 180}}
+{"display_name": "Rares", "timezone": "Europe/Bucharest"}
 ```
 
 - `display_name`: 1–100 characters once trimmed. It can be changed, not removed.
-- `targets`: `kcal` 500–10000, `protein_g`, `carbs_g` and `fat_g` 0–1000, `fiber_g` 0–200.
-- Anything else — an unknown field (`plan`, `kcals`), a value out of range — is `422`.
+- `timezone`: an IANA name exactly as spelt in the tz database (`Europe/Bucharest`, `UTC`);
+  anything else is `422`.
+- Anything else — `targets` (no longer accepted), an unknown field (`plan`), a value out of
+  range — is `422`.
 
 `DELETE` removes the user's Supabase user first (Supabase's admin API, with
 `SUPABASE_SECRET_KEY`), then their profile and whole food log. If Supabase doesn't confirm
@@ -111,6 +130,203 @@ sign in, so their data must still be there. A Supabase user that is already gone
 deleted, so a retry always finishes the job. Without `SUPABASE_SECRET_KEY` it is `503`. After a
 `204` the app should sign out at once: the access token stays valid until it expires (about
 an hour), and a request with it would create an empty profile again.
+
+### Nutrition plan (premium) — `/api/v1/users/me/...`
+
+- **Tag:** Nutrition plan
+- **Schemas:** `app/schemas/nutrition_plan.py`; logic in `app/services/nutrition_plan/`
+  (see [architecture.md](architecture.md#adaptive-nutrition-plan)). Spec:
+  [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md); phase 1 (algorithm, gates, plans)
+  is implemented; weekly check-ins are not.
+
+**Premium only.** Every endpoint needs sign-in and `require_plan("premium")`; a basic user gets
+`403` with `{"detail": "Personal nutrition plans are a premium feature."}`.
+
+| Method | Path | Does |
+|---|---|---|
+| `POST` | `/api/v1/users/me/nutrition-plans/preview` | Gate + pace options for answers so far. Stores nothing. `200`. |
+| `POST` | `/api/v1/users/me/goals` | Save the answers with consent. `201`, or `200` with `id: null` under 16. |
+| `GET` | `/api/v1/users/me/goals` | The latest answers, with today's gate. `404` if none. |
+| `POST` | `/api/v1/users/me/nutrition-plans` | `{"goal_id"}` → a **draft** plan. `201`. |
+| `GET` | `/api/v1/users/me/nutrition-plans/active` | The active plan. `404` if none. |
+| `POST` | `/api/v1/users/me/nutrition-plans/{id}/activate` | Use a draft: it becomes active. `200`. |
+
+#### Answers (questionnaire v2)
+
+Every answer is optional in a preview; a saved goal needs the ones the questionnaire showed
+(below). Unknown fields are `422`.
+
+| Field | Values |
+|---|---|
+| `goal` | `lose_fat` · `recomp` (Lose fat and build muscle: a small deficit with strength training) · `build_muscle` (shown as "Gain muscle") · `maintain` |
+| `birth_year`, `birth_month` | year 1900–2100, month 1–12. Age is the youngest possible (born on the month's last day). Not in the future; age ≤ 100 |
+| `sex` | `female` · `male` · `unspecified` |
+| `height_cm` | 120–230 |
+| `weight_kg` | 30–300, kept to 0.1 |
+| `health` | list, at least one, of `pregnant`, `breastfeeding`, `diabetes`, `kidney`, `eating_disorder`, `glp1`, `bariatric`, `other_diet_condition`, `none`, `prefer_not`. `none` and `prefer_not` only alone; `pregnant` and `breastfeeding` not with sex `male` |
+| `diabetes_hypo_risk` | `yes` · `no` · `not_sure` · null (needed with `diabetes`) |
+| `diabetes_team_ack` | bool, default false ("I'll check with my diabetes team") |
+| `ed_status` | `current` · `past` · `prefer_not` · null (needed with `eating_disorder`) |
+| `targets_wanted` | bool or null. Only read with `ed_status: past`: `true` asks for a Maintain plan with targets; `false` or missing is log without targets (the `targets_declined` stop) |
+| `activity` | `mostly_sitting` · `some_walking` · `on_feet` · `physical_work` |
+| `strength_days`, `cardio_days` | 0–7 |
+| `lifting_experience` | `none` · `lt_1y` · `1_3y` · `gt_3y` · null (needed with strength days ≥ 1, or `recomp` / `build_muscle`) |
+| `will_train` | bool or null (needed for `recomp` and `build_muscle` with fewer than 2 strength days) |
+| `target_weight_kg` | 30–300 or null. `lose_fat`: needed; `recomp`: optional (none = a 16-week block); both ≤ current − 1 kg and BMI ≥ 20 (≥ 23 from age 65). `build_muscle`: optional (none = a 16-week block), ≥ current + 1 kg |
+| `pace` | `gentle` · `steady` · `faster` · `custom` · null (needed for `lose_fat`, `recomp` and `build_muscle`; `recomp` never has `faster`) |
+| `target_date` | `YYYY-MM-DD` or null (needed with `custom`, which also needs a target): 4–104 weeks away for `lose_fat`, 8–104 for `recomp`, 8–52 for `build_muscle` |
+| `eating_style` | `omnivore` · `pescatarian` · `vegetarian` · `vegan` · null |
+| `religious_fasting` | bool, default false |
+| `allergies` | list of `milk`, `gluten`, `eggs`, `peanuts`, `tree_nuts`, `soy`, `fish`, `shellfish`, `sesame` |
+| `meals_per_day` | 2–6, default 3 |
+| `units` | `metric` (default) · `imperial`: for display only; values are always metric |
+
+#### The gate
+
+Returned by the preview and with every goal:
+
+```json
+{"result": "ok", "allowed_goals": ["lose_fat", "recomp", "build_muscle", "maintain"],
+ "reasons": [{"code": "age_65", "message": "As we get older, …"}], "stop": null}
+```
+
+- `result`: `stop` (no plan; log without targets), `maintain_only` (only `maintain` allowed), or
+  `ok`. **`allowed_goals` is what decides**: with `ok`, some goals may still be ruled out (Build
+  muscle from BMI 30; the loss goals with hypo-risk diabetes until `diabetes_team_ack`, from
+  age 65 below BMI 25, or with no room above BMI 20; …). `recomp` follows every `lose_fat`
+  rule, and both muscle goals need 2+ strength days or `will_train`.
+- `reasons`: notes and the reasons the picked goal was ruled out, each with a `code` and a
+  `message` to show. Codes: `age_16_17`, `age_65`, `age_65_loss`, `breastfeeding`,
+  `bmi_17_5_18_5`, `no_room_to_lose`, `bmi_40` (loss goals only), `ed_past`,
+  `diabetes_team_check`, `diabetes_hypo_risk`, `diabetes`, `glp1`, `other_diet_condition`,
+  `prefer_not`, `no_strength_training` (its message is the "Will you train at least two days a
+  week?" question), `bmi_30_build`.
+- `stop` (only with `result: stop`): `{"code", "title", "body"}`, a warm screen with no
+  numbers. Codes, one shown, in this priority: `under_16`, `pregnancy`, `ed_current`,
+  `kidney`, `bariatric`, `bmi_low`, `targets_declined` (an eating disorder in the past without
+  `targets_wanted: true`: the user's choice to log without targets). `reasons` is empty and
+  `allowed_goals` too.
+- A health follow-up not answered yet counts as its most cautious answer: `eating_disorder`
+  without `ed_status` is a stop, `ed_status: past` without `targets_wanted` is
+  `targets_declined`, `diabetes` without `diabetes_hypo_risk` has hypo risk. Ask the follow-up
+  before previewing.
+
+#### `POST /nutrition-plans/preview`
+
+`{"answers": {...}, "language": "en"}` (`language` optional, `en` or `ro`). Nothing is stored.
+
+```json
+{"gate": {...},
+ "pace_options": [
+   {"pace": "gentle", "rate_kg_week": 0.25, "effective_rate_kg_week": 0.25, "weeks": 42,
+    "goal_date": "2027-08-20", "kcal": 2280, "available": true},
+   {"pace": "steady", "rate_kg_week": 0.4, "effective_rate_kg_week": 0.4, "weeks": 25,
+    "goal_date": "2027-04-23", "kcal": 2100, "available": true},
+   {"pace": "faster", "rate_kg_week": 0.6, "effective_rate_kg_week": 0.6, "weeks": 18,
+    "goal_date": "2027-03-05", "kcal": 1910, "available": true}],
+ "custom_date_range": {"min": "2026-11-27", "max": "2028-10-27"},
+ "max_rate_kg_week": 0.6,
+ "notices": [{"code": "pace_clamped", "message": "12 weeks is faster than we recommend. …"}]}
+```
+
+- `pace_options` is `[]` until the goal is `lose_fat`, `recomp` or `build_muscle` **and
+  allowed**, and the birth, sex, height, weight, health, activity and exercise answers are in,
+  plus the target (`lose_fat`) or the lifting experience (the muscle goals with strength
+  days). Always the three paces, in order; `available: false` means don't offer it: Faster
+  isn't at least 0.05 kg a week faster than Steady once the limits apply, a health answer
+  rules it out, or the goal is `recomp`.
+- `rate_kg_week` is the pace's own rate; `effective_rate_kg_week` the one the calorie limits
+  allow, which `weeks` and `goal_date` come from. kg/week to 0.05. `weeks`/`goal_date` are
+  `null` when no deficit is possible at all (see `tiny_deficit`); for `recomp` or
+  `build_muscle` with no target they are the 16-week block.
+- `custom_date_range`: what `target_date` may be (`lose_fat` 4–104 weeks, `recomp` 8–104,
+  `build_muscle` 8–52). `null` with no target (a date needs one), and whenever `pace_options`
+  is `[]`. A date sooner than the fastest available pace reaches is planned at that pace, so
+  it gets that pace's date, with a `pace_clamped` notice; the app works this out from
+  `pace_options` and says so as the date is picked.
+- `max_rate_kg_week`: the fastest the user can be planned at (a custom date faster than this is
+  clamped). `null` until the options are.
+- `notices`: for the pace picked so far (Steady if none): `pace_clamped` (only when the shown
+  rate is slower than asked), `calorie_floor`, `tiny_deficit`, `gain_block`, `recomp_block`,
+  `gain_target_high`.
+- Missing answers are never an error here. Invalid values are `422`: FastAPI's usual list for
+  schema errors, and `{"detail": {"code", "message", ...}}` for `target_not_below`,
+  `target_too_low`, `target_not_above` (with `min_target_weight_kg`, `max_target_weight_kg`),
+  `target_date_out_of_range` (with `custom_date_range`) and `invalid_birth`.
+
+#### `POST /goals`, `GET /goals`
+
+```json
+{"questionnaire_version": 2, "consent": true, "consent_version": "2026-10-30",
+ "language": "en", "answers": {...}}
+```
+
+`consent` must be `true` and `questionnaire_version` `2`. Returns:
+
+```json
+{"id": 3, "questionnaire_version": 2, "language": "en", "answers": {...every answer...},
+ "consented_at": "2026-10-30T09:12:00Z", "created_at": "2026-10-30T09:12:00Z", "gate": {...}}
+```
+
+Checked in this order:
+
+1. `goal`, `birth_year`, `birth_month` are needed (`422 missing_answers`), and the birth month
+   valid (`422 invalid_birth`).
+2. **Under 16:** `200` with `id`, `answers`, `consented_at`, `created_at` all `null` and the
+   `under_16` stop. **Nothing is stored**; the user goes to `targets_mode: none`.
+3. **Any other stop** (including `targets_declined`): stored (`201`) with whatever answers led
+   to it; the user goes to `targets_mode: none`, and their active plan (if any) is archived.
+4. The goal must be in `allowed_goals`, else `422` with
+   `{"code": "goal_not_allowed", "message", "gate": {...}}`: show the gate screen, then
+   re-submit with an allowed goal (or with `will_train` / `diabetes_team_ack` answered).
+5. The answers the questionnaire showed must be there: `422` with
+   `{"code": "missing_answers", "fields": [...]}`.
+6. The target and custom date (`422`, codes as in the preview), and `faster` when it isn't
+   offered (`422 pace_not_available`).
+7. Stored, `201`. A user in `none` mode whose new answers don't stop goes back to `default`.
+
+`GET` returns the latest goal the same way, its gate recomputed for today's age; `404` if
+there is none.
+
+#### `POST /nutrition-plans`, `GET /nutrition-plans/active`, `POST /nutrition-plans/{id}/activate`
+
+`POST /nutrition-plans` takes `{"goal_id": 3}` and builds a **draft** from that goal's
+answers (with today's age):
+
+```json
+{"id": 12, "goal_id": 3, "status": "draft", "reason": "initial", "language": "en",
+ "goal": "lose_fat", "pace": "custom",
+ "targets": {"kcal": 1910, "protein_g": 165, "carbs_g": 190, "fat_g": 55, "fiber_g": 25},
+ "rate": {"requested_kg_week": 0.85, "effective_kg_week": 0.6, "clamped": true},
+ "start_weight_kg": 80, "target_weight_kg": 70, "goal_date": "2027-03-05", "weeks": 18,
+ "notices": [{"code": "pace_clamped", "message": "12 weeks is faster than we recommend. …"}],
+ "texts": {"summary": "…", "why": ["…"], "guidance": ["…"], "cautions": ["…",
+           "General guidance, not medical advice."]},
+ "pattern_key": "lose_fat.faster.trained.start",
+ "created_at": "2026-10-30T09:12:05Z", "activated_at": null}
+```
+
+- `status`: `draft` · `active` · `archived`. `reason`: `initial`, or `change` when the user
+  already has an active plan (`review` and `maintenance_transition` come with check-ins).
+- `pace` is what was asked (`gentle`/`steady`/`faster`/`custom`), `null` for Maintain.
+  `pattern_key` is `goal.pace band.training.phase` (a custom date maps to the nearest pace).
+- `targets`: kcal to 10, grams to 5 (integers). `rate`: kg/week to 0.05, both `0` for Maintain;
+  `clamped` when the safety limits made it slower than asked. `goal_date`/`weeks` come from the
+  effective rate; `null` for Maintain (and when no deficit is possible); for `recomp` or
+  `build_muscle` with no target, the end of a 16-week block (`target_weight_kg` `null`).
+- `texts` are rendered from the pattern library when read, in the plan's `language` (`ro`
+  falls back to English for now). The last caution is always "General guidance, not medical
+  advice."
+- `404` for a goal that isn't the user's. `409` with `{"code", "message"}`: `gate_stop` (the
+  goal's gate is a stop), `targets_off` (the user is in `none` mode: their latest answers
+  stopped the plan), `goal_not_allowed` (the gates no longer allow it).
+
+`POST /nutrition-plans/{id}/activate` makes a draft the user's plan: the previous active plan
+becomes `archived`, the draft `active` (`activated_at` set), its targets are copied to the
+user's daily targets and `targets_mode` becomes `plan`. `200` with the plan. `404` for a plan
+that isn't the user's; `409` `not_a_draft` (already active or archived) or `targets_off`.
+
+`GET /nutrition-plans/active` returns the active plan in the same shape, or `404`.
 
 ### `GET /api/v1/foods?q=milk&limit=20`
 
@@ -349,8 +565,8 @@ never sees passwords or refresh tokens. How tokens are checked, and how a token 
 | Status | When |
 |---|---|
 | `401` | No token, a non-Bearer `Authorization`, or a token that is invalid: expired, badly signed, `HS256`, from another Supabase project (`iss`), not for signed-in users (`aud`/`role`), or anonymous. Always with `WWW-Authenticate: Bearer`, and a `detail` naming the reason. The app refreshes its session once and retries; if that fails it signs out. |
-| `403` | The user's plan is too low for the endpoint (`require_plan("premium")`). No endpoint needs premium yet. |
-| `404` | As for any missing resource; also an entry that belongs to another user. |
+| `403` | The user's plan is too low for the endpoint (`require_plan("premium")`): the nutrition plan endpoints, with `detail` "Personal nutrition plans are a premium feature." |
+| `404` | As for any missing resource; also an entry, goal or plan that belongs to another user. |
 | `502` | `DELETE /api/v1/users/me` only: Supabase didn't delete the sign-in account, so nothing was deleted. |
 | `503` | Sign-in is not configured on this server (`SUPABASE_URL` unset): **every** protected endpoint refuses, there is no anonymous fallback. Also when Supabase's signing keys can't be fetched (a 401 would sign the user out over a network blip), and for `DELETE /api/v1/users/me` without `SUPABASE_SECRET_KEY`. |
 

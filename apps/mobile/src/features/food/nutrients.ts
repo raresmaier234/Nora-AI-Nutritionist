@@ -189,8 +189,12 @@ export const NUTRIENT_TARGETS: Record<string, NutrientTarget> = {
   valine: { value: 1.82, kind: 'goal' },
 };
 
-/** A nutrient's daily target: the user's own fibre goal, otherwise the reference value. */
-export function nutrientTarget(key: string, targets: Targets): NutrientTarget | undefined {
+/**
+ * A nutrient's daily target: the user's own fibre goal, otherwise the reference value. None at
+ * all without targets (null: "log without targets") — every nutrient then shows its value only.
+ */
+export function nutrientTarget(key: string, targets: Targets | null): NutrientTarget | undefined {
+  if (!targets) return undefined;
   return key === 'fiber' ? { value: targets.fiber, kind: 'goal' } : NUTRIENT_TARGETS[key];
 }
 

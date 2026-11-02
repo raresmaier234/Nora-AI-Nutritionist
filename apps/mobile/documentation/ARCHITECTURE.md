@@ -44,9 +44,9 @@ src/app/
 ├── camera/               # full-screen barcode / photo capture
 ├── dev/api-health.tsx    # dev-only connectivity check
 └── (tabs)/
-    ├── _layout.tsx       # tab navigator (NativeTabs / expo-router/ui Tabs)
+    ├── _layout.tsx       # tab navigator (NativeTabs), inside PlanBuilderHost (the plan builder modal + first-sign-in prompt)
     ├── index.tsx         # Home tab — renders the Log Food screen
-    └── profile.tsx       # Profile tab — the nutrition plan (read-only targets, Change plan); account section: account card with Basic/Premium, sign out, delete
+    └── profile.tsx       # Profile tab — the nutrition plan (PlanSection: build / view / change it); account section: account card with Basic/Premium, sign out, delete
 ```
 
 The root `Stack` uses protected routes: `Stack.Protected guard={!signedIn}` around `sign-in`
@@ -66,7 +66,7 @@ components/
 ├── navigation/      # the tab bar shell (app-tabs.tsx + .web.tsx)
 ├── ui/              # generic primitives: Button, Card, Field, Pill, Sheet, Toast, typography
 ├── auth/            # sign-in screen parts (GoogleSignInButton)
-├── nutrition-plan/  # Profile tab parts (PlanCard, ChangePlanSheet, AccountCard)
+├── nutrition-plan/  # the nutrition plan: PlanSection, PlanCard, PlanDetails, BuildPlanCard, AccountCard, plan-builder/ (the questionnaire)
 └── log/             # components specific to the Log Food screen, incl. log/panels/
     └── panels/       # one file per bottom-sheet flow (add food, scan, recipes, ...)
 ```
@@ -81,14 +81,19 @@ features/
 │   ├── auth-provider.tsx    # AuthProvider: the Supabase session + our profile (GET /users/me) + sign-in/out actions
 │   ├── hooks/use-auth.ts    # useAuth()
 │   └── legal-links.ts       # Privacy Policy / Terms URLs
-└── food/
-    ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES, default TARGETS — swap points for real APIs
-    ├── hooks/use-food-log.ts # the day's timeline of entries + the mutation surface (addEntry, changeEntry, ...)
-    ├── hooks/use-targets.ts  # the signed-in user's daily targets (defaults until the profile loads)
-    └── time.ts               # "HH:MM" helpers, eating moments, and the local-offset logged_at sent to the API
+├── food/
+│   ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES — swap points for real APIs; the Targets type
+│   ├── hooks/use-food-log.ts # the day's timeline of entries + the mutation surface (addEntry, changeEntry, ...)
+│   ├── hooks/use-targets.ts  # the signed-in user's daily targets — null when there are none to show ("log without targets", or still loading)
+│   └── time.ts               # "HH:MM" helpers, eating moments, and the local-offset logged_at sent to the API
+└── nutrition-plan/
+    ├── questionnaire.ts      # the questionnaire as data: screen order, which screens a set of answers needs, validation (matches the API), units, answers for the API
+    ├── options.ts            # answer labels and wording (from the nutrition-expert review)
+    ├── plan-prompt.ts        # remembers the first-sign-in "Build my plan" prompt per user (AsyncStorage)
+    └── hooks/use-active-plan.ts # the active plan for the Profile tab
 ```
 
-This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. `auth/` (who is signed in, their profile) and `food/` exist today; `nutrition/`, `meals/`, `dashboard/` are not created until they have something to contain.
+This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. `auth/` (who is signed in, their profile), `food/` and `nutrition-plan/` (the plan questionnaire's rules) exist today; `nutrition/`, `meals/`, `dashboard/` are not created until they have something to contain.
 
 A feature folder grows its own `components/`, `hooks/`, `services/`, `types/`, `utils/` subfolders only as needed — `food/` currently only needs `data/` and `hooks/`.
 
@@ -112,7 +117,7 @@ services/api/
 ├── client.ts     ApiError, apiRequest<T>(path, options) — fetch + bearer token + refresh-on-401 + timeout + JSON
 ├── types.ts      ApiErrorKind, HealthResponse, UserProfile, ...
 ├── health.ts     getHealth()
-├── foods.ts, meals.ts, users.ts   endpoint wrappers
+├── foods.ts, meals.ts, users.ts, nutrition-plan.ts   endpoint wrappers
 └── index.ts      barrel export
 ```
 

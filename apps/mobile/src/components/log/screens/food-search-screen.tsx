@@ -30,7 +30,10 @@ type FoodSearchScreenProps = {
   onTimeChange: (time: string) => void;
   /** The day's entries, for the Recent and Frequent tabs. */
   entries: Entry[];
-  remainingKcal: number;
+  /** Calories eaten today. */
+  eatenKcal: number;
+  /** Calories left today (negative: over); null without targets — then it shows what was eaten. */
+  remainingKcal: number | null;
   onOpenFood: (food: Food) => void;
   onQuickAdd: (food: Food, grams: number) => void;
   onMode: (mode: SearchMode) => void;
@@ -42,7 +45,7 @@ type FoodSearchScreenProps = {
  * pinned; results scroll beneath it. Tap a row for Food Details; tap + to quick-add without
  * leaving search.
  */
-export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, onOpenFood, onQuickAdd, onMode, onClose }: FoodSearchScreenProps) {
+export function FoodSearchScreen({ time, onTimeChange, entries, eatenKcal, remainingKcal, onOpenFood, onQuickAdd, onMode, onClose }: FoodSearchScreenProps) {
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const insets = useSafeAreaInsets();
@@ -124,7 +127,11 @@ export function FoodSearchScreen({ time, onTimeChange, entries, remainingKcal, o
           <View style={styles.titleCol}>
             <Text style={styles.title}>Add food</Text>
             <Text style={styles.subtitle}>
-              {remainingKcal >= 0 ? (
+              {remainingKcal === null ? (
+                <>
+                  <Text style={styles.eaten}>{Math.round(eatenKcal).toLocaleString()} kcal</Text> eaten today
+                </>
+              ) : remainingKcal >= 0 ? (
                 <>
                   <Text style={styles.left}>{remainingKcal.toLocaleString()} kcal</Text> left today
                 </>
@@ -321,6 +328,7 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   title: { fontFamily: fontFamily.extrabold, fontSize: fontSize.h1, color: colors.textPrimary, letterSpacing: trackTight(fontSize.h1) },
   subtitle: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textTertiary, marginTop: 3 },
   left: { fontFamily: fontFamily.bold, color: colors.greenText },
+  eaten: { fontFamily: fontFamily.bold, color: colors.textPrimary },
   over: { fontFamily: fontFamily.bold, color: colors.errorText },
   field: {
     flexDirection: 'row',

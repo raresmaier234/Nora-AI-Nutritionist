@@ -96,9 +96,10 @@ export function useFoodLog(date: string, onNotify?: Notify) {
 
   const targets = useTargets();
   const totals = useMemo(() => sumMacros(entries), [entries]);
-  const remaining = Math.max(0, targets.kcal - totals.kcal);
-  const pct = Math.min(100, (totals.kcal / targets.kcal) * 100);
-  const over = totals.kcal > targets.kcal;
+  // Without targets ("log without targets", or while the profile loads) there's nothing left or over.
+  const remaining = targets ? Math.max(0, targets.kcal - totals.kcal) : null;
+  const pct = targets ? Math.min(100, (totals.kcal / targets.kcal) * 100) : 0;
+  const over = targets ? totals.kcal > targets.kcal : false;
 
   /** Create entries on the server and add whatever it accepted to the day. */
   const create = useCallback(

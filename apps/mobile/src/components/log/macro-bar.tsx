@@ -18,7 +18,8 @@ type MacroBarProps = {
   tone: MacroTone;
   label: string;
   current: number;
-  target: number;
+  /** Null without targets: the amount alone, with no bar. */
+  target: number | null;
   unit: string;
 };
 
@@ -26,7 +27,7 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
   const colors = useColors();
   const styles = useStyles(makeStyles);
   const width = useSharedValue(0);
-  const pct = Math.min(100, target > 0 ? (current / target) * 100 : 0);
+  const pct = Math.min(100, target ? (current / target) * 100 : 0);
 
   useEffect(() => {
     width.value = withTiming(pct, { duration: motion.slow });
@@ -40,20 +41,22 @@ export function MacroBar({ tone, label, current, target, unit }: MacroBarProps) 
       <View style={styles.valueRow}>
         <Text style={styles.value}>{current}</Text>
         <Text style={styles.target}>
-          /{target}
+          {target !== null ? `/${target}` : ' '}
           {unit}
         </Text>
       </View>
-      <View style={styles.track}>
-        <Animated.View style={[styles.fill, fillStyle]}>
-          <LinearGradient
-            colors={toneGradient(colors)[tone]}
-            start={gradientAngle.start}
-            end={gradientAngle.end}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
-      </View>
+      {target !== null ? (
+        <View style={styles.track}>
+          <Animated.View style={[styles.fill, fillStyle]}>
+            <LinearGradient
+              colors={toneGradient(colors)[tone]}
+              start={gradientAngle.start}
+              end={gradientAngle.end}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -6,7 +6,6 @@ How a `users` row relates to Supabase's own user record is explained in
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select, update
@@ -20,6 +19,9 @@ from app.services.supabase_admin import SupabaseAdmin
 
 # `last_seen_at` is kept to the hour, so most requests don't write to the database at all.
 LAST_SEEN_RESOLUTION = timedelta(hours=1)
+
+# What everyone without an active plan sees (the `users` columns' defaults too).
+DEFAULT_TARGETS = Targets(kcal=2000, protein_g=150, carbs_g=220, fat_g=70, fiber_g=28)
 
 
 class UserLookupError(LookupError):
@@ -91,41 +93,26 @@ def has_plan(user: User, plan: str) -> bool:
     return PLANS.index(current_plan(user)) >= PLANS.index(plan)
 
 
-def _decimal(value: float) -> Decimal:
-    # Via str, so 0.1 is stored as 0.1 and not as 0.1000000000000000055511151231257827.
-    return Decimal(str(value))
-
-
 def update_profile(db: Session, user: User, data: UserUpdate) -> User:
-    """Change the display name and/or any of the daily targets; anything not sent is kept."""
+    """Change the display name and/or the time zone; anything not sent is kept."""
     if data.display_name is not None:
         user.display_name = data.display_name
-    targets = data.targets
-    if targets is not None:
-        if targets.kcal is not None:
-            user.kcal_target = _decimal(targets.kcal)
-        if targets.protein_g is not None:
-            user.protein_target_g = _decimal(targets.protein_g)
-        if targets.carbs_g is not None:
-            user.carbs_target_g = _decimal(targets.carbs_g)
-        if targets.fat_g is not None:
-            user.fat_target_g = _decimal(targets.fat_g)
-        if targets.fiber_g is not None:
-            user.fiber_target_g = _decimal(targets.fiber_g)
+    if data.timezone is not None:
+        user.timezone = data.timezone
     db.commit()
     db.refresh(user)
     return user
 
 
 def delete_account(db: Session, user: User, supabase: SupabaseAdmin) -> None:
-    """Delete the user everywhere: their Supabase user first, then their row and food log.
+    """Delete the user everywhere: their Supabase user first, then their row and data.
 
     In that order so a failure never leaves someone who can still sign in to an account
     that looks freshly emptied. Raises `SupabaseAdminError`, having deleted nothing, if
     Supabase doesn't confirm.
     """
     supabase.delete_user(user.id)
-    db.delete(user)  # the food log goes with it (ON DELETE CASCADE)
+    db.delete(user)  # the food log, goals and plans go with it (ON DELETE CASCADE)
     db.commit()
 
 
@@ -163,6 +150,30 @@ def set_plan(db: Session, user: User, plan: str) -> None:
     db.commit()
 
 
+def targets_mode(user: User) -> str:
+    """The targets mode in force. A plan needs premium: someone whose premium has lapsed sees
+    the defaults, while their plan stays as it was, so subscribing again restores it."""
+    if user.targets_mode == "plan" and not has_plan(user, "premium"):
+        return "default"
+    return user.targets_mode
+
+
+def targets(user: User) -> Targets | None:
+    """The daily targets in force: the active plan's, the defaults, or none at all."""
+    mode = targets_mode(user)
+    if mode == "none":
+        return None
+    if mode == "default":
+        return DEFAULT_TARGETS
+    return Targets(
+        kcal=float(user.kcal_target),
+        protein_g=float(user.protein_target_g),
+        carbs_g=float(user.carbs_target_g),
+        fat_g=float(user.fat_target_g),
+        fiber_g=float(user.fiber_target_g),
+    )
+
+
 def to_read(user: User) -> UserRead:
     return UserRead(
         id=user.id,
@@ -171,11 +182,8 @@ def to_read(user: User) -> UserRead:
         avatar_url=user.avatar_url,
         plan=current_plan(user),
         plan_expires_at=user.plan_expires_at,
-        targets=Targets(
-            kcal=float(user.kcal_target),
-            protein_g=float(user.protein_target_g),
-            carbs_g=float(user.carbs_target_g),
-            fat_g=float(user.fat_target_g),
-            fiber_g=float(user.fiber_target_g),
-        ),
+        timezone=user.timezone,
+        targets_mode=targets_mode(user),
+        targets=targets(user),
+        check_in_due=False,
     )

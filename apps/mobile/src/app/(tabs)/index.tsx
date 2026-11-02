@@ -249,7 +249,8 @@ export default function LogScreen() {
             time={adding}
             onTimeChange={setAdding}
             entries={foodLog.entries}
-            remainingKcal={targets.kcal - foodLog.totals.kcal}
+            eatenKcal={foodLog.totals.kcal}
+            remainingKcal={targets ? targets.kcal - foodLog.totals.kcal : null}
             onOpenFood={(food) => setFoodView({ food, time: adding })}
             onQuickAdd={(food, grams) => foodLog.addEntry(adding, food, grams, 'g')}
             onMode={openFlow}

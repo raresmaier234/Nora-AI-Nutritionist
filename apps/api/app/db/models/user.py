@@ -2,10 +2,10 @@
 
 Sign-in itself lives in Supabase Auth: its `auth.users` holds the person's Google and Apple
 identities and sessions, in Supabase's own database. This row holds everything else — their
-name, plan and daily targets — and owns their food log. Its `id` is the Supabase user id
-(the access token's `sub`); there is no foreign key, since the two are in different
-databases. The row is created the first time the API sees a valid token for that id (see
-`app/services/users.py`).
+name, plan and daily targets — and owns their food log and nutrition plans. Its `id` is the
+Supabase user id (the access token's `sub`); there is no foreign key, since the two are in
+different databases. The row is created the first time the API sees a valid token for that
+id (see `app/services/users.py`).
 """
 
 import uuid
@@ -18,6 +18,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
 
 PLANS = ("basic", "premium")
+# Where the daily targets come from: `default` (basic, or no plan yet), `plan` (copied from the
+# active nutrition plan), `none` (a safety gate stopped the plan: log without targets).
+TARGETS_MODES = ("default", "plan", "none")
 
 
 class User(Base):
@@ -42,6 +45,12 @@ class User(Base):
     carbs_target_g: Mapped[Decimal] = mapped_column(Numeric, nullable=False, server_default="220")
     fat_target_g: Mapped[Decimal] = mapped_column(Numeric, nullable=False, server_default="70")
     fiber_target_g: Mapped[Decimal] = mapped_column(Numeric, nullable=False, server_default="28")
+    # Which targets apply (TARGETS_MODES). The columns above only count in `plan` mode;
+    # otherwise the defaults are shown, or none at all (see app/services/users.py, to_read).
+    targets_mode: Mapped[str] = mapped_column(Text, nullable=False, server_default="default")
+
+    # The user's IANA time zone ("Europe/Bucharest"), sent by the app; null means UTC.
+    timezone: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -54,4 +63,9 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    __table_args__ = (CheckConstraint("plan IN ('basic', 'premium')", name="ck_users_plan"),)
+    __table_args__ = (
+        CheckConstraint("plan IN ('basic', 'premium')", name="ck_users_plan"),
+        CheckConstraint(
+            "targets_mode IN ('default', 'plan', 'none')", name="ck_users_targets_mode"
+        ),
+    )

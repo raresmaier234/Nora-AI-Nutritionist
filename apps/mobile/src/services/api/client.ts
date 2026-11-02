@@ -10,14 +10,17 @@ export class ApiError extends Error {
   readonly status?: number;
   readonly path: string;
   readonly cause?: unknown;
+  /** The response's `detail`, as sent — for errors that carry data (e.g. a gate with a 422). */
+  readonly detail?: unknown;
 
-  constructor(params: { kind: ApiErrorKind; message: string; path: string; status?: number; cause?: unknown }) {
+  constructor(params: { kind: ApiErrorKind; message: string; path: string; status?: number; cause?: unknown; detail?: unknown }) {
     super(params.message);
     this.name = 'ApiError';
     this.kind = params.kind;
     this.status = params.status;
     this.path = params.path;
     this.cause = params.cause;
+    this.detail = params.detail;
   }
 }
 
@@ -32,6 +35,8 @@ function extractDetail(data: unknown): string | undefined {
   if (!data || typeof data !== 'object' || !('detail' in data)) return undefined;
   const detail = (data as { detail: unknown }).detail;
   if (typeof detail === 'string') return detail;
+  // An object detail with a sentence for the user, e.g. { message: '…', gate: {…} }.
+  if (detail && typeof detail === 'object' && 'message' in detail && typeof detail.message === 'string') return detail.message;
   // FastAPI's validation errors (422): [{ loc: ['body', 'targets', 'kcal'], msg: '…' }, …]
   if (Array.isArray(detail)) {
     const messages = detail.flatMap((d: { loc?: unknown; msg?: unknown }) => {
@@ -133,6 +138,7 @@ async function send<T>(path: string, options: ApiRequestOptions, token: string |
       message: `${method} ${path} failed with HTTP ${response.status}${detail ? `: ${detail}` : ''}`,
       path,
       status: response.status,
+      detail: data && typeof data === 'object' && 'detail' in data ? (data as { detail: unknown }).detail : undefined,
     });
   }
 

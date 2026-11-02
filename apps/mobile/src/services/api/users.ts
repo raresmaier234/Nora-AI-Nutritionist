@@ -3,12 +3,15 @@ import type { UserProfile, UserProfileUpdate } from './types';
 
 const ME = '/users/me';
 
-/** The signed-in user's profile: name, email, avatar, plan and daily targets. */
+/** The signed-in user's profile: name, email, avatar, plan, daily targets and how they're set. */
 export function getMe(): Promise<UserProfile> {
   return apiRequest<UserProfile>(ME, { method: 'GET' });
 }
 
-/** Change the display name and/or any of the daily targets; resolves with the updated profile. */
+/**
+ * Change the display name and/or the time zone; resolves with the updated profile. Targets can't
+ * be changed here — only by building a nutrition plan.
+ */
 export function updateMe(body: UserProfileUpdate): Promise<UserProfile> {
   return apiRequest<UserProfile>(ME, { method: 'PATCH', body });
 }

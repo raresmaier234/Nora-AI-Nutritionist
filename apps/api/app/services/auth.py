@@ -152,8 +152,9 @@ def get_current_user(
     return users.get_or_create(db, claims)
 
 
-def require_plan(plan: str) -> Callable[..., User]:
-    """A dependency that lets through only users on `plan` or a higher one; others get 403.
+def require_plan(plan: str, detail: str | None = None) -> Callable[..., User]:
+    """A dependency that lets through only users on `plan` or a higher one; others get 403,
+    with `detail` if given (else one naming both plans).
 
         @router.post("/...", dependencies=[Depends(require_plan("premium"))])
     """
@@ -164,8 +165,8 @@ def require_plan(plan: str) -> Callable[..., User]:
         if not users.has_plan(user, plan):
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
-                detail=f"This needs the {plan} plan; you are on the "
-                f"{users.current_plan(user)} plan.",
+                detail=detail
+                or f"This needs the {plan} plan; you are on the {users.current_plan(user)} plan.",
             )
         return user
 

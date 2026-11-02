@@ -5,8 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppearanceButton } from '@/components/common/appearance-button';
 import { LegalLink } from '@/components/common/legal-link';
 import { AccountCard } from '@/components/nutrition-plan/account-card';
-import { ChangePlanSheet } from '@/components/nutrition-plan/change-plan-sheet';
-import { PlanCard } from '@/components/nutrition-plan/plan-card';
+import { PlanSection } from '@/components/nutrition-plan/plan-section';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/ui/typography';
 import { LEGAL_LINKS, useAuth } from '@/features/auth';
@@ -17,10 +16,10 @@ import { Palette, fontFamily, fontSize, radius, spacing, trackTight, useColors, 
 const TAB_BAR_CLEARANCE = 96;
 
 /**
- * The Profile tab: the user's nutrition plan first — the daily targets everything measures
- * against, read-only; "Change plan" is the only way to change them (by answering questions, once
- * the plan builder exists: apps/api/docs/plans/ai-nutrition-plan.md). Account details, sign out
- * and account deletion sit in a section at the bottom.
+ * The Profile tab: the user's nutrition plan first (`PlanSection`) — the daily targets everything
+ * measures against, read-only, and the way to build or change a plan by answering questions
+ * (apps/api/docs/plans/ai-nutrition-plan.md). Account details, sign out and account deletion sit
+ * in a section at the bottom.
  */
 export default function ProfileScreen() {
   const colors = useColors();
@@ -28,7 +27,6 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile, profileError, reloadProfile, signOut, deleteAccount } = useAuth();
   const [busy, setBusy] = useState<'signOut' | 'delete' | null>(null);
-  const [changingPlan, setChangingPlan] = useState(false);
 
   const runSignOut = async () => {
     setBusy('signOut');
@@ -53,7 +51,7 @@ export default function ProfileScreen() {
   const confirmDelete = () =>
     Alert.alert(
       'Delete your account?',
-      'This permanently deletes your Nora account, your food log and your daily targets. It can’t be undone.',
+      'This permanently deletes your Nora account, your food log, your plan and your answers. It can’t be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete account', style: 'destructive', onPress: () => void runDelete() },
@@ -77,10 +75,7 @@ export default function ProfileScreen() {
         <View>
           <SectionLabel>Your plan</SectionLabel>
           {profile ? (
-            <View style={styles.plan}>
-              <PlanCard targets={profile.targets} />
-              <Button label="Change plan" variant="secondary" onPress={() => setChangingPlan(true)} />
-            </View>
+            <PlanSection profile={profile} />
           ) : profileError ? (
             <View style={styles.loadError}>
               <Text style={styles.loadErrorText}>Couldn’t load your plan. {profileError}</Text>
@@ -111,7 +106,7 @@ export default function ProfileScreen() {
               disabled={busy !== null}
             />
           </View>
-          <Text style={styles.note}>Deleting your account removes your food log and targets for good.</Text>
+          <Text style={styles.note}>Deleting your account removes your food log, plan and answers for good.</Text>
         </View>
 
         <Text style={styles.legal}>
@@ -120,8 +115,6 @@ export default function ProfileScreen() {
           <LegalLink link={LEGAL_LINKS.terms} linkStyle={styles.legalLink} />
         </Text>
       </ScrollView>
-
-      <ChangePlanSheet visible={changingPlan} onClose={() => setChangingPlan(false)} />
     </SafeAreaView>
   );
 }
@@ -149,7 +142,6 @@ const makeStyles = (colors: Palette) =>
     },
     loadErrorText: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textSecondary, textAlign: 'center' },
     retry: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.brandPrimary },
-    plan: { gap: spacing.md },
     account: { gap: spacing.md },
     actions: { gap: spacing.md },
     note: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: spacing.sm, textAlign: 'center' },

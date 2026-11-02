@@ -34,7 +34,10 @@ def test_a_new_user_is_basic_with_default_targets_and_their_google_profile(clien
         "avatar_url": DEFAULT_AVATAR,
         "plan": "basic",
         "plan_expires_at": None,
+        "timezone": None,
+        "targets_mode": "default",
         "targets": DEFAULT_TARGETS,
+        "check_in_due": False,
     }
     assert all(isinstance(value, float) for value in response.json()["targets"].values())
 
@@ -59,56 +62,92 @@ def test_a_token_without_email_or_name_still_signs_in(api, user_id) -> None:
     assert (me["email"], me["display_name"], me["avatar_url"]) == (None, None, None)
 
 
-def test_change_name_and_some_targets(client) -> None:
-    response = client.patch(
-        ME, json={"display_name": "  Rares  ", "targets": {"kcal": 2400, "protein_g": 180.5}}
-    )
+def test_change_name_and_time_zone(client) -> None:
+    response = client.patch(ME, json={"display_name": "  Rares  ", "timezone": "Europe/Bucharest"})
 
     assert response.status_code == 200
     me = response.json()
-    assert me["display_name"] == "Rares"
-    assert me["targets"] == {**DEFAULT_TARGETS, "kcal": 2400.0, "protein_g": 180.5}
+    assert (me["display_name"], me["timezone"]) == ("Rares", "Europe/Bucharest")
+    assert me["targets"] == DEFAULT_TARGETS
     assert client.get(ME).json() == me  # stored
 
 
 def test_omitted_fields_are_kept(client) -> None:
-    client.patch(ME, json={"targets": {"fiber_g": 35}})
+    client.patch(ME, json={"timezone": "America/New_York"})
 
     me = client.patch(ME, json={"display_name": "Rares"}).json()
 
-    assert me["targets"]["fiber_g"] == 35.0
+    assert me["timezone"] == "America/New_York"
     assert client.patch(ME, json={}).json() == me
 
 
 @pytest.mark.parametrize(
     "body",
     [
-        {"targets": {"kcal": 499}},
-        {"targets": {"kcal": 10_001}},
-        {"targets": {"protein_g": -1}},
-        {"targets": {"protein_g": 1001}},
-        {"targets": {"carbs_g": 1000.5}},
-        {"targets": {"fat_g": -0.1}},
-        {"targets": {"fiber_g": 201}},
-        {"targets": {"kcal": "lots"}},
-        {"targets": {"kcals": 2000}},
+        # Targets come from the defaults or a nutrition plan, never from here.
+        {"targets": {"kcal": 2400}},
+        {"targets": {}},
+        {"timezone": "Mars/Olympus_Mons"},
+        {"timezone": "europe/bucharest"},  # names are case-sensitive
+        {"timezone": "../etc/passwd"},
+        {"timezone": ""},
+        {"timezone": 3},
         {"display_name": ""},
         {"display_name": "   "},
         {"display_name": "x" * 101},
         {"plan": "premium"},
+        {"targets_mode": "none"},
     ],
 )
 def test_invalid_changes_are_rejected(client, body) -> None:
+    before = client.get(ME).json()
+
     assert client.patch(ME, json=body).status_code == 422
+    assert client.get(ME).json() == before
+
+
+def test_without_a_plan_the_targets_are_the_defaults(client, user_id, db_session) -> None:
+    """Whatever the columns hold (targets once set by hand, say), only a plan changes them."""
+    client.get(ME)
+    user = db_session.get(User, user_id)
+    user.kcal_target = 2400
+    db_session.flush()
+
     assert client.get(ME).json()["targets"] == DEFAULT_TARGETS
 
 
-def test_the_limits_themselves_are_allowed(client) -> None:
-    low = {"kcal": 500, "protein_g": 0, "carbs_g": 0, "fat_g": 0, "fiber_g": 0}
-    high = {"kcal": 10_000, "protein_g": 1000, "carbs_g": 1000, "fat_g": 1000, "fiber_g": 200}
+def test_log_without_targets_has_no_targets(client, user_id, db_session) -> None:
+    client.get(ME)
+    db_session.get(User, user_id).targets_mode = "none"
+    db_session.flush()
 
-    assert client.patch(ME, json={"targets": low}).status_code == 200
-    assert client.patch(ME, json={"targets": high}).status_code == 200
+    me = client.get(ME).json()
+
+    assert (me["targets_mode"], me["targets"]) == ("none", None)
+
+
+def test_a_plans_targets_need_premium(client, user_id, db_session) -> None:
+    """A lapsed premium user sees the defaults; their plan's targets come back with premium."""
+    client.get(ME)
+    user = db_session.get(User, user_id)
+    user.plan = "premium"
+    user.targets_mode = "plan"
+    user.kcal_target, user.protein_target_g = 1910, 175
+    db_session.flush()
+    plan_targets = {**DEFAULT_TARGETS, "kcal": 1910.0, "protein_g": 175.0}
+
+    assert client.get(ME).json()["targets"] == plan_targets
+
+    user.plan_expires_at = datetime.now(UTC) - timedelta(days=1)
+    db_session.flush()
+    me = client.get(ME).json()
+    assert (me["targets_mode"], me["targets"]) == ("default", DEFAULT_TARGETS)
+    assert user.targets_mode == "plan"  # nothing was destroyed
+
+    user.plan_expires_at = None
+    db_session.flush()
+    me = client.get(ME).json()
+    assert (me["targets_mode"], me["targets"]) == ("plan", plan_targets)
 
 
 # --- Plans -----------------------------------------------------------------------------------
@@ -132,6 +171,10 @@ def test_require_plan_refuses_basic_and_lets_premium_through(db_session) -> None
     assert refused.value.detail == "This needs the premium plan; you are on the basic plan."
     assert premium_only(premium) is premium
     assert require_plan("basic")(basic) is basic
+
+    with pytest.raises(HTTPException) as refused:
+        require_plan("premium", detail="Plans are premium.")(basic)
+    assert refused.value.detail == "Plans are premium."
 
 
 def test_an_expired_premium_plan_counts_as_basic(client, user_id, db_session) -> None:

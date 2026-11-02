@@ -67,6 +67,10 @@ type FoodDetailsScreenProps = {
  * serving and quantity → impact on your day → good source of → full nutrition → sticky Add to
  * Log (or Save / Delete when editing). Values scale live with the quantity.
  *
+ * Without targets ("log without targets", `useTargets()` null) it shows the food's nutrients and
+ * the day's plain totals only: no calorie ring, goal bars, "left", impact against targets or %
+ * of daily values.
+ *
  * Fibre, vitamins, minerals and the rest come from GET /foods/{id} once the screen opens, so
  * they appear a moment after the macros. Nutrients without data are never shown, and a section
  * left empty disappears — a food known only from its label shows just those values.
@@ -102,7 +106,7 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
   const kcal = Math.round(values.kcal);
   const beforeKcal = Math.max(0, Math.round(consumed.kcal));
   const afterKcal = beforeKcal + kcal;
-  const kcalLeft = targets.kcal - afterKcal;
+  const kcalLeft = targets ? targets.kcal - afterKcal : 0;
   const pK = values.protein * 4;
   const cK = values.carbs * 4;
   const fK = values.fat * 9;
@@ -184,7 +188,14 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
           {/* Calories ring + where the energy comes from + macro bars */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryTop}>
-              <CalorieRing kcal={kcal} beforePct={(beforeKcal / targets.kcal) * 100} addPct={(kcal / targets.kcal) * 100} />
+              {targets ? (
+                <CalorieRing kcal={kcal} beforePct={(beforeKcal / targets.kcal) * 100} addPct={(kcal / targets.kcal) * 100} />
+              ) : (
+                <View style={[styles.kcalTile, { backgroundColor: nu.kcal.tint }]}>
+                  <Text style={styles.ringKcal}>{kcal.toLocaleString()}</Text>
+                  <Text style={styles.ringUnit}>kcal</Text>
+                </View>
+              )}
               <View style={styles.summaryText}>
                 <Text style={styles.overline}>Your day</Text>
                 <View style={styles.dayRow}>
@@ -192,14 +203,18 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
                   <ArrowRightIcon size={14} color={colors.textTertiary} />
                   <Text style={styles.dayAfter}>{afterKcal.toLocaleString()}</Text>
                 </View>
-                <Text style={styles.dayOf}>
-                  of {targets.kcal.toLocaleString()} kcal ·{' '}
-                  {kcalLeft >= 0 ? (
-                    <Text style={styles.dayLeft}>{kcalLeft.toLocaleString()} left</Text>
-                  ) : (
-                    <Text style={styles.dayOver}>{(-kcalLeft).toLocaleString()} over</Text>
-                  )}
-                </Text>
+                {targets ? (
+                  <Text style={styles.dayOf}>
+                    of {targets.kcal.toLocaleString()} kcal ·{' '}
+                    {kcalLeft >= 0 ? (
+                      <Text style={styles.dayLeft}>{kcalLeft.toLocaleString()} left</Text>
+                    ) : (
+                      <Text style={styles.dayOver}>{(-kcalLeft).toLocaleString()} over</Text>
+                    )}
+                  </Text>
+                ) : (
+                  <Text style={styles.dayOf}>kcal eaten today</Text>
+                )}
                 <View style={styles.splitBar}>
                   {split.map((s) => (
                     <View key={s.f} style={{ flex: s.pct || 0.0001, backgroundColor: nu[s.f].base }} />
@@ -215,23 +230,25 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
               </View>
             </View>
             <View style={styles.rule} />
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendSwatch, { opacity: 0.35 }]} />
-                <Text style={styles.legendText}>Eaten today</Text>
+            {targets ? (
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendSwatch, { opacity: 0.35 }]} />
+                  <Text style={styles.legendText}>Eaten today</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={styles.legendSwatch} />
+                  <Text style={styles.legendText}>This food</Text>
+                </View>
+                <Text style={[styles.legendText, styles.legendEnd]}>Full bar = goal</Text>
               </View>
-              <View style={styles.legendItem}>
-                <View style={styles.legendSwatch} />
-                <Text style={styles.legendText}>This food</Text>
-              </View>
-              <Text style={[styles.legendText, styles.legendEnd]}>Full bar = goal</Text>
-            </View>
+            ) : null}
             <View style={styles.macroBars}>
-              <MacroTargetBar family="protein" label="Protein" add={values.protein} before={consumed.protein} goal={targets.protein} />
-              <MacroTargetBar family="carbs" label="Carbs" add={values.carbs} before={consumed.carbs} goal={targets.carbs} />
-              <MacroTargetBar family="fat" label="Fat" add={values.fat} before={consumed.fat} goal={targets.fat} />
+              <MacroTargetBar family="protein" label="Protein" add={values.protein} before={consumed.protein} goal={targets?.protein ?? null} />
+              <MacroTargetBar family="carbs" label="Carbs" add={values.carbs} before={consumed.carbs} goal={targets?.carbs ?? null} />
+              <MacroTargetBar family="fat" label="Fat" add={values.fat} before={consumed.fat} goal={targets?.fat ?? null} />
               {/* The log doesn't count fibre eaten yet, so this bar shows the portion alone. */}
-              {all.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={all.fiber} before={null} goal={targets.fiber} /> : null}
+              {all.fiber != null ? <MacroTargetBar family="fiber" label="Fiber" add={all.fiber} before={null} goal={targets?.fiber ?? null} /> : null}
             </View>
           </View>
 
@@ -284,19 +301,23 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
             </View>
           </View>
 
-          {/* Impact on your day — eaten → + this portion → new total vs target */}
-          <View style={styles.impactCard}>
-            <Text style={styles.impactTitle}>Impact on your day</Text>
-            <View style={styles.impactBars}>
-              <ImpactBar family="kcal" label="Calories" unit="kcal" eaten={consumed.kcal} add={values.kcal} target={targets.kcal} />
-              <ImpactBar family="protein" label="Protein" unit="g" eaten={consumed.protein} add={values.protein} target={targets.protein} />
-              <ImpactBar family="carbs" label="Carbs" unit="g" eaten={consumed.carbs} add={values.carbs} target={targets.carbs} />
-              <ImpactBar family="fat" label="Fat" unit="g" eaten={consumed.fat} add={values.fat} target={targets.fat} />
+          {/* Impact on your day — eaten → + this portion → new total vs target. Without targets
+              the summary card above already has the day's totals. */}
+          {targets ? (
+            <View style={styles.impactCard}>
+              <Text style={styles.impactTitle}>Impact on your day</Text>
+              <View style={styles.impactBars}>
+                <ImpactBar family="kcal" label="Calories" unit="kcal" eaten={consumed.kcal} add={values.kcal} target={targets.kcal} />
+                <ImpactBar family="protein" label="Protein" unit="g" eaten={consumed.protein} add={values.protein} target={targets.protein} />
+                <ImpactBar family="carbs" label="Carbs" unit="g" eaten={consumed.carbs} add={values.carbs} target={targets.carbs} />
+                <ImpactBar family="fat" label="Fat" unit="g" eaten={consumed.fat} add={values.fat} target={targets.fat} />
+              </View>
             </View>
-          </View>
+          ) : null}
 
-          {/* Standout vitamins & minerals: at least 10% of the daily value in this portion */}
-          {sources.length > 0 ? (
+          {/* Standout vitamins & minerals: at least 10% of the daily value in this portion (a
+              percentage of a goal, so not shown without targets) */}
+          {targets && sources.length > 0 ? (
             <View>
               <Text style={styles.sectionTitle}>Good source of</Text>
               <View style={styles.sourceGrid}>
@@ -323,7 +344,9 @@ export function FoodDetailsScreen({ food, mode, time: initialTime, initialGrams,
                 </Text>
               </Text>
             ) : (
-              <Text style={styles.nutritionNote}>% DV based on a 2,000 kcal diet. Nutrients without data for this food are not shown.</Text>
+              <Text style={styles.nutritionNote}>
+                {targets ? '% DV based on a 2,000 kcal diet. ' : ''}Nutrients without data for this food are not shown.
+              </Text>
             )}
           </View>
         </View>
@@ -534,6 +557,7 @@ const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   legendEnd: { marginLeft: 'auto' },
   macroBars: { gap: spacing.lg },
   ringCenter: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  kcalTile: { width: 124, height: 124, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   ringKcal: { fontFamily: fontFamily.extrabold, fontSize: 32, color: colors.textPrimary, letterSpacing: trackTight(32), ...num },
   ringUnit: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: foodColors[scheme].nu.kcal.ink, marginTop: 4 },
   mbLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

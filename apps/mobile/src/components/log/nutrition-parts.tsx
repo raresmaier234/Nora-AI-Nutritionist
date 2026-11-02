@@ -35,14 +35,37 @@ export function Fill({ pct, color, opacity = 1, delay = false }: { pct: number; 
 /**
  * Daily target bar: full width = daily goal. Faded = eaten today, solid = this food. With no
  * `before` (a nutrient the log doesn't count), it shows this food's share of the goal alone.
+ * With no `goal` ("log without targets") it's a plain amount: no bar, nothing left or over.
  */
-export function MacroTargetBar({ family, label, add, before, goal }: { family: NutrientFamily; label: string; add: number; before: number | null; goal: number }) {
+export function MacroTargetBar({ family, label, add, before, goal }: { family: NutrientFamily; label: string; add: number; before: number | null; goal: number | null }) {
   const { nu } = useFoodColors();
   const styles = useStyles(makeStyles);
   const hasDay = before !== null;
   const b = Math.max(0, before ?? 0);
   const a = Math.max(0, add);
   const total = b + a;
+  if (goal === null) {
+    return (
+      <View accessible accessibilityLabel={hasDay ? `${label}: ${fmt(a)} g, ${fmt(total)} g today` : `${label}: ${fmt(a)} g`}>
+        <View style={[styles.mbHead, styles.mbHeadPlain]}>
+          <View style={styles.mbLabelRow}>
+            <View style={[styles.dot, { backgroundColor: nu[family].base }]} />
+            <Text style={styles.mbLabel}>{label}</Text>
+          </View>
+          <Text style={[styles.mbValue, { color: nu[family].ink }]}>
+            {hasDay ? '+' : ''}
+            {fmt(a)}
+            <Text style={styles.mbUnit}> g</Text>
+          </Text>
+        </View>
+        {hasDay ? (
+          <Text style={styles.mbFootText}>
+            {fmt(b)} → <Text style={styles.strong}>{fmt(total)}</Text> g today
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
   const bPct = Math.min(100, (b / goal) * 100);
   const nPct = Math.min(100, (total / goal) * 100);
   const aPct = a > 0 ? Math.max(nPct - bPct, bPct >= 100 ? 0 : 2) : 0;
@@ -214,6 +237,7 @@ const num = { fontVariant: ['tabular-nums' as const] };
 
 const makeStyles = (colors: Palette, scheme: Scheme) => StyleSheet.create({
   mbHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.sm },
+  mbHeadPlain: { marginBottom: 2 },
   mbLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { width: 10, height: 10, borderRadius: 5 },
   mbLabel: { fontFamily: fontFamily.semibold, fontSize: fontSize.body, color: colors.textPrimary },

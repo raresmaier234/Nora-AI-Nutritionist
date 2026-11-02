@@ -11,7 +11,7 @@ src/components/
 ├── navigation/  # the tab bar shell
 ├── log/         # everything specific to the Log Food screen's vocabulary
 ├── auth/        # parts of the sign-in screen
-└── nutrition-plan/ # parts of the Profile tab
+└── nutrition-plan/ # the nutrition plan: Profile tab parts and the plan builder
 ```
 
 **`ui/`** — a component belongs here if you could drop it into an entirely different app and it would still make sense: `Button`, `Card`, `Field`, `Pill`, `Sheet`, `Toast`, the shared text styles in `typography.tsx`. These take generic props (`label`, `variant`, `children`) and know nothing about food, meals, or macros. They pull their values from `src/constants/log-theme.ts` but don't hardcode feature concepts.
@@ -24,7 +24,19 @@ src/components/
 
 **`auth/`** — `google-sign-in-button.tsx`: "Continue with Google" in Google's own button branding (the colour G, Google's light/dark colours), sized to match Apple's native `AppleAuthenticationButton`, which the sign-in screen (`src/app/sign-in.tsx`) uses as is.
 
-**`nutrition-plan/`** — the Profile tab's parts: `plan-card.tsx` (the nutrition plan's daily calories and macros, read-only — plans change only by answering questions again) and `change-plan-sheet.tsx` (what "Change plan" opens; until the plan builder in `apps/api/docs/plans/ai-nutrition-plan.md` exists, it explains what's coming), and for the account section at its foot, `account-card.tsx` (avatar or initials, name, email, the Basic / Premium badge, how they signed in) (the only account information shown; there's nothing to edit). The tab itself is `src/app/(tabs)/profile.tsx`.
+**`nutrition-plan/`** — the nutrition plan (spec: `apps/api/docs/plans/ai-nutrition-plan.md`) and the Profile tab's parts:
+- `plan-section.tsx` — the Profile tab's "Your plan" section, by account and `targets_mode`: basic (default targets + the premium card), premium without a plan ("Build my plan" above the starting targets), premium with an active plan (`PlanDetails`, Change plan, "Something changed?"), and "log without targets" (a gentle note, no targets). The weekly check-in card (next phase) goes above the plan there.
+- `plan-card.tsx` — daily calories and macros, read-only (`approximate` adds "~" for a built plan's estimates). Targets are never typed in.
+- `plan-details.tsx` — a plan: goal and goal date, the targets, summary, "Why these numbers", guidance, cautions and "General guidance, not medical advice". Used by the builder's review and the Profile tab (with a progress placeholder).
+- `build-plan-card.tsx` — "Build my plan": a prominent button for premium, or what premium includes for basic (no purchase flow: payments don't exist yet).
+- `first-plan-prompt.tsx` — the once-per-user sheet after a premium user's first sign-in.
+- `account-card.tsx` — the account section at the foot of the tab: avatar or initials, name, email, the Basic / Premium badge, how they signed in (nothing to edit).
+- `plan-builder/` — the questionnaire, full screen:
+  - `plan-builder-host.tsx` — `PlanBuilderHost` (wraps the tabs in `src/app/(tabs)/_layout.tsx`) owns the one builder modal and the first-sign-in prompt; `usePlanBuilder().open({ mode })` opens it from any tab (`build`, `change` = "What would you like to change?" first, `recheck` = "Something changed?").
+  - `plan-builder.tsx` — the flow: one question per screen, progress bar, Back / Next, gate and stop screens, then the review with "Use this plan" / "Change my answers". Which screens show and what they accept is `src/features/nutrition-plan/questionnaire.ts`; the wording is `options.ts` there.
+  - `steps.tsx` (screens with their own input state: birth, height, weight, exercise, target, pace, food), `outcomes.tsx` (gate, stop, review), `parts.tsx` (question header, choice lists, chips, unit toggle, stepper, number field, callout), `date-field.tsx` (Expo UI's DateTimePicker, included in Expo Go).
+
+The tab itself is `src/app/(tabs)/profile.tsx`. The builder is one `FullScreen` at the tabs level; nothing inside it opens another `FullScreen`.
 
 ## When something outgrows `components/log/`
 

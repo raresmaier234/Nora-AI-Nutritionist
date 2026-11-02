@@ -18,10 +18,14 @@ router = APIRouter(prefix="/users", tags=["Users"], responses=AUTH_RESPONSES)
     response_model=UserRead,
     summary="Get my profile",
     description=(
-        "The signed-in user's profile: name, email, avatar, plan and daily targets. There is "
-        "no sign-up step: the first request with a new user's access token creates their "
-        "profile from the token (name and avatar from their Google or Apple account), on the "
-        "`basic` plan with default targets."
+        "The signed-in user's profile: name, email, avatar, plan, time zone and daily "
+        "targets. `targets_mode` says where the targets come from: `default` (the defaults), "
+        "`plan` (the active nutrition plan; premium only, so a lapsed premium user reads "
+        "`default`) or `none` (a safety gate stopped the plan: `targets` is null and the app "
+        "shows no targets). `check_in_due` is always false for now. There is no sign-up step: "
+        "the first request with a new user's access token creates their profile from the "
+        "token (name and avatar from their Google or Apple account), on the `basic` plan with "
+        "default targets."
     ),
 )
 def get_me(user: User = Depends(get_current_user)) -> UserRead:
@@ -33,9 +37,10 @@ def get_me(user: User = Depends(get_current_user)) -> UserRead:
     response_model=UserRead,
     summary="Change my profile",
     description=(
-        "Change the display name and/or any of the daily targets; anything not sent is kept. "
-        "Targets: `kcal` 500–10000, `protein_g`, `carbs_g` and `fat_g` 0–1000, `fiber_g` "
-        "0–200. Returns the updated profile."
+        "Change the display name and/or the time zone (an IANA name such as "
+        "`Europe/Bucharest`); anything not sent is kept. Targets can't be set here: they come "
+        "from the defaults or the active nutrition plan, and sending `targets` is 422. Returns "
+        "the updated profile."
     ),
 )
 def update_me(
