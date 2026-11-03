@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const saved = me.display_name ? me : await updateMe({ display_name: result.fullName });
         setLoaded({ userId: saved.id, profile: saved, error: null });
       } catch {
-        // Signed in regardless; the name can be set on the Profile tab.
+        // Signed in regardless; the name can be set on the More tab.
       }
     }
     return true;

@@ -6,10 +6,13 @@ export type {
   Allergen,
   ApiErrorKind,
   DailyTargets,
+  DayTotals,
   DiabetesHypoRisk,
   EatingDisorderStatus,
   EatingStyle,
   FoodDetail,
+  FoodPortions,
+  FoodServing,
   FoodLogEntry,
   FoodLogEntryCreate,
   FoodLogEntryUpdate,
@@ -19,8 +22,12 @@ export type {
   HealthCondition,
   HealthResponse,
   LiftingExperience,
+  LogSummary,
   MealSlug,
   MeasurementUnits,
+  NoraChatReply,
+  NoraChatRequest,
+  NoraMessage,
   NutrientAmount,
   NutritionGoal,
   NutritionGoalCreate,
@@ -28,6 +35,8 @@ export type {
   NutritionGoalNotStored,
   NutritionId,
   NutritionPlan,
+  PackageServing,
+  Portion,
   PaceOption,
   PaceOptionKey,
   Per100g,
@@ -44,7 +53,8 @@ export type {
   UserProfileUpdate,
 } from './types';
 export { getHealth } from './health';
-export { getFood, searchFoods } from './foods';
-export { copyDay, createEntry, deleteEntry, listEntries, updateEntry } from './meals';
+export { getFood, lookupBarcode, searchFoods } from './foods';
+export { copyDay, createEntry, deleteEntry, getPortions, getSummary, listEntries, updateEntry } from './meals';
 export { deleteMe, getMe, updateMe } from './users';
+export { chatWithNora } from './nora';
 export { activatePlan, createPlanDraft, gateFromError, getActivePlan, getLatestGoals, previewPlan, saveGoals } from './nutrition-plan';

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import barcodes, foods, health, meals, nutrition, nutrition_plans, users
+from app.api.routes import barcodes, foods, health, meals, nora, nutrition, nutrition_plans, users
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -12,4 +12,5 @@ api_router.include_router(nutrition_plans.router)
 api_router.include_router(foods.router)
 api_router.include_router(barcodes.router)
 api_router.include_router(meals.router)
+api_router.include_router(nora.router)
 api_router.include_router(nutrition.router)

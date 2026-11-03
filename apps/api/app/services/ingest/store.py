@@ -147,6 +147,11 @@ def upsert_food(
             existing.raw_extraction = raw_extraction
         if existing.barcode is None and barcode is not None and not _barcode_taken(db, barcode):
             existing.barcode = barcode
+        if existing.servings is None and normalized.servings:
+            existing.servings = normalized.servings
+        if existing.package_serving_label is None and normalized.package_serving:
+            existing.package_serving_label = normalized.package_serving["label"]
+            existing.package_serving_grams = Decimal(str(normalized.package_serving["grams"]))
 
         if gained:
             logger.debug("enriched existing food %s", existing.name_normalized)
@@ -159,6 +164,11 @@ def upsert_food(
         name=normalized.name,
         brand=normalized.brand,
         store=normalized.store,
+        servings=normalized.servings or None,
+        package_serving_label=(normalized.package_serving or {}).get("label"),
+        package_serving_grams=(
+            Decimal(str(normalized.package_serving["grams"])) if normalized.package_serving else None
+        ),
         name_normalized=normalized.name_normalized,
         calories_per_100g=normalized.calories_per_100g,
         protein_per_100g=normalized.protein_per_100g,

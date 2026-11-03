@@ -27,7 +27,8 @@ export function brandAndStore(food: Pick<Food, 'name' | 'brand' | 'store'>): { b
 }
 export type Unit = { label: string; grams: number };
 /** One logged food. `time` is when it was eaten, "HH:MM" in local time. */
-export type Entry = Food & { uid: number; amount: number; unit: string; time: string };
+/** `grams` is what the entry weighs; a food's own unit ("1 cup" of milk) can't be worked out from `unit` alone. */
+export type Entry = Food & { uid: number; amount: number; unit: string; time: string; grams?: number };
 /** One ingredient: a FOOD_DB food (`id`) and how much of it, in grams or one of its units. */
 export type RecipeItem = {
   id: string | null;
@@ -40,7 +41,6 @@ export type RecipeItem = {
   imported?: boolean;
 };
 export type Recipe = { id: string; name: string; servings: number; source?: string | null; steps?: string[]; items: RecipeItem[] };
-export type Barcode = { code: string; name: string; per100: Macro; amount: number; unit: string };
 
 /**
  * Daily targets: calories, and grams of protein, carbs, fat and fibre. Read the user's own with
@@ -143,14 +143,8 @@ export const RECIPES: Recipe[] = [
   },
 ];
 
-// Barcode → product lookup, mocked. Swap for a real barcode/product API.
-export const BARCODES: Barcode[] = [
-  { code: '5901234123457', name: 'Greek Yogurt 0%', per100: { kcal: 57, protein: 10, carbs: 4, fat: 0.2 }, amount: 170, unit: 'g' },
-  { code: '4006381333931', name: 'Protein Bar', per100: { kcal: 350, protein: 30, carbs: 32, fat: 9 }, amount: 60, unit: 'g' },
-];
-
-export const entryMacros = (e: { per100: Macro; amount: number; unit: string }): Macro => {
-  const f = toGrams(e.amount, e.unit) / 100;
+export const entryMacros = (e: { per100: Macro; amount: number; unit: string; grams?: number }): Macro => {
+  const f = (e.grams ?? toGrams(e.amount, e.unit)) / 100;
   return {
     kcal: Math.round(e.per100.kcal * f),
     protein: Math.round(e.per100.protein * f),

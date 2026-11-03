@@ -82,6 +82,49 @@ class FoodLogEntryRead(BaseModel):
     logged_at: datetime
 
 
+class Portion(BaseModel):
+    """An amount of a food as it was logged: "1.5" "cup", weighing 373 g."""
+
+    amount: float
+    unit: str
+    grams: float
+
+
+class FoodPortions(BaseModel):
+    """How much of one food the signed-in user usually logs, and logged last time."""
+
+    usual: Portion | None = Field(
+        description="The amount logged most often among recent entries, once it's been logged "
+        "at least twice; null until then."
+    )
+    last: Portion | None = Field(description="The amount logged most recently; null if never.")
+
+
+class DayTotals(BaseModel):
+    """What was eaten on one day."""
+
+    date: Date
+    kcal: float
+    protein: float
+    carbs: float
+    fat: float
+    fiber: float | None = Field(
+        description="Grams of fibre from the database foods logged that day that state it; null "
+        "when none does (custom foods and scans carry macros only)."
+    )
+    entries: int = Field(description="How many foods were logged; 0 for a day with nothing.")
+
+
+class LogSummary(BaseModel):
+    """Daily totals over a range of days, for the dashboard."""
+
+    days: list[DayTotals] = Field(description="Every day from `start` to `end`, in order.")
+    maintenance_kcal: int | None = Field(
+        description="The active plan's estimated daily expenditure (TDEE), to compare intake "
+        "against; null without an active plan."
+    )
+
+
 class CopyDayRequest(BaseModel):
     """Copy every entry from one day onto another (the app's "Copy yesterday")."""
 

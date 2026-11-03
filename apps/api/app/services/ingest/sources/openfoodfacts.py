@@ -17,11 +17,20 @@ like any label reading. Alcohol is left out: Open Food Facts records it as % vol
 from __future__ import annotations
 
 import csv
+import re
 import sys
 from collections.abc import Iterable, Iterator
 
 from app.services.ingest.brands import store_from_list, without_brand, without_pack_size
 from app.services.ingest.normalizer import PER_100G
+from app.services.ingest.servings import (
+    estimated_kind,
+    is_whole_egg,
+    measured_kind,
+    typical_slices,
+    with_egg_sizes,
+    with_kitchen_measures,
+)
 from app.utils.naming import clean_display_name
 
 EXPORT_URL = "https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz"
@@ -128,6 +137,77 @@ def barcode(code: str) -> str | None:
     return code if code.isdigit() and 8 <= len(code) <= 14 else None
 
 
+# Prepared dishes, the only products a "serving" is offered for: for an ingredient or a snack
+# it's an arbitrary amount, and grams or the product's own pieces say it better.
+_PREPARED_TAGS = {
+    "en:meals", "en:pizzas", "en:pizzas-pies-and-quiches", "en:sandwiches", "en:burgers",
+    "en:hamburgers", "en:soups", "en:prepared-salads", "en:pasta-dishes",
+}
+# Words for "one portion" in the export, shown as "serving".
+_SERVING_WORDS = {"portion", "portie", "porție", "portii", "porții", "serving", "servings", "serv"}
+# Romanian and plural unit words, in the English the app shows.
+_UNIT_WORDS = {
+    "felie": "slice", "felii": "slice", "slices": "slice",
+    "buc": "piece", "bucata": "piece", "bucată": "piece", "bucati": "piece", "bucăți": "piece", "pieces": "piece",
+    "plic": "packet", "pliculet": "packet", "plicuri": "packet",
+    "cookies": "cookie", "biscuits": "biscuit", "bars": "bar", "cans": "can", "bottles": "bottle",
+}
+# Mass and volume units: a serving size of just "30 g" or "250 ml" is one serving of that much.
+_MEASURE_WORDS = {"g", "gr", "gram", "grams", "grame", "kg", "ml", "l", "cl", "dl"}
+# "1 cookie (12.5 g)", "2 slices (50 g)", "1 portion (100 g)".
+_COUNTED_RE = re.compile(r"^\s*(?P<count>\d+(?:[.,]\d+)?)?\s*(?P<word>[^\d(]+?)\s*\(")
+
+
+def servings(row: dict[str, str]) -> list[dict]:
+    """The product's one serving size as a unit: "1 cookie (12.5 g)" -> cookie, 12.5 g.
+
+    A plain "serving" is only kept for prepared dishes (`_PREPARED_TAGS`).
+
+    `serving_quantity` is the serving's grams (or ml, read as grams like everything here
+    per 100 ml). A size that is only a weight, "30 g", becomes "serving (30 g)".
+    """
+    text = (row.get("serving_size") or "").strip()
+    try:
+        grams = float((row.get("serving_quantity") or "").replace(",", "."))
+    except ValueError:
+        return []
+    if not text or grams <= 0:
+        return []
+    counted = _COUNTED_RE.match(text)
+    word = counted.group("word").strip().lower() if counted else ""
+    prepared = bool(_PREPARED_TAGS & set((row.get("categories_tags") or "").split(",")))
+    if counted and word and word not in _MEASURE_WORDS:
+        count = float((counted.group("count") or "1").replace(",", "."))
+        unit = "serving" if word in _SERVING_WORDS else _UNIT_WORDS.get(word, word)
+        if unit == "serving" and not prepared:
+            return []
+        size = text[text.index("("):].strip()
+        return [{"unit": unit, "label": f"1 {unit} {size}" if count == 1 else f"{text}", "grams": grams / count}]
+    return [{"unit": "serving", "label": f"1 serving ({text})", "grams": grams}] if prepared else []
+
+
+def package_serving(row: dict[str, str]) -> dict | None:
+    """The serving the label states, as printed, whatever kind of product it is."""
+    text = (row.get("serving_size") or "").strip()
+    try:
+        grams = float((row.get("serving_quantity") or "").replace(",", "."))
+    except ValueError:
+        return None
+    return {"label": text, "grams": grams} if text and grams > 0 else None
+
+
+def kitchen_servings(row: dict[str, str]) -> list[dict]:
+    """The measures that make sense for the product (app/services/ingest/servings.py): its own
+    serving size, egg sizes for eggs, a typical slice for cheese, bread and deli meat, and the
+    kitchen measures its kind is taken in — measured, or estimated from a typical density."""
+    categories, name = row.get("categories_tags") or "", row.get("product_name") or ""
+    own = [*servings(row), *typical_slices(categories, name)]
+    if is_whole_egg(categories, name):
+        own = with_egg_sizes(own, name)
+    measured = measured_kind(categories, row.get("serving_size") or "", name)
+    return with_kitchen_measures(own, measured, estimate=None if measured else estimated_kind(categories, name))
+
+
 def product_url(code: str) -> str:
     return f"https://world.openfoodfacts.org/product/{code}"
 
@@ -147,6 +227,8 @@ def row_to_raw(row: dict[str, str]) -> dict | None:
         "name": without_brand(without_brand(name, brand), store),
         "brand": brand,
         "store": store,
+        "servings": kitchen_servings(row),
+        "package_serving": package_serving(row),
         "basis": PER_100G,
         "serving_grams": None,
         "calories": f"{kcal} kcal" if kcal else f"{kj} kJ" if kj else None,

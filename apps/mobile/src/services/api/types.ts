@@ -36,6 +36,59 @@ export interface NutrientAmount {
   amount: number;
 }
 
+/** One of a food's own units besides grams, e.g. { unit: 'cup', label: '1 cup', grams: 249 }. */
+export interface FoodServing {
+  /** Short, for a button: "cup, chopped", "slice", "medium". */
+  unit: string;
+  /** In full: '1 medium (7" to 7-7/8" long)'. */
+  label: string;
+  /** What one of the unit weighs. */
+  grams: number;
+  /** A kitchen measure from a typical density for this kind of food, not weighed for it: shown "≈". */
+  estimated: boolean;
+}
+
+/** The serving a product's package states, as printed: { label: '1 cookie (12.5 g)', grams: 12.5 }. */
+export interface PackageServing {
+  label: string;
+  grams: number;
+}
+
+/** An amount of a food as it was logged. */
+export interface Portion {
+  amount: number;
+  unit: string;
+  grams: number;
+}
+
+/** What was eaten on one day (GET /meals/summary). */
+export interface DayTotals {
+  /** YYYY-MM-DD */
+  date: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  /** Null when no food logged that day states its fibre. */
+  fiber: number | null;
+  /** Foods logged; 0 for a day with nothing. */
+  entries: number;
+}
+
+/** GET /meals/summary?start=&end= — every day in the range, and the plan's estimated burn. */
+export interface LogSummary {
+  days: DayTotals[];
+  /** The active plan's estimated daily expenditure (TDEE); null without a plan. */
+  maintenance_kcal: number | null;
+}
+
+/** GET /meals/portions?food_id= — the user's usual and last amount of a food, from their own log. */
+export interface FoodPortions {
+  /** Logged most often recently, once logged at least twice. */
+  usual: Portion | null;
+  last: Portion | null;
+}
+
 /**
  * GET /foods/{id} — a food's full nutrient profile, per 100 g. `per_100g` is null when the food
  * lacks calories or a macro; `nutrients` leaves out anything without data.
@@ -46,6 +99,10 @@ export interface FoodDetail {
   brand: string | null;
   store: string | null;
   per_100g: Per100g | null;
+  /** Products only: the serving the package states. */
+  package_serving: PackageServing | null;
+  /** The food's own units besides grams, from its source; empty when it names none. */
+  servings: FoodServing[];
   nutrients: NutrientAmount[];
 }
 
@@ -95,6 +152,27 @@ export interface FoodLogEntryUpdate {
   amount?: number;
   unit?: string;
   grams?: number;
+}
+
+// ---- Nora, the in-app assistant (POST /nora/chat, premium) -----------------------------------
+
+/** One message of a Nora conversation. The user's are at most 2000 characters, Nora's 8000. */
+export interface NoraMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** POST /nora/chat — the conversation so far, oldest first, starting and ending with the user. */
+export interface NoraChatRequest {
+  /** At most 30 messages. */
+  messages: NoraMessage[];
+  /** The user's local date (YYYY-MM-DD): the day whose log Nora sees. */
+  date: string;
+}
+
+export interface NoraChatReply {
+  /** Plain text; may hold short "- " lists. */
+  reply: string;
 }
 
 export type Plan = 'basic' | 'premium';

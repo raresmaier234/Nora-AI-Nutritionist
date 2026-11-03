@@ -15,8 +15,11 @@ from app.schemas.meal import (
     FoodLogEntryCreate,
     FoodLogEntryRead,
     FoodLogEntryUpdate,
+    FoodPortions,
+    LogSummary,
 )
 from app.services import food_log
+from app.services.nutrition_plan import plans
 from app.services.auth import AUTH_RESPONSES, get_current_user
 from app.services.food_log import EntryNotFoundError, FoodNotFoundError, FoodNotLoggableError
 
@@ -36,6 +39,57 @@ def list_entries(
 ) -> list[FoodLogEntryRead]:
     entries = food_log.list_entries(db, user.id, date or Date.today())
     return [food_log.to_read(e) for e in entries]
+
+
+@router.get(
+    "/portions",
+    response_model=FoodPortions,
+    summary="Your portions of a food",
+    description=(
+        "How much of a database food the signed-in user usually logs and logged last time, from "
+        "their own log — for one-tap portion buttons. `usual` is the amount logged most often "
+        "among the last 30 entries of the food, once it has been logged at least twice."
+    ),
+)
+def get_portions(
+    food_id: int = Query(description="The database food's id."),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FoodPortions:
+    return food_log.portions(db, user.id, food_id)
+
+
+# A dashboard asks for a week, or a few; more than a quarter is a mistake, not a chart.
+MAX_SUMMARY_DAYS = 92
+
+
+@router.get(
+    "/summary",
+    response_model=LogSummary,
+    summary="Daily totals for a range of days",
+    description=(
+        "What the signed-in user ate each day from `start` to `end` (inclusive, at most 92 "
+        "days): calories, protein, carbs, fat, fibre where known, and how many foods. Every day "
+        "in the range is listed, with zeros when nothing was logged. `maintenance_kcal` is the "
+        "active plan's estimated daily expenditure, to show eating against burning."
+    ),
+    responses={422: {"description": "`end` before `start`, or a range longer than 92 days."}},
+)
+def get_summary(
+    start: Date = Query(description="First day, YYYY-MM-DD."),
+    end: Date = Query(description="Last day, YYYY-MM-DD."),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> LogSummary:
+    if end < start or (end - start).days >= MAX_SUMMARY_DAYS:
+        raise HTTPException(
+            422,
+            detail=f"the range must run forwards and cover at most {MAX_SUMMARY_DAYS} days",
+        )
+    return LogSummary(
+        days=food_log.daily_totals(db, user.id, start, end),
+        maintenance_kcal=plans.maintenance_kcal(db, user),
+    )
 
 
 @router.post(

@@ -11,6 +11,7 @@ from app.services.ingest.sources.openfoodfacts import (
     read_rows,
     romanian_rows,
     row_to_raw,
+    servings,
     supported_language_name,
 )
 
@@ -146,3 +147,33 @@ def test_a_row_names_the_food_without_its_brand_or_store() -> None:
 )
 def test_only_names_in_supported_languages_are_kept(name: str, expected: str | None) -> None:
     assert supported_language_name(name) == expected
+
+
+@pytest.mark.parametrize(
+    ("size", "grams", "expected"),
+    [
+        ("1 cookie (12.5 g)", "12.5", ("cookie", "1 cookie (12.5 g)", 12.5)),
+        ("2 felii (50 g)", "50", ("slice", "2 felii (50 g)", 25)),  # per one, in English
+    ],
+)
+def test_the_serving_size_becomes_a_unit(size: str, grams: str, expected: tuple) -> None:
+    [row] = read_rows(export({**LAPTE}))
+    [serving] = servings({**row, "serving_size": size, "serving_quantity": grams})
+
+    assert (serving["unit"], serving["label"], serving["grams"]) == expected
+
+
+@pytest.mark.parametrize("size", ["1 portion (100 g)", "30 g", "250 ml"])
+def test_a_serving_is_only_for_prepared_dishes(size: str) -> None:
+    [milk] = read_rows(export(LAPTE))
+    pizza = {**milk, "categories_tags": "en:meals,en:pizzas"}
+
+    assert servings({**milk, "serving_size": size, "serving_quantity": "100"}) == []
+    [serving] = servings({**pizza, "serving_size": size, "serving_quantity": "100"})
+    assert serving["unit"] == "serving"
+
+
+def test_no_serving_size_means_no_units() -> None:
+    [row] = read_rows(export(LAPTE))
+
+    assert servings(row) == []

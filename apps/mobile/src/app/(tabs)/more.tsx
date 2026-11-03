@@ -1,31 +1,23 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppearanceButton } from '@/components/common/appearance-button';
 import { LegalLink } from '@/components/common/legal-link';
 import { AccountCard } from '@/components/nutrition-plan/account-card';
-import { PlanSection } from '@/components/nutrition-plan/plan-section';
 import { Button } from '@/components/ui/button';
 import { SectionLabel } from '@/components/ui/typography';
 import { LEGAL_LINKS, useAuth } from '@/features/auth';
 import { describeError } from '@/services/api';
-import { Palette, fontFamily, fontSize, radius, spacing, trackTight, useColors, useStyles } from '@/theme';
-
-/** Room under the content so its end can scroll clear of the tab bar. */
-const TAB_BAR_CLEARANCE = 96;
+import { Palette, fontFamily, fontSize, spacing, trackTight, useStyles } from '@/theme';
 
 /**
- * The Profile tab: the user's nutrition plan first (`PlanSection`) — the daily targets everything
- * measures against, read-only, and the way to build or change a plan by answering questions
- * (apps/api/docs/plans/ai-nutrition-plan.md). Account details, sign out and account deletion sit
- * in a section at the bottom.
+ * The More tab: appearance, the account (details, sign out, deletion) and the legal links. The
+ * nutrition plan that used to share this page with them is on the Strategy tab.
  */
-export default function ProfileScreen() {
-  const colors = useColors();
+export default function MoreScreen() {
   const styles = useStyles(makeStyles);
-  const insets = useSafeAreaInsets();
-  const { user, profile, profileError, reloadProfile, signOut, deleteAccount } = useAuth();
+  const { user, profile, signOut, deleteAccount } = useAuth();
   const [busy, setBusy] = useState<'signOut' | 'delete' | null>(null);
 
   const runSignOut = async () => {
@@ -61,31 +53,15 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <Text style={styles.title} accessibilityRole="header">
-            Profile
+            More
           </Text>
           <AppearanceButton />
-        </View>
-
-        <View>
-          <SectionLabel>Your plan</SectionLabel>
-          {profile ? (
-            <PlanSection profile={profile} />
-          ) : profileError ? (
-            <View style={styles.loadError}>
-              <Text style={styles.loadErrorText}>Couldn’t load your plan. {profileError}</Text>
-              <Text onPress={reloadProfile} accessibilityRole="button" style={styles.retry}>
-                Retry
-              </Text>
-            </View>
-          ) : (
-            <ActivityIndicator color={colors.brandPrimary} accessibilityLabel="Loading your plan" />
-          )}
         </View>
 
         <View style={styles.account}>
@@ -122,7 +98,7 @@ export default function ProfileScreen() {
 const makeStyles = (colors: Palette) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bgApp },
-    content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.xxl },
+    content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.xxl },
     topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     title: {
       fontFamily: fontFamily.extrabold,
@@ -130,18 +106,6 @@ const makeStyles = (colors: Palette) =>
       letterSpacing: trackTight(fontSize.display),
       color: colors.textPrimary,
     },
-    loadError: {
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.lg,
-      backgroundColor: colors.bgSurfaceSolid,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-    },
-    loadErrorText: { fontFamily: fontFamily.medium, fontSize: fontSize.small, color: colors.textSecondary, textAlign: 'center' },
-    retry: { fontFamily: fontFamily.bold, fontSize: fontSize.small, color: colors.brandPrimary },
     account: { gap: spacing.md },
     actions: { gap: spacing.md },
     note: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: spacing.sm, textAlign: 'center' },

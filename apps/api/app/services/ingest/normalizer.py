@@ -74,6 +74,10 @@ class NormalizedFood:
     # Who makes it and where it is sold, when the source says.
     brand: str | None = None
     store: str | None = None
+    # Units besides grams: [{"unit": "cup", "label": "1 cup", "grams": 240.0}, …].
+    servings: list[dict] = field(default_factory=list)
+    # The serving the package states: {"label": "1 cookie (12.5 g)", "grams": 12.5}.
+    package_serving: dict | None = None
 
 
 def atwater_kcal(
@@ -280,11 +284,54 @@ def normalize_food(raw: dict) -> NormalizedFood:
         extra=extra,
         brand=brand,
         store=store,
+        servings=_servings(raw.get("servings")),
+        package_serving=_package_serving(raw.get("package_serving")),
     )
 
 
 # Grams in one of each unit, to express a converted value in its column's unit.
 _PER_GRAM = {GRAM: Decimal(1), MILLIGRAM: Decimal(1000), MICROGRAM: Decimal(1_000_000)}
+
+
+# One unit of anything weighs more than nothing and less than this (a whole roast, a jar).
+_MAX_SERVING_GRAMS = 5000
+# A food log entry's unit is at most this long (app/schemas/meal.py).
+_MAX_UNIT_LENGTH = 40
+
+
+def _servings(raw: object) -> list[dict]:
+    """The source's units that make sense: named, with a plausible weight, each name once."""
+    servings: list[dict] = []
+    seen: set[str] = set()
+    for serving in raw if isinstance(raw, list) else []:
+        unit = str(serving.get("unit") or "").strip()
+        try:
+            grams = float(serving.get("grams"))
+        except (TypeError, ValueError):
+            continue
+        if not unit or len(unit) > _MAX_UNIT_LENGTH or unit.lower() in seen or not 0 < grams <= _MAX_SERVING_GRAMS:
+            continue
+        seen.add(unit.lower())
+        label = str(serving.get("label") or f"1 {unit}").strip()
+        servings.append(
+            {"unit": unit, "label": label, "grams": round(grams, 2)}
+            | ({"estimated": True} if serving.get("estimated") else {})
+        )
+    return servings
+
+
+def _package_serving(raw: object) -> dict | None:
+    """The package's serving when it has a label and a plausible weight."""
+    if not isinstance(raw, dict):
+        return None
+    label = str(raw.get("label") or "").strip()
+    try:
+        grams = float(raw.get("grams"))
+    except (TypeError, ValueError):
+        return None
+    if not label or not 0 < grams <= _MAX_SERVING_GRAMS:
+        return None
+    return {"label": label, "grams": round(grams, 2)}
 
 
 def _extra_nutrients(raw: dict, factor: Decimal) -> dict[str, Decimal]:

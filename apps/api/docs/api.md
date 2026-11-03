@@ -22,6 +22,7 @@ Each resource gets its own module in `app/api/routes/` and its own Swagger tag:
 | `app/api/routes/foods.py`      | `/api/v1/foods`     | `Foods`          |
 | `app/api/routes/barcodes.py`   | `/api/v1/barcodes`  | `Barcodes`       |
 | `app/api/routes/meals.py`      | `/api/v1/meals`     | `Meals`          |
+| `app/api/routes/nora.py`       | `/api/v1/nora`      | `Nora`           |
 | `app/api/routes/nutrition.py`  | `/api/v1/nutrition` | `Nutrition`      |
 
 `app/api/router.py` is the only place that wires a new route module into the app — it
@@ -387,6 +388,21 @@ vitamins, minerals, other compounds). Each states its `unit` — `g`, `mg` or `u
 is a measured zero. Foods known only from their nutrition label return just those values. A
 missing food is a 404.
 
+`package_serving` is the serving a product's package states, as printed ("1 cookie (12.5 g)",
+"30 g"), with its weight; null for generic foods. The app offers it as a one-tap portion.
+
+`servings` lists the food's own units besides grams, in its source's order, each with what one
+weighs: USDA's portions (cup, tbsp, slice, medium…) or a product's serving size from Open Food
+Facts ("1 cookie (12.5 g)"), then the kitchen measures — cup, tbsp, tsp, and ml for liquids —
+where the food's density is known: from its own volume unit, or a product's category
+(`app/services/ingest/servings.py`). `unit` is the short name for a button, `label` the unit
+in full. Only the measures that make sense for the kind of food are added
+(`app/services/ingest/servings.py`): ml and cups for drinks, spoons for honey or butter, cups and
+spoons for flour or yogurt, a slice for cheese, bread and deli meat, egg sizes (small to jumbo)
+for eggs — and none for meat, biscuits or snacks. Where the food's density isn't measured, they
+come from a typical one for its kind and carry `"estimated": true`, shown "≈" in the app. The app
+always offers grams and ounces itself.
+
 ```json
 {
   "id": 1755,
@@ -394,6 +410,11 @@ missing food is a 404.
   "brand": null,
   "store": null,
   "per_100g": {"kcal": 717.0, "protein": 0.85, "carbs": 0.06, "fat": 81.11},
+  "servings": [
+    {"unit": "pat", "label": "1 pat (1\" sq, 1/3\" high)", "grams": 5.0},
+    {"unit": "tbsp", "label": "1 tbsp", "grams": 14.2},
+    {"unit": "cup", "label": "1 cup", "grams": 227.0}
+  ],
   "nutrients": [
     {"key": "fiber", "unit": "g", "amount": 0.0},
     {"key": "saturated_fat", "unit": "g", "amount": 51.368},
@@ -401,6 +422,41 @@ missing food is a 404.
     {"key": "vitamin_a", "unit": "ug", "amount": 684.0}
   ]
 }
+```
+
+### `GET /api/v1/meals/summary?start=…&end=…`
+
+- **Tag:** Meals
+- **Summary:** Daily totals for a range of days
+- **Response model:** `LogSummary` (`app/schemas/meal.py`); logic in `food_log.daily_totals`.
+- **Needs** an access token; reads only the caller's own log.
+
+What the user ate each day from `start` to `end` (inclusive, at most 92 days), for the app's
+dashboard: calories, protein, carbs and fat from each entry's own values, fibre from the
+database foods that state it (null when none did), and the number of foods. Every day in the
+range is listed — zeros for a day with nothing logged — so charts have no gaps.
+`maintenance_kcal` is the active plan's estimated daily expenditure (its TDEE), to show eating
+against burning; null without a plan. A range that runs backwards or past 92 days is a 422.
+
+```json
+{"days": [{"date": "2026-11-02", "kcal": 1845.0, "protein": 132.5, "carbs": 190.2, "fat": 61.0, "fiber": 24.3, "entries": 7}],
+ "maintenance_kcal": 2350}
+```
+
+### `GET /api/v1/meals/portions?food_id=…`
+
+- **Tag:** Meals
+- **Summary:** Your portions of a food
+- **Response model:** `FoodPortions` (`app/schemas/meal.py`); logic in `food_log.portions`.
+- **Needs** an access token; reads only the caller's own log.
+
+How much of a database food the user usually logs and logged last time, for one-tap portion
+buttons. `usual` is the amount (and unit) logged most often among the last 30 entries of the
+food, once it has been logged at least twice; `last` is the most recent. Either is null when
+there is none.
+
+```json
+{"usual": {"amount": 30.0, "unit": "g", "grams": 30.0}, "last": {"amount": 0.25, "unit": "cup", "grams": 28.0}}
 ```
 
 ### Food log — `/api/v1/meals/entries`
@@ -461,9 +517,57 @@ Every entry is returned as:
  "amount": 250.0, "unit": "g", "grams": 250.0, "logged_at": "2026-10-05T08:10:00+03:00"}
 ```
 
+### `GET /api/v1/barcodes/{code}`
+
+- **Tag:** Barcodes
+- **Summary:** Look up a barcode
+- **Response model:** `FoodDetail`, as `GET /api/v1/foods/{id}`; logic in
+  `food_details.find_by_barcode`.
+- **Needs** an access token.
+
+The food a scanned barcode belongs to: Open Food Facts products carry their EAN/UPC
+(`foods.barcode`). `code` is 8–14 digits; a 12-digit UPC-A and the 13-digit EAN with a leading
+0 are the same product, so either finds it. A barcode no loggable food has is a 404 — the app
+then offers manual entry or a custom food.
+
+### `POST /api/v1/nora/chat`
+
+- **Tag:** Nora
+- **Summary:** Ask Nora
+- **Request:** `ChatRequest` — `messages` (the conversation, oldest first, starting and ending
+  with a user message; 1–30 messages of `role` `user`/`assistant`, the user's of 1–2000
+  characters, Nora's earlier replies up to 8000)
+  and `date` (the user's local date, for "today"; defaults to the server's).
+- **Response model:** `ChatReply` — `reply`, Nora's answer in plain text.
+- **Needs** an access token and the **premium** plan (`403` otherwise); logic in
+  `app/services/nora.py`.
+
+Nora answers questions about food and the user's log, suggests meals that fit what's left of
+the day, and explains the plan. Each message is one Claude call (`NORA_MODEL`, default
+`claude-opus-5-5`, low effort). Nothing is stored: the app keeps the conversation on the phone
+and sends all of it each time.
+
+What Claude sees: a fixed system prompt with the guardrails (prompt-cached), then the day's
+context — each entry's meal, name, amount and grams with its calories and macros, the totals,
+the targets in force and what's left, the plan's estimated burn, and the allergies and eating
+style from the latest plan answers.
+
+Guardrails: Nora never sets or changes targets (they're the algorithm's alone; it points to
+the Strategy tab), doesn't diagnose or advise on medication, doesn't recommend crash diets or
+compensating, and answers distress with care and a pointer to help (112 in an emergency).
+**Protected users** — targets turned off (`targets_mode: "none"`, a gate stopped the plan), or
+`pregnant`, `eating_disorder`, `kidney` or `bariatric` in their answers' `health` — get no
+calorie or weight talk, and their context carries no calories, totals or targets.
+
+A reply Claude declines is retried server-side on a fallback model (the
+`server-side-fallback-2026-07-01` beta, `fallbacks: "default"`); one that is still declined
+answers `200` with a short "I can't help with that one". `503` when `ANTHROPIC_API_KEY` isn't
+set, the key is refused, or Claude is rate-limited, overloaded or unreachable; `422` for a
+conversation that's empty or too long, or doesn't start and end with a user message.
+
 ## Placeholder route groups (planned, not implemented)
 
-`barcodes` and `nutrition` each currently expose a single `GET` on their base path that
+`nutrition` currently exposes a single `GET` on its base path that
 returns `501 Not Implemented` (to a signed-in caller; without a token it is `401`, like every
 other endpoint), documented in Swagger under their tag with a summary/description explaining
 what's planned. This keeps the URL structure and tag

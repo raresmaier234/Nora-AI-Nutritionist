@@ -44,9 +44,13 @@ src/app/
 ├── camera/               # full-screen barcode / photo capture
 ├── dev/api-health.tsx    # dev-only connectivity check
 └── (tabs)/
-    ├── _layout.tsx       # tab navigator (NativeTabs), inside PlanBuilderHost (the plan builder modal + first-sign-in prompt)
-    ├── index.tsx         # Home tab — renders the Log Food screen
-    └── profile.tsx       # Profile tab — the nutrition plan (PlanSection: build / view / change it); account section: account card with Basic/Premium, sign out, delete
+    ├── _layout.tsx       # the tabs (custom bar in components/navigation/app-tabs.tsx, expo-router/ui), inside PlanBuilderHost (the plan builder modal + first-sign-in prompt)
+    ├── index.tsx         # Dashboard tab — this week vs targets, energy balance vs the plan's TDEE, 14-day calorie trend (GET /meals/summary)
+    ├── log.tsx           # Food Log tab — the day's timeline; Add food, details, scan, photo, recipes; opened by the tab bar's + (?addFood)
+    ├── pantry.tsx        # Pantry tab — coming soon: scan a shopping receipt → its ingredients kept → recipes for the week from them
+    ├── nora.tsx          # Nora tab — chat with Nora (premium; POST /nora/chat), or what Nora does for basic accounts
+    ├── strategy.tsx      # Strategy tab — the nutrition plan (PlanSection: build / view / change it)
+    └── more.tsx          # More tab — appearance, account card with Basic/Premium, sign out, delete, legal links
 ```
 
 The root `Stack` uses protected routes: `Stack.Protected guard={!signedIn}` around `sign-in`
@@ -56,14 +60,16 @@ root layout shows a plain loading screen instead of the Stack.
 
 `(tabs)` is a route group: the parentheses mean the segment doesn't appear in the URL, so `index.tsx` inside it is still just `/`. It exists so the tab navigator has its own layout, separate from the root `Stack` — the root `Stack` is what lets a future screen (e.g. a settings modal) be pushed on top of the tabs without restructuring routing again.
 
-Route files should stay thin: navigation, route params, and composing components from `src/components/` and `src/features/`. `(tabs)/index.tsx` currently holds the Log screen's local UI state (which sheet is open, search query, selected day) because that state is inherently screen-level; the actual food-logging *data* and mutations live in `src/features/food/hooks/use-food-log.ts`, not in the route file.
+Route files should stay thin: navigation, route params, and composing components from `src/components/` and `src/features/`. `(tabs)/log.tsx` holds the Log screen's local UI state (which sheet is open, search query, selected day) because that state is inherently screen-level; the actual food-logging *data* and mutations live in `src/features/food/hooks/use-food-log.ts`, not in the route file.
 
 ## `src/components/` — reusable UI
 
 ```text
 components/
 ├── common/         # app-shell-level, not tied to any feature (splash overlay, external-link)
-├── navigation/      # the tab bar shell (app-tabs.tsx + .web.tsx)
+├── navigation/      # the tab bar (app-tabs.tsx)
+├── dashboard/       # the Dashboard tab's cards
+├── nora/            # the Nora tab's chat (nora-chat.tsx)
 ├── ui/              # generic primitives: Button, Card, Field, Pill, Sheet, Toast, typography
 ├── auth/            # sign-in screen parts (GoogleSignInButton)
 ├── nutrition-plan/  # the nutrition plan: PlanSection, PlanCard, PlanDetails, BuildPlanCard, AccountCard, plan-builder/ (the questionnaire)
@@ -81,6 +87,11 @@ features/
 │   ├── auth-provider.tsx    # AuthProvider: the Supabase session + our profile (GET /users/me) + sign-in/out actions
 │   ├── hooks/use-auth.ts    # useAuth()
 │   └── legal-links.ts       # Privacy Policy / Terms URLs
+├── dashboard/
+│   ├── use-dashboard.ts     # the Dashboard's numbers (GET /meals/summary), reloaded when the tab comes into view
+│   └── stats.ts             # on-target, kcal → kg helpers for the cards
+├── nora/
+│   └── use-nora-chat.ts     # the Nora conversation: screen state only, sent whole with each message
 ├── food/
 │   ├── data/mock-data.ts    # FOOD_DB, RECIPES, BARCODES — swap points for real APIs; the Targets type
 │   ├── hooks/use-food-log.ts # the day's timeline of entries + the mutation surface (addEntry, changeEntry, ...)
@@ -90,10 +101,10 @@ features/
     ├── questionnaire.ts      # the questionnaire as data: screen order, which screens a set of answers needs, validation (matches the API), units, answers for the API
     ├── options.ts            # answer labels and wording (from the nutrition-expert review)
     ├── plan-prompt.ts        # remembers the first-sign-in "Build my plan" prompt per user (AsyncStorage)
-    └── hooks/use-active-plan.ts # the active plan for the Profile tab
+    └── hooks/use-active-plan.ts # the active plan for the Strategy tab
 ```
 
-This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. `auth/` (who is signed in, their profile), `food/` and `nutrition-plan/` (the plan questionnaire's rules) exist today; `nutrition/`, `meals/`, `dashboard/` are not created until they have something to contain.
+This is where business logic, feature-specific hooks, feature-specific types, and (eventually) feature-specific services live — kept separate from `src/components/` so UI and domain logic don't get tangled. `auth/` (who is signed in, their profile), `dashboard/`, `food/`, `nora/` and `nutrition-plan/` (the plan questionnaire's rules) exist today; `nutrition/` and `meals/` are not created until they have something to contain.
 
 A feature folder grows its own `components/`, `hooks/`, `services/`, `types/`, `utils/` subfolders only as needed — `food/` currently only needs `data/` and `hooks/`.
 

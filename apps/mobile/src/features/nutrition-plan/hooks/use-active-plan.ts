@@ -6,7 +6,7 @@ import { MeasurementUnits, NutritionPlan, describeError, getActivePlan, getLates
 type Loaded = { key: string; userId: string; plan: NutritionPlan | null; units: MeasurementUnits; error: string | null };
 
 /**
- * The signed-in user's active nutrition plan (with its texts), for the Profile tab — and the
+ * The signed-in user's active nutrition plan (with its texts), for the Strategy tab — and the
  * units their answers use, to show weights the way they entered them. Only fetched while
  * `enabled` (a premium account whose `targets_mode` is `plan`); fetched again whenever `version`
  * changes (a plan was activated). While it reloads, the previous plan stays on screen.

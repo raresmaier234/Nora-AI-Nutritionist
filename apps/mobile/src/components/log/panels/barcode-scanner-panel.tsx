@@ -1,50 +1,80 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CameraIcon } from '@/components/log/icons';
-import { FoodIcon } from '@/components/log/food-icon';
 import { WhenPicker } from '@/components/log/when-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { SheetSubtitle, SheetTitle } from '@/components/ui/typography';
-import { BARCODES, Barcode } from '@/features/food/data/mock-data';
+import { Food } from '@/features/food/data/mock-data';
 import { viewfinderBg } from '@/features/food/theme';
 import type { BarcodeScanResult } from '@/features/camera';
-import { Palette, fontFamily, fontSize, radius, spacing, useStyles } from '@/theme';
+import { describeError } from '@/services/api';
+import { findScannedFood } from '@/features/food/barcode';
+import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 
-type Phase = 'ready' | 'found' | 'notfound' | 'manual';
+type Phase = 'ready' | 'looking' | 'notfound' | 'error';
 
 type BarcodeScannerPanelProps = {
   /** "HH:MM" eaten. */
   time: string;
   onTime: (time: string) => void;
-  onAdd: (product: Barcode) => void;
+  /** A match: open it in Food Details. `packageGrams` is the serving its package states. */
+  onFound: (food: Food, packageGrams: number | null) => void;
   /** Opens the full-screen camera route (src/app/camera/barcode.tsx). */
   onOpenCamera: () => void;
-  /** Populated once the camera round-trip returns a scanned code; null before then. */
+  /** A camera scan the Log couldn't match (or couldn't look up): shown as "not found", or retried. */
   scanResult: BarcodeScanResult | null;
 };
 
-export function BarcodeScannerPanel({ time, onTime, onAdd, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
+/**
+ * Scan a product, or type its barcode. The barcode is looked up in the food database
+ * (GET /barcodes/{code}); a match goes straight to Food Details (`onFound`), where it's logged
+ * as that database food with its units and portions, like any food from search. This sheet
+ * only handles the rest: choosing the time, scanning, typing a code, and "not found".
+ */
+export function BarcodeScannerPanel({ time, onTime, onFound, onOpenCamera, scanResult }: BarcodeScannerPanelProps) {
   const styles = useStyles(makeStyles);
-  const initialHit = scanResult ? (BARCODES.find((b) => b.code === scanResult.data) ?? null) : null;
-  const [phase, setPhase] = useState<Phase>(() => {
-    if (!scanResult) return 'ready';
-    return initialHit ? 'found' : 'notfound';
-  });
+  const colors = useColors();
+  const [phase, setPhase] = useState<Phase>(scanResult ? 'looking' : 'ready');
   const [code, setCode] = useState('');
-  const [product, setProduct] = useState<Barcode | null>(initialHit);
+  const [error, setError] = useState<string | null>(null);
+  // Only the newest lookup's answer counts: a slow one for an earlier code must not win.
+  const latest = useRef(0);
 
-  const lookup = () => {
-    const hit = BARCODES.find((b) => b.code === code.trim());
-    if (hit) {
-      setProduct(hit);
-      setPhase('found');
-    } else {
-      setProduct(null);
-      setPhase('notfound');
-    }
+  // Asks the API; the answer arrives asynchronously, so this is safe to start from an effect.
+  const fetchFood = (raw: string) => {
+    const request = ++latest.current;
+    findScannedFood(raw).then(
+      (hit) => {
+        if (request !== latest.current) return;
+        if (hit) {
+          setPhase('ready');
+          onFound(hit.food, hit.grams);
+        } else {
+          setPhase('notfound');
+        }
+      },
+      (err: unknown) => {
+        if (request !== latest.current) return;
+        setError(describeError(err));
+        setPhase('error');
+      },
+    );
   };
+  const lookup = (raw: string) => {
+    setPhase('looking');
+    fetchFood(raw);
+  };
+
+  // A code from the camera is looked up as soon as the sheet opens with it (the panel starts
+  // in 'looking' for it).
+  // An effect event, so a new `onFound` from the parent doesn't look the code up again.
+  const scanned = scanResult?.data;
+  const lookUpScanned = useEffectEvent((code: string) => fetchFood(code));
+  useEffect(() => {
+    if (scanned) lookUpScanned(scanned);
+  }, [scanned]);
 
   return (
     <View>
@@ -63,38 +93,25 @@ export function BarcodeScannerPanel({ time, onTime, onAdd, onOpenCamera, scanRes
           </View>
         </Pressable>
       ) : (
-        <View style={styles.viewfinder}>
+        <Pressable onPress={onOpenCamera} accessibilityRole="button" accessibilityLabel="Scan another barcode" style={styles.viewfinder}>
           <View style={styles.reticle} />
-          <Text style={styles.statusCaption}>{phase === 'found' ? 'Product found' : 'No match'}</Text>
-        </View>
+          {phase === 'looking' ? <ActivityIndicator color="rgba(255,255,255,0.9)" style={styles.looking} accessibilityLabel="Looking up" /> : null}
+          <Text style={styles.statusCaption}>
+            {phase === 'looking' ? 'Looking up…' : 'Tap to scan again'}
+          </Text>
+        </Pressable>
       )}
 
-      {phase === 'found' && product ? (
-        <>
-          <View style={styles.productRow}>
-            <FoodIcon name={product.name} size={44} />
-            <View style={styles.productText}>
-              <Text style={styles.productName}>{product.name}</Text>
-              <Text style={styles.productMeta}>
-                {product.code} · {product.per100.kcal} kcal/100g
-              </Text>
-            </View>
-          </View>
-          <WhenPicker value={time} onChange={onTime} />
-          <Button
-            label={`Add ${product.amount}${product.unit} at ${time}`}
-            onPress={() => onAdd(product)}
-          />
-        </>
-      ) : null}
+      <WhenPicker value={time} onChange={onTime} label="Eaten at" compact />
 
-      {phase === 'notfound' || phase === 'manual' ? (
-        <Text style={styles.fallbackCopy}>That barcode isn&apos;t in the database yet — enter it manually or create a custom food.</Text>
+      {phase === 'notfound' ? (
+        <Text style={styles.fallbackCopy}>That barcode isn&apos;t in the database yet — check the number, or create a custom food.</Text>
       ) : null}
+      {phase === 'error' ? <Text style={[styles.fallbackCopy, { color: colors.errorText }]}>Couldn&apos;t look it up: {error}</Text> : null}
 
       <View style={styles.manualRow}>
-        <Field style={styles.manualInput} value={code} onChangeText={setCode} placeholder="Enter barcode number" keyboardType="numeric" />
-        <Button label="Look up" variant="secondary" onPress={lookup} />
+        <Field style={styles.manualInput} value={code} onChangeText={setCode} placeholder="Enter barcode number" keyboardType="number-pad" onSubmitEditing={() => lookup(code)} />
+        <Button label="Look up" variant="secondary" onPress={() => lookup(code)} />
       </View>
     </View>
   );
@@ -131,28 +148,6 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     fontSize: fontSize.micro,
     color: 'rgba(255,255,255,0.8)',
   },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md + 2,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    borderRadius: radius.md,
-    marginBottom: spacing.lg,
-  },
-  productText: { flex: 1, minWidth: 0 },
-  productName: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.body,
-    color: colors.textPrimary,
-  },
-  productMeta: {
-    fontFamily: fontFamily.medium,
-    fontSize: fontSize.micro,
-    color: colors.textTertiary,
-    marginTop: 3,
-  },
   fallbackCopy: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.small,
@@ -166,4 +161,5 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
     marginTop: spacing.md,
   },
   manualInput: { flex: 1 },
+  looking: { position: 'absolute' },
 });

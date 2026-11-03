@@ -15,7 +15,7 @@ Expo Mobile App ---- sign in, refresh tokens ----> Supabase Auth (Google, Apple)
        |
        +---- External APIs   (planned)
        |
-       +---- AI services     (planned)
+       +---- Anthropic (Claude)  (Nora, the in-app assistant)
 ```
 
 The mobile app (a separate Expo/React Native/TypeScript repository) never talks to PostgreSQL
@@ -43,8 +43,8 @@ input, call the DB, return a schema."
   `/api/v1` prefix. This is the only place that needs to change when a new route group is
   added.
 - **`app/api/routes/`** — one file per route group (`health.py`, `users.py`,
-  `nutrition_plans.py`, `foods.py`, `barcodes.py`, `meals.py`, `nutrition.py`). `barcodes.py` and `nutrition.py` are still
-  placeholders (see [api.md](api.md)). Route handlers should stay focused on HTTP concerns:
+  `nutrition_plans.py`, `foods.py`, `barcodes.py`, `meals.py`, `nora.py`, `nutrition.py`).
+  `nutrition.py` is still a placeholder (see [api.md](api.md)). Route handlers should stay focused on HTTP concerns:
   parsing input, calling a service or the DB, returning a schema.
 - **`app/core/config.py`** — a single `Settings` object (pydantic-settings) loaded from
   environment variables / `.env`. Anything configurable (database URL, CORS origins, secrets)
@@ -205,7 +205,14 @@ module that reads a plan's `baseline` and proposes a new draft (`reason: review`
 - The premium nutrition plan, phase 1 (`/api/v1/users/me/goals`,
   `/api/v1/users/me/nutrition-plans`): questionnaire, safety gates, algorithm, plans (see
   [Adaptive nutrition plan](#adaptive-nutrition-plan))
-- Placeholder routers for barcodes/nutrition (each returns `501 Not Implemented`)
+- Barcode lookup (`GET /api/v1/barcodes/{code}`)
+- Nora, the in-app assistant (`POST /api/v1/nora/chat`, premium): one Claude call per message
+  through the Anthropic SDK (`app/services/nora.py`); the conversation lives on the phone, the
+  API stores nothing. The user's day (log, targets, allergies) goes to Anthropic as context:
+  health data, and an exception to decision 10 of
+  [plans/ai-nutrition-plan.md](plans/ai-nutrition-plan.md) ("no per-user data goes to an AI
+  provider") that the before-launch GDPR check has to cover, with consent for it
+- Placeholder router for nutrition (returns `501 Not Implemented`)
 
 **Not implemented yet (planned):**
 
@@ -213,7 +220,6 @@ module that reads a plan's `baseline` and proposes a new draft (`reason: review`
   `food_log_entries.user_id` NOT NULL once the shared log is claimed everywhere (see
   [database.md](database.md)); Apple token revocation on account deletion, if Supabase doesn't
   do it; payments that set the plan
-- Barcode lookup
 - Calorie and macronutrient tracking
 - Daily nutrition summaries
 - Food photo uploads

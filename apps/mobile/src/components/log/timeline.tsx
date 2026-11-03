@@ -5,6 +5,8 @@ import { FoodIcon } from '@/components/log/food-icon';
 import { PlusIcon } from '@/components/log/icons';
 import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 import { Entry, entryMacros } from '@/features/food/data/mock-data';
+import { NutrientFamily, useFoodColors } from '@/features/food/theme';
+import { formatAmount } from '@/features/food/amount';
 import { fromMin, nowHHMM, toMin } from '@/features/food/time';
 
 const DAY_START = 6;
@@ -17,6 +19,8 @@ type TimelineProps = {
   onOpenEntry: (entry: Entry) => void;
   /** Log food at "HH:MM". */
   onAddAt: (time: string) => void;
+  /** An entry's grams of fibre, once its food's profile has loaded; undefined when unknown. */
+  fiberOf?: (entry: Entry) => number | undefined;
 };
 
 /**
@@ -24,8 +28,9 @@ type TimelineProps = {
  * eaten, and tapping any hour logs food at that time. Today also shows a "now" line. Ported
  * from LogPageV3.jsx's timeline block.
  */
-export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelineProps) {
+export function Timeline({ entries, isToday, onOpenEntry, onAddAt, fiberOf }: TimelineProps) {
   const colors = useColors();
+  const macro = useFoodColors();
   const styles = useStyles(makeStyles);
   const [showNight, setShowNight] = useState(false);
   // Re-render each minute so the now line stays current.
@@ -57,7 +62,7 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
         <View style={styles.entryText}>
           <Text style={styles.entryName}>{e.name}</Text>
           <Text style={styles.entryMeta}>
-            {e.time} · {e.amount} {e.unit}
+            {e.time} · {formatAmount(e.amount)} {e.unit}
             {later ? ' · planned' : ''}
           </Text>
         </View>
@@ -66,6 +71,30 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
           <Text style={styles.entryKcalUnit}> kcal</Text>
         </Text>
       </Pressable>
+    );
+  };
+
+  // An hour's protein, carbs, fat and fibre, added up, as a strip of tinted pills — each in its
+  // nutrient's own colour family. Fibre only once some entry's is known (custom foods and scans
+  // carry macros alone), so "0 g" never stands for "not known".
+  const hourTotals = (items: Entry[]) => {
+    const sum = (pick: (m: ReturnType<typeof entryMacros>) => number) => items.reduce((acc, e) => acc + pick(entryMacros(e)), 0);
+    const fibers = items.map((e) => fiberOf?.(e)).filter((v): v is number => v !== undefined);
+    const parts: [NutrientFamily, string, number][] = [
+      ['protein', 'P', sum((m) => m.protein)],
+      ['carbs', 'C', sum((m) => m.carbs)],
+      ['fat', 'F', sum((m) => m.fat)],
+    ];
+    if (fibers.length) parts.push(['fiber', 'Fiber', Math.round(fibers.reduce((a, b) => a + b, 0))]);
+    return (
+      <View style={styles.totals} accessible accessibilityLabel={`This hour: ${parts.map(([family, , v]) => `${v} grams ${family}`).join(', ')}`}>
+        {parts.map(([family, short, v]) => (
+          <View key={family} style={[styles.total, { backgroundColor: macro.nu[family].tint }]}>
+            <Text style={[styles.totalLabel, { color: macro.nu[family].ink }]}>{short}</Text>
+            <Text style={[styles.totalValue, { color: macro.nu[family].ink }]}>{v}g</Text>
+          </View>
+        ))}
+      </View>
     );
   };
 
@@ -137,6 +166,7 @@ export function Timeline({ entries, isToday, onOpenEntry, onAddAt }: TimelinePro
                   </Pressable>
                 ) : (
                   <View style={styles.hourItems}>
+                    {items.length > 0 ? hourTotals(items) : null}
                     {before.map(row)}
                     {isNowHour ? nowLine : null}
                     {after.map(row)}
@@ -211,6 +241,10 @@ const makeStyles = (colors: Palette) => StyleSheet.create({
   entryName: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary },
   entryMeta: { fontFamily: fontFamily.medium, fontSize: fontSize.micro, color: colors.textTertiary, marginTop: 4, ...num },
   entryKcal: { fontFamily: fontFamily.bold, fontSize: fontSize.body, color: colors.textPrimary, flexShrink: 0, ...num },
+  totals: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: spacing.sm, paddingTop: spacing.sm, paddingBottom: 2 },
+  total: { flexDirection: 'row', alignItems: 'baseline', gap: 4, paddingVertical: 4, paddingHorizontal: 9, borderRadius: radius.pill },
+  totalLabel: { fontFamily: fontFamily.bold, fontSize: fontSize.nano, letterSpacing: 0.3 },
+  totalValue: { fontFamily: fontFamily.extrabold, fontSize: fontSize.micro, ...num },
   entryKcalUnit: { fontFamily: fontFamily.semibold, fontSize: fontSize.micro, color: colors.textTertiary },
   nowRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingRight: spacing.md },
   nowLine: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.brandPrimary },

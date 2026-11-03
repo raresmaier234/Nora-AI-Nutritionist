@@ -14,9 +14,12 @@ type Swatch = { base: string; ink: string; tint: string };
  * per family. `base` = bars, dots, rings · `ink` = text on white or tint (AA) · `tint` = soft
  * card backgrounds. The dark set is desaturated (saturated hues vibrate on dark), with lighter
  * `ink` and a translucent `tint`.
+ *
+ * kcal is the Log page's green (successFill / greenText), not the design's coral, so calories
+ * read the same on every screen.
  */
 const nutrientLight: Record<NutrientFamily, Swatch> = {
-  kcal: { base: '#FF7A59', ink: '#C2410C', tint: '#FFF1EC' },
+  kcal: { base: '#22C55E', ink: '#15803D', tint: '#EAF9F0' },
   protein: { base: '#6366F1', ink: '#4338CA', tint: '#EEF0FF' },
   carbs: { base: '#F59E0B', ink: '#B45309', tint: '#FEF6E4' },
   fat: { base: '#F43F5E', ink: '#BE123C', tint: '#FFF1F3' },
@@ -27,7 +30,7 @@ const nutrientLight: Record<NutrientFamily, Swatch> = {
 };
 
 const nutrientDark: Record<NutrientFamily, Swatch> = {
-  kcal: { base: '#E8876B', ink: '#F2A68F', tint: 'rgba(232,135,107,0.12)' },
+  kcal: { base: '#469E6C', ink: '#7FD1A0', tint: 'rgba(127,209,160,0.13)' },
   protein: { base: '#9BA4F2', ink: '#B6BDF6', tint: 'rgba(155,164,242,0.12)' },
   carbs: { base: '#E3B45A', ink: '#EBC883', tint: 'rgba(227,180,90,0.12)' },
   fat: { base: '#E8798F', ink: '#F2A3B3', tint: 'rgba(232,121,143,0.12)' },

@@ -104,6 +104,26 @@ class NutrientAmount(BaseModel):
     amount: float = Field(ge=0)
 
 
+class FoodServing(BaseModel):
+    """One of a food's own units besides grams, and what one of it weighs."""
+
+    unit: str = Field(description="What the app shows on the unit's button, e.g. 'cup, chopped', 'slice'.")
+    label: str = Field(description="The unit in full, e.g. '1 piece (1/8 of 9\" dia)'.")
+    grams: float = Field(gt=0, description="What one of the unit weighs, in grams.")
+    estimated: bool = Field(
+        default=False,
+        description="A kitchen measure from a typical density for this kind of food, not one "
+        "weighed for it: close, not exact. The app marks it '≈'.",
+    )
+
+
+class PackageServing(BaseModel):
+    """The serving a product's package states."""
+
+    label: str = Field(description="As printed on the package, e.g. '1 cookie (12.5 g)' or '30 g'.")
+    grams: float = Field(gt=0, description="What the serving weighs, in grams.")
+
+
 class FoodDetail(BaseModel):
     """A food with its full nutrient profile, per 100g. Nutrients without data are left out."""
 
@@ -115,5 +135,13 @@ class FoodDetail(BaseModel):
     )
     per_100g: Per100g | None = Field(
         description="Null when the food lacks calories, protein, carbs or fat."
+    )
+    package_serving: PackageServing | None = Field(
+        default=None, description="The serving the product's package states; null for generic foods."
+    )
+    servings: list[FoodServing] = Field(
+        default_factory=list,
+        description="The food's own units besides grams — cup, tbsp, slice, serving… — from its "
+        "source, in the source's order. Empty when the source names none; grams always work.",
     )
     nutrients: list[NutrientAmount]

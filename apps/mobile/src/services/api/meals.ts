@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import type { FoodLogEntry, FoodLogEntryCreate, FoodLogEntryUpdate } from './types';
+import type { FoodLogEntry, FoodLogEntryCreate, FoodLogEntryUpdate, FoodPortions, LogSummary } from './types';
 
 const ENTRIES = '/meals/entries';
 
@@ -26,4 +26,14 @@ export function copyDay(fromDate: string, toDate: string): Promise<FoodLogEntry[
     method: 'POST',
     body: { from_date: fromDate, to_date: toDate },
   });
+}
+
+/** How much of a database food the user usually logs, and logged last time. */
+export function getPortions(foodId: number): Promise<FoodPortions> {
+  return apiRequest<FoodPortions>(`/meals/portions?${new URLSearchParams({ food_id: String(foodId) })}`, { method: 'GET' });
+}
+
+/** What was eaten each day from `start` to `end` (YYYY-MM-DD, inclusive, at most 92 days). */
+export function getSummary(start: string, end: string): Promise<LogSummary> {
+  return apiRequest<LogSummary>(`/meals/summary?${new URLSearchParams({ start, end })}`, { method: 'GET' });
 }

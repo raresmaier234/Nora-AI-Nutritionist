@@ -17,7 +17,6 @@ export type NotifyKind = 'success' | 'info';
 export type Notify = (kind: NotifyKind, message: string) => void;
 
 export type DetectedItem = Food & { amount: number; unit: string; confidence: number; on: boolean };
-export type ScannedProduct = { code: string; name: string; per100: Macro; amount: number; unit: string };
 export type CustomFoodForm = {
   name: string;
   amount: number | string;
@@ -28,7 +27,8 @@ export type CustomFoodForm = {
   fat: number | string;
 };
 /** What the Food Details screen can change about a logged entry. */
-export type EntryChange = { amount: number; unit: string; time: string };
+/** `grams` for a food's own unit ("1 cup"); without it, grams come from `unit` as g, oz, slice… */
+export type EntryChange = { amount: number; unit: string; time: string; grams?: number };
 
 export type LoadState = 'loading' | 'ready' | 'error';
 
@@ -41,6 +41,7 @@ function toEntry(e: FoodLogEntry): Entry {
     per100: e.per_100g,
     amount: e.amount,
     unit: e.unit,
+    grams: e.grams,
     time: timeOf(e.logged_at),
   };
 }
@@ -121,22 +122,22 @@ export function useFoodLog(date: string, onNotify?: Notify) {
   );
 
   const base = useCallback(
-    (time: string, amount: number, unit: string) => ({
+    (time: string, amount: number, unit: string, grams?: number) => ({
       logged_at: toLoggedAt(date, time),
       amount,
       unit,
-      grams: toGrams(amount, unit),
+      grams: grams ?? toGrams(amount, unit),
     }),
     [date],
   );
 
   /** Log a database food by id, or anything else (a saved recipe) by its name and values. */
   const addEntry = useCallback(
-    async (time: string, food: Food, amount = 100, unit = 'g') => {
+    async (time: string, food: Food, amount = 100, unit = 'g', grams?: number) => {
       const ref = /^\d+$/.test(food.id)
         ? { food_id: Number(food.id) }
         : { source: 'recipe' as const, name: food.name, per_100g: food.per100 };
-      const [entry] = await create([{ ...base(time, amount, unit), ...ref }]);
+      const [entry] = await create([{ ...base(time, amount, unit, grams), ...ref }]);
       if (entry) onNotify?.('success', `${entry.name} logged at ${time}.`);
     },
     [base, create, onNotify],
@@ -150,7 +151,7 @@ export function useFoodLog(date: string, onNotify?: Notify) {
             logged_at: toLoggedAt(date, change.time),
             amount: change.amount,
             unit: change.unit,
-            grams: toGrams(change.amount, change.unit),
+            grams: change.grams ?? toGrams(change.amount, change.unit),
           }),
         );
         setEntries((s) => s.map((e) => (e.uid === uid ? updated : e)).sort(byTime));
@@ -174,16 +175,6 @@ export function useFoodLog(date: string, onNotify?: Notify) {
       onNotify?.('info', `${name} removed.`);
     },
     [onNotify],
-  );
-
-  const addScanned = useCallback(
-    async (time: string, product: ScannedProduct) => {
-      const created = await create([
-        { ...base(time, product.amount, product.unit), source: 'barcode', name: product.name, per_100g: product.per100 },
-      ]);
-      if (created.length > 0) onNotify?.('success', `${product.name} logged at ${time}.`);
-    },
-    [base, create, onNotify],
   );
 
   const addPhotoItems = useCallback(
@@ -229,7 +220,6 @@ export function useFoodLog(date: string, onNotify?: Notify) {
     addEntry,
     changeEntry,
     removeEntry,
-    addScanned,
     addPhotoItems,
     saveCustom,
   };

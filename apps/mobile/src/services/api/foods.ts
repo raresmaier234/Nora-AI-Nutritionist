@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { ApiError, apiRequest } from './client';
 import type { FoodDetail, FoodSearchResult } from './types';
 
 /** Foods whose name contains or resembles `query`, best match first. */
@@ -10,4 +10,12 @@ export function searchFoods(query: string, limit = 20): Promise<FoodSearchResult
 /** One database food with its full nutrient profile: fibre, sugars, fats, vitamins, minerals… */
 export function getFood(id: number): Promise<FoodDetail> {
   return apiRequest<FoodDetail>(`/foods/${id}`, { method: 'GET' });
+}
+
+/** The database food a scanned barcode belongs to, or null when no loggable food has it. */
+export function lookupBarcode(code: string): Promise<FoodDetail | null> {
+  return apiRequest<FoodDetail>(`/barcodes/${encodeURIComponent(code)}`, { method: 'GET' }).catch((err: unknown) => {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  });
 }

@@ -356,6 +356,15 @@ def active_plan(db: Session, user: User) -> NutritionPlan | None:
     )
 
 
+def maintenance_kcal(db: Session, user: User) -> int | None:
+    """The active plan's estimated daily expenditure (its TDEE), as the plan shows it; None
+    without an active plan."""
+    plan = active_plan(db, user)
+    if plan is None:
+        return None
+    return int(algorithm.round_to(plan.baseline["tdee"], algorithm.KCAL_STEP))
+
+
 def _decimal(value: float | None) -> Decimal | None:
     return None if value is None else Decimal(str(value))
 

@@ -12,14 +12,14 @@ type PlanDetailsProps = {
   plan: NutritionPlan;
   /** How the user entered their weight; weights here are shown the same way. */
   units: MeasurementUnits;
-  /** The Profile tab: a progress area under the goal (filled by weekly check-ins, a later phase). */
+  /** The Strategy tab: a progress area under the goal (filled by weekly check-ins, a later phase). */
   showProgress?: boolean;
 };
 
 /**
  * A nutrition plan, read-only: the goal and its date, the daily targets, and the plan's texts —
  * summary, why these numbers, how to follow it, and anything to be careful about. Shown on the
- * plan builder's review and on the Profile tab. Numbers are estimates ("~").
+ * plan builder's review and on the Strategy tab. Numbers are estimates ("~").
  */
 export function PlanDetails({ plan, units, showProgress }: PlanDetailsProps) {
   const styles = useStyles(makeStyles);

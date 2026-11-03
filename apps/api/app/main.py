@@ -29,12 +29,19 @@ tags_metadata = [
     },
     {
         "name": "Barcodes",
-        "description": "Barcode-to-food lookup. Not implemented yet.",
+        "description": "Barcode-to-food lookup, from the barcodes stored with each food.",
     },
     {
         "name": "Meals",
         "description": (
             "Food logging: what was eaten, per meal and day. Each user has their own log."
+        ),
+    },
+    {
+        "name": "Nora",
+        "description": (
+            "Nora, the in-app nutrition assistant (Claude): questions about food and the "
+            "day's log, meal ideas. Premium only; conversations aren't stored."
         ),
     },
     {

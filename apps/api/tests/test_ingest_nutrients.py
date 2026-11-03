@@ -23,7 +23,8 @@ CORE_COLUMNS = {
 
 def test_every_nutrient_has_a_column_and_every_column_a_nutrient() -> None:
     """The model and migration are written out by hand; this catches either drifting."""
-    numeric = {c.name for c in Food.__table__.columns if isinstance(c.type, Numeric)}
+    # Every per-100g number; the package serving's weight is the one numeric column that isn't.
+    numeric = {c.name for c in Food.__table__.columns if isinstance(c.type, Numeric)} - {"package_serving_grams"}
 
     assert numeric == CORE_COLUMNS | {n.column for n in EXTRA_NUTRIENTS}
 

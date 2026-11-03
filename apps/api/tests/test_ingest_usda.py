@@ -51,3 +51,47 @@ def test_foundation_foods_without_208_use_the_atwater_energy() -> None:
     record = {**BANANA, "foodNutrients": [*nutrients, nutrient("958", "kcal", 90)]}
 
     assert normalize_food(food_to_raw(record)).calories_per_100g == Decimal("90")
+
+
+def portion(amount: float, modifier: str, grams: float, measure: str = "undetermined", seq: int = 1) -> dict:
+    return {"amount": amount, "modifier": modifier, "gramWeight": grams, "sequenceNumber": seq, "measureUnit": {"name": measure}}
+
+
+def test_usda_portions_become_units_with_the_grams_one_weighs() -> None:
+    record = {
+        **BANANA,
+        "foodPortions": [
+            portion(1, "cup, sliced", 150, seq=1),
+            portion(1, "tablespoon", 9, seq=2),
+            portion(3, "oz", 85, seq=3),  # the app offers oz for every food
+            portion(1, 'medium (7" to 7-7/8" long)', 118, seq=4),
+            portion(1, "", 120, measure="RACC", seq=5),
+        ],
+    }
+
+    servings = normalize_food(food_to_raw(record)).servings
+
+    assert [(s["unit"], s["grams"]) for s in servings] == [
+        ("cup, sliced", 150),
+        ("tbsp", 9),
+        ("medium", 118),
+        # No "serving": a banana isn't a prepared dish. Kitchen measures from the tbsp: the same food, by volume.
+        ("cup", 144.0),
+        ("tsp", 3.0),
+    ]
+    assert servings[2]["label"] == '1 medium (7" to 7-7/8" long)'
+
+
+def test_liquid_milk_is_also_measured_in_ml() -> None:
+    milk = {**BANANA, "description": "Milk, whole, 3.25% milkfat", "foodPortions": [portion(1, "cup", 249)]}
+    powder = {**milk, "description": "Milk, dry, whole"}
+
+    assert "ml" in [s["unit"] for s in normalize_food(food_to_raw(milk)).servings]
+    assert "ml" not in [s["unit"] for s in normalize_food(food_to_raw(powder)).servings]
+
+
+def test_a_prepared_dish_keeps_its_serving() -> None:
+    burger = {**BANANA, "foodCategory": {"description": "Fast Foods"}, "foodPortions": [portion(1, "", 226, measure="RACC")]}
+
+    # Its serving, and no cups or spoons: nobody measures a burger by volume.
+    assert [s["unit"] for s in normalize_food(food_to_raw(burger)).servings] == ["serving"]

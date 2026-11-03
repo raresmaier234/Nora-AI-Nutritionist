@@ -139,10 +139,11 @@ src/services/api/
 ├── client.ts   ApiError, apiRequest<T>(path, options), describeError(err)
 ├── types.ts    ApiErrorKind, HealthResponse, FoodDetail, FoodLogEntry, UserProfile, GoalAnswers, NutritionPlan, ...
 ├── health.ts   getHealth()
-├── foods.ts    searchFoods(), getFood()
-├── meals.ts    listEntries(), createEntry(), updateEntry(), deleteEntry(), copyDay()
+├── foods.ts    searchFoods(), getFood(), lookupBarcode()
+├── meals.ts    listEntries(), createEntry(), updateEntry(), deleteEntry(), copyDay(), getPortions(), getSummary()
 ├── users.ts    getMe(), updateMe(), deleteMe()
 ├── nutrition-plan.ts  previewPlan(), saveGoals(), getLatestGoals(), createPlanDraft(), getActivePlan(), activatePlan(), gateFromError()
+├── nora.ts     chatWithNora()
 └── index.ts    barrel export — import from '@/services/api'
 ```
 
@@ -280,7 +281,7 @@ premium** (403 for basic); `profile.plan` is already expiry-aware.
 | `POST /users/me/goals` | `saveGoals()` | Saves every answer (`questionnaire_version: 2`, `consent: true`, `consent_version`, `language`). Resolves with the goal and its gate, or `{id: null, gate}` for under-16s (nothing stored); 422 if the goal isn't allowed — `gateFromError(err)` reads the gate from the error's `detail` |
 | `GET /users/me/goals` | `getLatestGoals()` | The latest answers, to prefill the questionnaire; `null` on 404 (and then the consent screen is shown) |
 | `POST /users/me/nutrition-plans` `{goal_id}` | `createPlanDraft()` | A draft plan, instantly: targets, rate (`clamped`), goal date and weeks, `notices`, rendered `texts` |
-| `GET /users/me/nutrition-plans/active` | `getActivePlan()` | The Profile tab's plan; `null` on 404 |
+| `GET /users/me/nutrition-plans/active` | `getActivePlan()` | The Strategy tab's plan; `null` on 404 |
 | `POST /users/me/nutrition-plans/{id}/activate` | `activatePlan()` | "Use this plan": the API copies the targets to the user; the app then reloads the profile |
 
 `GET /users/me` carries `targets_mode` (`default` · `plan` · `none`) and `check_in_due` (weekly
@@ -302,6 +303,28 @@ and birth are always there). If the save fails, the stop screen still shows. A l
 ("Something changed?") that no longer stops puts the account back on the default targets.
 An eating disorder in the past asks "How would you like to use Nora?" (`targets_wanted`, false
 by default): log without targets is the `targets_declined` stop, handled like any other.
+
+## Nora (chat)
+
+The Nora tab is a chat with Nora, the in-app assistant. **Premium only** (403 for basic; the tab
+shows what Nora does instead).
+
+| Call | Wrapper | Used for |
+| --- | --- | --- |
+| `POST /nora/chat` `{messages, date}` | `chatWithNora(messages, date)` | Nora's reply (`{reply}`, plain text) to the conversation's last message |
+
+The API answers with Claude (Anthropic) and stores nothing, so the app sends the **whole
+conversation** each time: the latest 30 messages, oldest first, starting and ending with one of
+the user's (`useNoraChat` trims to that; the user's messages are at most 2000 characters, Nora's
+8000). `date` is the phone's local day, whose log Nora sees. The conversation lives in the Nora
+screen's state only — never in storage — so it's gone after sign-out or a restart; "New chat"
+clears it. The screen tells the user that messages and today's log go to Anthropic.
+
+The request has a 60 s timeout (Claude thinks before answering). `503` means Nora isn't set up on
+the server (no `ANTHROPIC_API_KEY`) or Claude is busy: the screen shows the API's sentence and
+"Try again", which resends the same conversation. Nora never changes targets; for users with
+`targets_mode: "none"` the API keeps calories out of the answers, and the app's suggested
+questions avoid them too.
 
 ## Handling errors
 

@@ -12,7 +12,7 @@ import type { Section } from '@/features/nutrition-plan/questionnaire';
 import type { UserProfile } from '@/services/api';
 
 /**
- * The Profile tab's "Your plan" section, by account and `targets_mode`:
+ * The Strategy tab's plan section, by account and `targets_mode`:
  * - basic: the default targets, read-only, and what "Build my plan · Premium" includes;
  * - premium, no plan yet: a prominent "Build my plan" above the starting targets;
  * - premium, active plan: the goal and its date, progress (check-ins, a later phase), the

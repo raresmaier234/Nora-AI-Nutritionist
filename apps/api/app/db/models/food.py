@@ -30,6 +30,15 @@ class Food(Base):
     # The product's EAN/UPC (8–14 digits, as printed), for looking a product up by scanning
     # it. Unique: one barcode is one product. Null for generic foods and unknown codes.
     barcode: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
+    # The food's own units besides grams, as the source gives them, each with the grams one
+    # weighs: [{"unit": "cup, chopped", "label": "1 cup, chopped", "grams": 160.0}, …].
+    # Null when the source names none.
+    # The serving the package states, as printed ("1 cookie (12.5 g)", "30 g") and what it weighs.
+    # Products only; the app offers it as a portion whatever the food's units are.
+    package_serving_label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    package_serving_grams: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    # none_as_null: no units is SQL NULL, not the JSON value null, so `servings IS NULL` finds it.
+    servings: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
 
     # Name, brand and store, case/accent/punctuation-folded (app/utils/naming.py). Unique,
     # so duplicate foods cannot be inserted even if a dedup check upstream misses one.

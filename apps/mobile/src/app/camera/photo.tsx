@@ -10,7 +10,7 @@ export default function PhotoCaptureRoute() {
   const handleCaptured = useCallback(
     (result: PhotoCaptureResult) => {
       router.dismissTo({
-        pathname: '/',
+        pathname: '/log',
         params: { capturedPhotoUri: result.uri },
       });
     },

@@ -123,7 +123,7 @@ export async function signInWithApple(): Promise<{ fullName: string | null } | n
     const { error: nameError } = await auth.updateUser({
       data: { full_name: fullName, given_name: givenName, family_name: familyName },
     });
-    // Signed in either way; the name can also be set on the Profile tab.
+    // Signed in either way; the name can also be set on the More tab.
     if (nameError && __DEV__) console.warn(`[auth/sign-in] Could not save Apple's name: ${nameError.message}`);
   }
   return { fullName };

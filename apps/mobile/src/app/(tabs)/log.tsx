@@ -1,12 +1,11 @@
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppearanceButton } from '@/components/common/appearance-button';
 import { CalorieSummaryCard } from '@/components/log/calorie-summary-card';
 import { DateNavigator, dayLabels } from '@/components/log/date-navigator';
-import { LogFoodBar } from '@/components/log/log-food-bar';
 import { BarcodeScannerPanel } from '@/components/log/panels/barcode-scanner-panel';
 import { CustomFoodPanel } from '@/components/log/panels/custom-food-panel';
 import { PhotoEstimatePanel } from '@/components/log/panels/photo-estimate-panel';
@@ -21,14 +20,12 @@ import { Sheet } from '@/components/ui/sheet';
 import { ToastOverlay, useToastHost } from '@/components/ui/toast';
 import { Palette, fontFamily, fontSize, radius, spacing, useColors, useStyles } from '@/theme';
 import { Entry, Food, Macro, RECIPES, Recipe, entryMacros, toGrams } from '@/features/food/data/mock-data';
+import { findScannedFood } from '@/features/food/barcode';
+import { useDayNutrients } from '@/features/food/hooks/use-day-nutrients';
 import { shiftDate, toDateString, useFoodLog } from '@/features/food/hooks/use-food-log';
-import { useTargets } from '@/features/food/hooks/use-targets';
 import { recipeFood } from '@/features/food/recipes';
 import { nowHHMM } from '@/features/food/time';
 import type { BarcodeScanResult, PhotoCaptureResult } from '@/features/camera';
-
-/** Room under the timeline so its last hour can scroll clear of the Log food bar. */
-const LOG_BAR_CLEARANCE = 96;
 
 const minus = (a: Macro, b: Macro): Macro => ({
   kcal: a.kcal - b.kcal,
@@ -41,12 +38,13 @@ export default function LogScreen() {
   const colors = useColors();
   const styles = useStyles(makeStyles);
 
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     scannedBarcodeData?: string;
     scannedBarcodeType?: string;
     capturedPhotoUri?: string;
+    /** Set by the tab bar's +: open Add food (a timestamp, so each tap is a change). */
+    addFood?: string;
   }>();
   const { notify, toast } = useToastHost();
 
@@ -55,7 +53,8 @@ export default function LogScreen() {
   const [dayOffset, setDayOffset] = useState(0);
   const date = shiftDate(toDateString(today), dayOffset);
   const foodLog = useFoodLog(date, notify);
-  const targets = useTargets();
+  // Each entry's fibre, for the timeline's per-hour totals (profiles shared with Food Details).
+  const day = useDayNutrients(foodLog.entries);
   /** Entry being edited in Food Details. */
   const [detail, setDetail] = useState<Entry | null>(null);
   /** The day's full nutrition, opened from the summary card. */
@@ -79,6 +78,10 @@ export default function LogScreen() {
   const [afterRecipes, setAfterRecipes] = useState<(() => void) | null>(null);
   const [scanResult, setScanResult] = useState<BarcodeScanResult | null>(null);
   const [photoResult, setPhotoResult] = useState<PhotoCaptureResult | null>(null);
+  /** A scanned product to open in Food Details once the Barcode sheet has finished closing. */
+  const [pendingScan, setPendingScan] = useState<{ food: Food; grams: number | null } | null>(null);
+  /** The scanned product open in Food Details, to add at `time`. */
+  const [scannedView, setScannedView] = useState<{ food: Food; grams: number | null; time: string } | null>(null);
   /** The camera to open once the Photo / Barcode sheet has finished closing. */
   const [pendingCamera, setPendingCamera] = useState<'scan' | 'photo' | null>(null);
 
@@ -96,23 +99,43 @@ export default function LogScreen() {
     setMode(null);
   };
   const onCameraSheetDismissed = () => {
+    if (pendingScan) {
+      setScannedView({ ...pendingScan, time: targetTime });
+      setPendingScan(null);
+      return;
+    }
     if (!pendingCamera) return;
     const kind = pendingCamera;
     setPendingCamera(null);
     openCamera(kind);
   };
 
+  // Back from the camera with a barcode: look it up first and go straight to Food Details on a
+  // match. Only a miss (or a failed lookup) opens the Barcode sheet — opening it and closing it
+  // again as the answer arrives would dismiss a modal mid-presentation, which on iOS can leave
+  // an invisible window over the screen that blocks every tap.
+  const onScanned = useEffectEvent((scan: BarcodeScanResult) => {
+    const time = targetTime;
+    const showSheet = () => {
+      setScanResult(scan);
+      setMode('scan');
+    };
+    findScannedFood(scan.data).then((hit) => (hit ? setScannedView({ ...hit, time }) : showSheet()), showSheet);
+  });
+
   useEffect(() => {
     if (params.scannedBarcodeData && params.scannedBarcodeType) {
-      setScanResult({ data: params.scannedBarcodeData, type: params.scannedBarcodeType as BarcodeScanResult['type'] });
-      setMode('scan');
+      onScanned({ data: params.scannedBarcodeData, type: params.scannedBarcodeType as BarcodeScanResult['type'] });
       router.setParams({ scannedBarcodeData: '', scannedBarcodeType: '' });
     } else if (params.capturedPhotoUri) {
       setPhotoResult({ uri: params.capturedPhotoUri });
       setMode('photo');
       router.setParams({ capturedPhotoUri: '' });
+    } else if (params.addFood) {
+      setAdding(nowHHMM());
+      router.setParams({ addFood: '' });
     }
-  }, [params.scannedBarcodeData, params.scannedBarcodeType, params.capturedPhotoUri, router]);
+  }, [params.scannedBarcodeData, params.scannedBarcodeType, params.capturedPhotoUri, params.addFood, router]);
 
   // Search's Photo / Barcode / Recipes / Custom tiles: close search, then open that flow at the
   // time search was logging at. Not straight away: iOS can't present a sheet or push the camera
@@ -170,7 +193,7 @@ export default function LogScreen() {
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + LOG_BAR_CLEARANCE }]}
+        contentContainerStyle={[styles.content, { paddingBottom: spacing.xl }]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <AppearanceButton />
@@ -197,10 +220,15 @@ export default function LogScreen() {
           </View>
         ) : null}
 
-        <Timeline entries={foodLog.entries} isToday={dayOffset === 0} onOpenEntry={setDetail} onAddAt={setAdding} />
+        <Timeline
+          entries={foodLog.entries}
+          isToday={dayOffset === 0}
+          fiberOf={(e) => day.perEntry.get(e.uid)?.fiber}
+          onOpenEntry={setDetail}
+          onAddAt={setAdding}
+        />
       </ScrollView>
 
-      <LogFoodBar onPress={() => setAdding(nowHHMM())} bottomInset={insets.bottom} />
 
       {/* The day's totals: macros, fibre, vitamins, minerals, and what's left of each */}
       <FullScreen visible={showDay} onClose={() => setShowDay(false)}>
@@ -214,6 +242,25 @@ export default function LogScreen() {
         ) : null}
       </FullScreen>
 
+      {/* A scanned product, to add — starting at its package's serving when it states one */}
+      <FullScreen visible={!!scannedView} onClose={() => setScannedView(null)}>
+        {scannedView ? (
+          <FoodDetailsScreen
+            key={`scan-${scannedView.food.id}`}
+            mode="add"
+            food={scannedView.food}
+            time={scannedView.time}
+            initialGrams={scannedView.grams ?? undefined}
+            consumed={foodLog.totals}
+            onClose={() => setScannedView(null)}
+            onAdd={({ time, amount, unit, grams }) => {
+              foodLog.addEntry(time, scannedView.food, amount, unit, grams);
+              setScannedView(null);
+            }}
+          />
+        ) : null}
+      </FullScreen>
+
       {/* Edit a logged entry */}
       <FullScreen visible={!!detail} onClose={() => setDetail(null)}>
         {detail ? (
@@ -222,7 +269,9 @@ export default function LogScreen() {
             mode="edit"
             food={detail}
             time={detail.time}
-            initialGrams={toGrams(detail.amount, detail.unit)}
+            initialGrams={detail.grams ?? toGrams(detail.amount, detail.unit)}
+            initialAmount={detail.amount}
+            initialUnit={detail.unit}
             consumed={minus(foodLog.totals, entryMacros(detail))}
             onClose={() => setDetail(null)}
             onSave={(change) => {
@@ -249,8 +298,7 @@ export default function LogScreen() {
             time={adding}
             onTimeChange={setAdding}
             entries={foodLog.entries}
-            eatenKcal={foodLog.totals.kcal}
-            remainingKcal={targets ? targets.kcal - foodLog.totals.kcal : null}
+            consumed={foodLog.totals}
             onOpenFood={(food) => setFoodView({ food, time: adding })}
             onQuickAdd={(food, grams) => foodLog.addEntry(adding, food, grams, 'g')}
             onMode={openFlow}
@@ -266,8 +314,8 @@ export default function LogScreen() {
               time={foodView.time}
               consumed={foodLog.totals}
               onClose={() => setFoodView(null)}
-              onAdd={({ time, amount, unit }) => {
-                foodLog.addEntry(time, foodView.food, amount, unit);
+              onAdd={({ time, amount, unit, grams }) => {
+                foodLog.addEntry(time, foodView.food, amount, unit, grams);
                 closeSearch();
               }}
             />
@@ -309,8 +357,9 @@ export default function LogScreen() {
           onTime={setTargetTime}
           onOpenCamera={() => openCameraFromSheet('scan')}
           scanResult={scanResult}
-          onAdd={(product) => {
-            foodLog.addScanned(targetTime, product);
+          onFound={(food, grams) => {
+            // Food Details opens once this sheet has closed (onCameraSheetDismissed).
+            setPendingScan({ food, grams });
             setMode(null);
             setScanResult(null);
           }}
@@ -372,8 +421,8 @@ export default function LogScreen() {
               time={targetTime}
               consumed={foodLog.totals}
               onClose={() => (studio ? setRecipeView(null) : closeRecipePages())}
-              onAdd={({ time, amount, unit }) => {
-                foodLog.addEntry(time, viewed.food, amount, unit);
+              onAdd={({ time, amount, unit, grams }) => {
+                foodLog.addEntry(time, viewed.food, amount, unit, grams);
                 closeRecipePages();
               }}
             />

@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2:latest"
     ollama_timeout_seconds: float = 120.0
 
+    # Nora, the in-app assistant (app/services/nora.py), answers with Claude. Unset, the Nora
+    # endpoint answers 503 and nothing is sent anywhere.
+    anthropic_api_key: str | None = None
+    nora_model: str = "claude-opus-5-5"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

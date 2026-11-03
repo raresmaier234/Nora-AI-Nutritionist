@@ -10,7 +10,7 @@ export default function BarcodeScannerRoute() {
   const handleScanned = useCallback(
     (result: BarcodeScanResult) => {
       router.dismissTo({
-        pathname: '/',
+        pathname: '/log',
         params: { scannedBarcodeData: result.data, scannedBarcodeType: result.type },
       });
     },

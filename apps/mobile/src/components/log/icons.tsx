@@ -167,6 +167,34 @@ export function AlertIcon({ size = 16, color = '#B45309', strokeWidth = 2.4 }: I
   );
 }
 
+/** Nora's mark: a large and a small four-point star. `fill` fills them (the open Nora tab). */
+export function SparkleIcon({ size = 18, color = '#6366F1', strokeWidth = 2, fill = 'none' }: IconProps & { fill?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round">
+      <Path d="M10 4.5l1.9 6.6 6.6 1.9-6.6 1.9L10 21.5l-1.9-6.6L1.5 13l6.6-1.9z" />
+      <Path d="M18.5 2l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
+    </Svg>
+  );
+}
+
+export function ArrowUpIcon({ size = 16, color = '#fff', strokeWidth = 2.6 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />
+    </Svg>
+  );
+}
+
+export function CartIcon({ size = 17, color = '#475569', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M2.5 3.5h2.6l2.3 11.2a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.2l1.6-6.8H6.1" />
+      <Circle cx={9.5} cy={20} r={1.3} />
+      <Circle cx={17.5} cy={20} r={1.3} />
+    </Svg>
+  );
+}
+
 export function SunIcon({ size = 18, color = '#475569', strokeWidth = 2 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">

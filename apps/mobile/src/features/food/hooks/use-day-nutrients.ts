@@ -47,13 +47,21 @@ export function useDayNutrients(entries: Entry[]) {
   const current = loaded?.key === key ? loaded : null;
   const profiles = current?.profiles ?? null;
   const values: NutrientValues = {};
+  const perEntry = new Map<number, NutrientValues>();
   for (const e of entries) {
     const profile = isDatabaseFood(e) ? (profiles?.get(Number(e.id)) ?? null) : null;
-    const f = toGrams(e.amount, e.unit) / 100;
-    for (const [k, v] of Object.entries(nutrientValues(e.per100, profile))) values[k] = (values[k] ?? 0) + v * f;
+    const f = (e.grams ?? toGrams(e.amount, e.unit)) / 100;
+    const own: NutrientValues = {};
+    for (const [k, v] of Object.entries(nutrientValues(e.per100, profile))) {
+      own[k] = v * f;
+      values[k] = (values[k] ?? 0) + v * f;
+    }
+    perEntry.set(e.uid, own);
   }
   return {
     values,
+    /** Each entry's own values, by `uid` — e.g. to add up an hour of the timeline. */
+    perEntry,
     /** Entries without a full profile: everything but database foods. */
     withoutProfile: entries.filter((e) => !isDatabaseFood(e)).length,
     loading: key !== '' && current === null,

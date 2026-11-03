@@ -6,16 +6,23 @@ that doesn't exist, so ids reveal nothing.
 """
 
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.food import Food
 from app.db.models.food_log_entry import FoodLogEntry
 from app.schemas.food import Per100g
-from app.schemas.meal import FoodLogEntryCreate, FoodLogEntryRead, FoodLogEntryUpdate
+from app.schemas.meal import (
+    DayTotals,
+    FoodLogEntryCreate,
+    FoodLogEntryRead,
+    FoodLogEntryUpdate,
+    FoodPortions,
+    Portion,
+)
 
 
 class FoodNotFoundError(LookupError):
@@ -189,6 +196,75 @@ def copy_day(
     for copy in copies:
         db.refresh(copy)
     return copies
+
+
+def daily_totals(db: Session, user_id: uuid.UUID, start: date, end: date) -> list[DayTotals]:
+    """What the user ate each day from `start` to `end`, a row for every day (zeros when nothing
+    was logged). Values come from each entry's own snapshot; fibre from the food's record."""
+    per_gram = FoodLogEntry.grams / 100
+    rows = db.execute(
+        select(
+            FoodLogEntry.logged_on,
+            func.sum(FoodLogEntry.kcal_per_100g * per_gram),
+            func.sum(FoodLogEntry.protein_per_100g * per_gram),
+            func.sum(FoodLogEntry.carbs_per_100g * per_gram),
+            func.sum(FoodLogEntry.fat_per_100g * per_gram),
+            func.sum(Food.fiber_per_100g * per_gram),
+            func.count(FoodLogEntry.id),
+        )
+        .outerjoin(Food, Food.id == FoodLogEntry.food_id)
+        .where(FoodLogEntry.user_id == user_id, FoodLogEntry.logged_on.between(start, end))
+        .group_by(FoodLogEntry.logged_on)
+    ).all()
+    by_day = {row[0]: row for row in rows}
+
+    days = []
+    for offset in range((end - start).days + 1):
+        day = start + timedelta(days=offset)
+        row = by_day.get(day)
+        if row is None:
+            days.append(DayTotals(date=day, kcal=0, protein=0, carbs=0, fat=0, fiber=None, entries=0))
+            continue
+        _, kcal, protein, carbs, fat, fiber, count = row
+        days.append(
+            DayTotals(
+                date=day,
+                kcal=round(float(kcal), 1),
+                protein=round(float(protein), 1),
+                carbs=round(float(carbs), 1),
+                fat=round(float(fat), 1),
+                fiber=None if fiber is None else round(float(fiber), 1),
+                entries=count,
+            )
+        )
+    return days
+
+
+# How far back "usual" looks, in entries of the food: recent habits, not last year's.
+_RECENT_ENTRIES = 30
+
+
+def portions(db: Session, user_id: uuid.UUID, food_id: int) -> FoodPortions:
+    """The user's usual and last amount of a food, from their own log."""
+    entries = db.execute(
+        select(FoodLogEntry.amount, FoodLogEntry.unit, FoodLogEntry.grams)
+        .where(FoodLogEntry.user_id == user_id, FoodLogEntry.food_id == food_id)
+        .order_by(FoodLogEntry.logged_at.desc(), FoodLogEntry.id.desc())
+        .limit(_RECENT_ENTRIES)
+    ).all()
+    if not entries:
+        return FoodPortions(usual=None, last=None)
+
+    def portion(row) -> Portion:
+        return Portion(amount=float(row.amount), unit=row.unit, grams=float(row.grams))
+
+    # Most often logged (amount, unit); a tie goes to the more recent, as the list is newest first.
+    counts: dict[tuple[Decimal, str], int] = {}
+    for row in entries:
+        counts[(row.amount, row.unit)] = counts.get((row.amount, row.unit), 0) + 1
+    best = max(counts, key=counts.get)
+    usual = next(row for row in entries if (row.amount, row.unit) == best) if counts[best] >= 2 else None
+    return FoodPortions(usual=portion(usual) if usual else None, last=portion(entries[0]))
 
 
 def to_read(entry: FoodLogEntry) -> FoodLogEntryRead:

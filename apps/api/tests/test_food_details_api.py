@@ -40,6 +40,8 @@ def test_returns_macros_and_every_nutrient_with_its_unit(client, db_session) -> 
         "brand": None,
         "store": None,
         "per_100g": {"kcal": 89.0, "protein": 1.09, "carbs": 22.8, "fat": 0.33},
+        "package_serving": None,
+        "servings": [],
         # Label nutrients first, then the full profile in its group order.
         "nutrients": [
             {"key": "fiber", "unit": "g", "amount": 2.6},
@@ -80,3 +82,13 @@ def test_an_unknown_food_is_a_404(client, db_session) -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": f"food {missing_id} does not exist"}
+
+
+def test_returns_the_foods_own_units(client, db_session) -> None:
+    servings = [
+        {"unit": "cup, sliced", "label": "1 cup, sliced", "grams": 150.0},
+        {"unit": "medium", "label": '1 medium (7" to 7-7/8" long)', "grams": 118.0},
+    ]
+    food = add_food(db_session, "Qzvwx Banana", servings=servings)
+
+    assert client.get(f"/api/v1/foods/{food.id}").json()["servings"] == [{**s, "estimated": False} for s in servings]

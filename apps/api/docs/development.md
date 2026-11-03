@@ -111,6 +111,21 @@ The plan texts are in `app/services/nutrition_plan/patterns/en.json`. After edit
 `pytest tests/test_nutrition_plan_texts.py`: it checks every pattern key renders, that every
 placeholder is known, and that no text hard-codes a number.
 
+### Trying Nora (premium)
+
+`POST /api/v1/nora/chat` calls Claude, so it needs an Anthropic API key in `.env`; without one
+it answers `503` and nothing is sent anywhere:
+
+```bash
+# console.anthropic.com → API keys. Set per Railway environment too; never in the app.
+ANTHROPIC_API_KEY=sk-ant-...
+# Optional: the model Nora answers with.
+NORA_MODEL=claude-opus-5-5
+```
+
+Each message costs one Claude call. The tests never call Claude (`tests/test_nora_api.py`
+swaps in a fake client).
+
 ## Food search (Elasticsearch)
 
 Food search runs on Elasticsearch when it's configured, and on PostgreSQL otherwise — so this

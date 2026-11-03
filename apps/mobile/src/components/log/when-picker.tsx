@@ -78,7 +78,7 @@ export function WhenPicker({ value, onChange, label, compact }: WhenPickerProps)
 type TimePickerSheetProps = { visible: boolean; value: string; onClose: () => void; onDone: (time: string) => void };
 
 /** Hour and minute steppers (minutes in 5s), so any time of day is a few taps away. */
-function TimePickerSheet({ visible, value, onClose, onDone }: TimePickerSheetProps) {
+export function TimePickerSheet({ visible, value, onClose, onDone }: TimePickerSheetProps) {
   const styles = useStyles(makeStyles);
   const [draft, setDraft] = useState(value);
   const [shown, setShown] = useState(visible);

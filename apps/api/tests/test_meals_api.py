@@ -294,3 +294,83 @@ def test_a_new_entry_belongs_to_the_user_who_logged_it(client, user_id, db_sessi
     entry = client.post(ENTRIES, json=custom_entry()).json()
 
     assert db_session.get(FoodLogEntry, entry["id"]).user_id == user_id
+
+
+PORTIONS = "/api/v1/meals/portions"
+
+
+def log(client, food: Food, amount: float, unit: str, grams: float, hour: int) -> None:
+    response = client.post(
+        ENTRIES,
+        json={
+            "date": DAY,
+            "logged_at": f"{DAY}T{hour:02d}:00:00+00:00",
+            "food_id": food.id,
+            "amount": amount,
+            "unit": unit,
+            "grams": grams,
+        },
+    )
+    assert response.status_code == 201
+
+
+def test_portions_are_the_usual_and_the_last_amount(client, db_session) -> None:
+    food = add_food(db_session)
+    log(client, food, 30, "g", 30, hour=8)
+    log(client, food, 1.5, "slice", 45, hour=9)
+    log(client, food, 30, "g", 30, hour=10)
+    log(client, food, 0.25, "cup", 28, hour=11)
+
+    portions = client.get(PORTIONS, params={"food_id": food.id}).json()
+
+    assert portions == {
+        "usual": {"amount": 30.0, "unit": "g", "grams": 30.0},  # twice
+        "last": {"amount": 0.25, "unit": "cup", "grams": 28.0},
+    }
+
+
+def test_no_usual_until_an_amount_is_logged_twice(client, db_session) -> None:
+    food = add_food(db_session)
+    assert client.get(PORTIONS, params={"food_id": food.id}).json() == {"usual": None, "last": None}
+
+    log(client, food, 1, "slice", 30, hour=8)
+
+    assert client.get(PORTIONS, params={"food_id": food.id}).json()["usual"] is None
+
+
+def test_portions_come_only_from_the_users_own_log(client, other_client, db_session) -> None:
+    food = add_food(db_session)
+    log(other_client, food, 2, "slice", 60, hour=8)
+
+    assert client.get(PORTIONS, params={"food_id": food.id}).json() == {"usual": None, "last": None}
+
+
+SUMMARY = "/api/v1/meals/summary"
+
+
+def test_summary_lists_every_day_with_its_totals(client, db_session) -> None:
+    food = add_food(db_session)  # Brie: 334 kcal, 20.75 P, 0.45 C, 27.68 F per 100 g
+    log(client, food, 100, "g", 100, hour=8)
+    log(client, food, 50, "g", 50, hour=12)
+
+    summary = client.get(SUMMARY, params={"start": "1999-01-01", "end": "1999-01-03"}).json()
+
+    assert [d["date"] for d in summary["days"]] == ["1999-01-01", "1999-01-02", "1999-01-03"]
+    empty, logged, _ = summary["days"]
+    assert (empty["kcal"], empty["entries"], empty["fiber"]) == (0, 0, None)
+    assert (logged["kcal"], logged["protein"], logged["entries"]) == (501.0, 31.1, 2)
+    assert summary["maintenance_kcal"] is None  # no plan
+
+
+def test_summary_only_counts_the_users_own_log(client, other_client, db_session) -> None:
+    food = add_food(db_session)
+    log(other_client, food, 100, "g", 100, hour=8)
+
+    day = client.get(SUMMARY, params={"start": DAY, "end": DAY}).json()["days"][0]
+
+    assert day["entries"] == 0
+
+
+def test_summary_rejects_backwards_or_overlong_ranges(client) -> None:
+    assert client.get(SUMMARY, params={"start": "1999-01-05", "end": "1999-01-01"}).status_code == 422
+    assert client.get(SUMMARY, params={"start": "1999-01-01", "end": "1999-06-01"}).status_code == 422

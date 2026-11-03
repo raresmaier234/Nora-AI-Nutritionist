@@ -9,7 +9,7 @@ import { PlanBuilder, PlanBuilderRequest } from './plan-builder';
 type PlanBuilderContextValue = {
   /** Opens the plan questionnaire. */
   open: (request: PlanBuilderRequest) => void;
-  /** Goes up whenever a plan is activated or a stop recorded: the Profile tab reloads its plan. */
+  /** Goes up whenever a plan is activated or a stop recorded: the Strategy tab reloads its plan. */
   version: number;
 };
 
@@ -23,7 +23,7 @@ export function usePlanBuilder(): PlanBuilderContextValue {
 }
 
 /**
- * Owns the plan builder — one full-screen modal over the tabs, opened from the Profile tab or
+ * Owns the plan builder — one full-screen modal over the tabs, opened from the Strategy tab or
  * from the "Build my plan" prompt a premium user gets once after first signing in (no plan yet,
  * and not logging without targets). "Not now" is remembered per user on this phone.
  */

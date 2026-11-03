@@ -12,9 +12,11 @@ often gives only the Atwater-factor estimates ("958" specific, "957" general).
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 
 from app.services.ingest.normalizer import PER_100G
+from app.services.ingest.servings import estimated_usda_kind, with_kitchen_measures
 
 DATASETS = {
     "foundation": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-10-29.zip",
@@ -107,6 +109,58 @@ _NUMBERS = {
 _UNITS = {"g": "g", "mg": "mg", "µg": "ug", "kcal": "kcal"}
 
 
+# USDA's unit words, as the app shows them. Weights in oz and lb are left out: the app offers
+# both for every food. "RACC" is the FDA's reference amount for one serving.
+_UNIT_NAMES = {
+    "tablespoon": "tbsp",
+    "teaspoon": "tsp",
+    "racc": "serving",
+    "nlea serving": "serving",
+    "serving, nlea": "serving",
+    "fluid ounce": "fl oz",
+}
+_SKIPPED_UNITS = {"oz", "lb", "g", "gram", "grams", "cubic inch", "undetermined"}
+
+
+# "Serving" only means something for a prepared dish (a burger, a meal); for an ingredient
+# it's an arbitrary amount, and grams, cups or pieces say it better.
+_PREPARED_CATEGORIES = {"fast foods", "restaurant foods", "meals, entrees, and side dishes"}
+
+
+def _servings(food: dict) -> list[dict]:
+    """The food's USDA portions as units with the grams one weighs, in USDA's own order.
+
+    {"amount": 4, "modifier": "large", "gramWeight": 30} becomes {"unit": "large", "grams": 7.5};
+    {"amount": 1, "modifier": "cup, chopped", "gramWeight": 160} becomes "cup, chopped".
+    """
+    servings = []
+    prepared = ((food.get("foodCategory") or {}).get("description") or "").lower() in _PREPARED_CATEGORIES
+    portions = sorted(food.get("foodPortions") or [], key=lambda p: p.get("sequenceNumber") or 0)
+    for portion in portions:
+        measure = ((portion.get("measureUnit") or {}).get("name") or "").strip()
+        text = measure if measure.lower() not in ("", "undetermined") else (portion.get("modifier") or "")
+        if measure and measure.lower() not in ("undetermined", "racc") and portion.get("modifier"):
+            text = f"{measure}, {portion['modifier']}"  # Foundation: "cup" + "chopped"
+        # "piece (1/8 of 9\" dia)" keeps its detail in the label; the unit is "piece".
+        unit = re.sub(r"\s*\(.*$", "", text).strip(" ,").lower()
+        unit = _UNIT_NAMES.get(unit, unit)
+        amount, grams = portion.get("amount") or 1, portion.get("gramWeight")
+        if not unit or unit in _SKIPPED_UNITS or not grams or amount <= 0 or (unit == "serving" and not prepared):
+            continue
+        detail = text[len(re.sub(r"\s*\(.*$", "", text)):].strip()
+        label = f"1 {unit}" + (f" {detail}" if detail else "")
+        servings.append({"unit": unit, "label": label, "grams": grams / amount})
+    return servings
+
+
+def _poured(food: dict) -> bool:
+    """Drinks and liquid milks, which are also measured in ml."""
+    name = (food.get("description") or "").lower()
+    category = ((food.get("foodCategory") or {}).get("description") or "").lower()
+    solid = any(word in name for word in ("dry", "powder", "condensed", "evaporated"))
+    return not solid and (category == "beverages" or name.startswith("milk,"))
+
+
 def foods(data: dict) -> Iterator[dict]:
     """The food records in a dataset file, whichever dataset it is."""
     for key in ("FoundationFoods", "SRLegacyFoods"):
@@ -135,6 +189,11 @@ def food_to_raw(food: dict) -> dict | None:
         "name": name,
         "basis": PER_100G,
         "serving_grams": None,
+        "servings": with_kitchen_measures(
+            _servings(food),
+            poured=_poured(food),
+            estimate=estimated_usda_kind((food.get("foodCategory") or {}).get("description") or ""),
+        ),
         "calories": next((readings[n] for n in _ENERGY_KCAL if n in readings), None),
     }
     for key, number in _NUMBERS.items():
